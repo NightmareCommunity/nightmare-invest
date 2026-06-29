@@ -22,7 +22,8 @@ export type Route =
   | { name: "admin-transactions" }
   | { name: "admin-kyc" }
   | { name: "admin-ledger" }
-  | { name: "admin-audit" };
+  | { name: "admin-audit" }
+  | { name: "admin-fund-updates" };
 
 interface AppState {
   user: PublicUser | null;

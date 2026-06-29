@@ -28,6 +28,9 @@ model User {
   // Two-factor authentication (TOTP)
   totpSecret   String?  // encrypted base32 secret
   totpEnabled  Boolean  @default(false)
+  // One-time recovery codes (bcrypt-hashed, comma-joined in DB) — used if user loses authenticator
+  recoveryCodes    String?
+  recoveryCodesUsed Int     @default(0)
 
   // KYC verification status: NONE | PENDING | APPROVED | REJECTED
   kycStatus    String   @default("NONE")
@@ -44,6 +47,7 @@ model User {
   reports      Report[]
   kycDocuments KycDocument[]
   reviewedKyc  KycDocument[] @relation("KycReviewer")
+  fundUpdates  FundUpdate[]  @relation("FundUpdateAuthor")
 }
 
 // ----------------------------- Fund ------------------------------
@@ -150,6 +154,10 @@ model AuditLog {
   resourceId   String?
   metadata     String?  // JSON string
   timestamp    DateTime @default(now())
+  // SHA-256 hash chaining for tamper-evident immutable audit trail (compliance)
+  prevHash     String?  // hash of the previous audit log entry
+  hash         String?  // hash of this entry's canonical content + prevHash
+  chainIndex   Int      @default(0) // sequence position in the chain
 
   @@index([actorId])
   @@index([action])
@@ -176,6 +184,23 @@ model MarketPrice {
   priceUsd  Float
   change24h Float
   updatedAt DateTime @updatedAt
+}
+
+// ------------------------ Fund Updates ---------------------------
+// News, commentary and updates posted by fund administrators
+model FundUpdate {
+  id         String   @id @default(cuid())
+  title      String
+  body       String
+  category   String   @default("GENERAL") // GENERAL | PERFORMANCE | STRATEGY | REGULATORY | MARKET
+  priority   String   @default("NORMAL")   // NORMAL | IMPORTANT | URGENT
+  pinned     Boolean  @default(false)
+  authorId   String?
+  author     User?    @relation("FundUpdateAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+  createdAt  DateTime @default(now())
+
+  @@index([category])
+  @@index([pinned])
 }
 
 // ------------------------ KYC Documents --------------------------

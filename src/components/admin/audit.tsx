@@ -5,7 +5,7 @@ import { api } from "@/lib/api-client";
 import { GlassCard, SectionTitle, FadeIn } from "@/components/brand/primitives";
 import { Input } from "@/components/ui/input";
 import { fmtDateTime } from "@/lib/format";
-import { History, Search, Shield, User, TrendingUp, Database, ArrowLeftRight, LogIn, KeyRound, Settings } from "lucide-react";
+import { History, Search, Shield, User, TrendingUp, Database, ArrowLeftRight, LogIn, KeyRound, Settings, Link2, ShieldCheck, ShieldAlert } from "lucide-react";
 
 const ACTION_ICONS: Record<string, typeof History> = {
   USER_SIGNUP: User,
@@ -20,6 +20,12 @@ const ACTION_ICONS: Record<string, typeof History> = {
   NAV_UPDATED: Database,
   ALLOCATIONS_UPDATED: TrendingUp,
   SYSTEM_SEED: Shield,
+  KYC_DOCUMENT_UPLOADED: Shield,
+  KYC_DOCUMENT_APPROVED: Shield,
+  KYC_DOCUMENT_REJECTED: Shield,
+  "2FA_ENABLED": KeyRound,
+  "2FA_DISABLED": KeyRound,
+  RECOVERY_CODES_GENERATED: KeyRound,
 };
 
 export function AdminAudit() {
@@ -30,6 +36,8 @@ export function AdminAudit() {
   });
 
   const logs = data?.logs ?? [];
+  const chain = data?.chainVerification;
+  const chainIntact = chain?.intact === true;
 
   return (
     <div className="space-y-6">
@@ -68,9 +76,42 @@ export function AdminAudit() {
         </div>
       </FadeIn>
 
+      <FadeIn delay={0.075}>
+        <GlassCard gold className="p-5">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className={`flex h-11 w-11 items-center justify-center rounded-full border ${chainIntact ? "border-profit/40 bg-profit/10" : "border-loss/40 bg-loss/10"}`}>
+                {chainIntact ? <ShieldCheck className="h-5 w-5 text-profit" /> : <ShieldAlert className="h-5 w-5 text-loss" />}
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-semibold uppercase tracking-wider text-foreground">Hash Chain Integrity</h3>
+                  <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${chainIntact ? "border-profit/30 bg-profit/10 text-profit" : "border-loss/30 bg-loss/10 text-loss"}`}>
+                    <Link2 className="h-3 w-3" />
+                    {chainIntact ? "VERIFIED" : "BROKEN"}
+                  </span>
+                </div>
+                <p className="mt-0.5 text-xs text-foreground/60">
+                  SHA-256 chained audit trail — tamper-evident compliance log
+                </p>
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Verified Entries</div>
+              <div className="font-metric text-xl font-bold text-gold">{chain?.verified ?? 0}</div>
+              {!chainIntact && chain?.brokenAt && (
+                <div className="mt-0.5 text-[11px] text-loss">
+                  Broken at #{chain.brokenAt.chainIndex} ({chain.brokenAt.action})
+                </div>
+              )}
+            </div>
+          </div>
+        </GlassCard>
+      </FadeIn>
+
       <FadeIn delay={0.1}>
         <GlassCard className="p-5">
-          <SectionTitle title="Event Log" subtitle="Chronological audit trail" />
+          <SectionTitle title="Event Log" subtitle="Chronological audit trail — SHA-256 hash chained" />
           <div className="mt-4 max-h-[32rem] overflow-y-auto scroll-luxury">
             <div className="space-y-2">
               {logs.map((l: any) => {
@@ -87,12 +128,23 @@ export function AdminAudit() {
                         <span className="text-xs text-muted-foreground">by</span>
                         <span className="text-sm text-gold">{l.actor?.name ?? "System"}</span>
                         {l.actor?.email && <span className="text-xs text-muted-foreground">({l.actor.email})</span>}
+                        {l.chainIndex && (
+                          <span className="rounded border border-border/60 bg-black/40 px-1.5 py-0.5 font-mono text-[10px] text-foreground/60">
+                            #{l.chainIndex}
+                          </span>
+                        )}
                       </div>
                       <div className="mt-0.5 text-xs text-muted-foreground">{fmtDateTime(l.timestamp)}</div>
                       {(l.resourceType || l.resourceId) && (
                         <div className="mt-1 text-[11px] text-muted-foreground">
                           {l.resourceType && <span className="mr-2">Resource: {l.resourceType}</span>}
                           {l.resourceId && <span className="font-mono">{l.resourceId.slice(0, 12)}…</span>}
+                        </div>
+                      )}
+                      {l.hash && (
+                        <div className="mt-1 flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                          <Link2 className="h-3 w-3 text-gold/60" />
+                          <span className="font-mono">hash: {l.hash.slice(0, 24)}…</span>
                         </div>
                       )}
                       {meta && (

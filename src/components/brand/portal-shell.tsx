@@ -9,7 +9,7 @@ import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip
 import {
   LayoutDashboard, Wallet, ArrowLeftRight, FileText, Settings,
   Users, TrendingUp, Database, ScrollText, History, Menu, X, LogOut,
-  ChevronDown, ShieldCheck, BarChart3, FileCheck2,
+  ChevronDown, ShieldCheck, BarChart3, FileCheck2, Megaphone,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { fmtDate } from "@/lib/format";
@@ -38,6 +38,7 @@ const ADMIN_NAV: NavItem[] = [
   { label: "NAV Management", route: { name: "admin-nav" }, icon: Database, description: "Publish NAV & history" },
   { label: "Transactions", route: { name: "admin-transactions" }, icon: ArrowLeftRight, description: "Review pending deposits & withdrawals", badge: "pendingAdmin" },
   { label: "KYC Review", route: { name: "admin-kyc" }, icon: FileCheck2, description: "Review investor accreditation documents" },
+  { label: "Fund Updates", route: { name: "admin-fund-updates" }, icon: Megaphone, description: "Publish news & updates for investors" },
   { label: "Ledger", route: { name: "admin-ledger" }, icon: ScrollText, description: "Fund ledger entries & CSV export" },
   { label: "Audit Logs", route: { name: "admin-audit" }, icon: History, description: "System action history & metadata" },
 ];

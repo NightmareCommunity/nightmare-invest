@@ -19,6 +19,7 @@ import { AdminTransactions } from "@/components/admin/transactions";
 import { AdminKyc } from "@/components/admin/kyc";
 import { AdminLedger } from "@/components/admin/ledger";
 import { AdminAudit } from "@/components/admin/audit";
+import { AdminFundUpdates } from "@/components/admin/fund-updates";
 import { WelcomeModal } from "@/components/brand/welcome-modal";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
@@ -138,6 +139,7 @@ function renderAdmin(name: string) {
     case "admin-kyc": return <AdminKyc />;
     case "admin-ledger": return <AdminLedger />;
     case "admin-audit": return <AdminAudit />;
+    case "admin-fund-updates": return <AdminFundUpdates />;
     default: return <AdminDashboard />;
   }
 }

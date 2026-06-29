@@ -104,7 +104,7 @@ export async function getFundMetrics(fundId: string): Promise<FundMetrics> {
     monthlyReturn: monthly,
     annualReturn: annual,
     cagr,
-    sharpe: sharpe * 100,
+    sharpe,
     maxDrawdown: maxDd * 100,
     volatility: vol * 100,
     inceptionNav: fund.inceptionNav,
@@ -255,9 +255,9 @@ export async function getAdvancedAnalytics(fundId: string): Promise<AdvancedAnal
   }
 
   return {
-    sharpe: sharpe * 100,
-    sortino: sortino * 100,
-    calmar: calmar * 100,
+    sharpe,
+    sortino,
+    calmar,
     volatility: vol * 100,
     maxDrawdown: maxDd * 100,
     var95: var95 * 100,
@@ -272,7 +272,7 @@ export async function getAdvancedAnalytics(fundId: string): Promise<AdvancedAnal
     drawdownSeries,
     monthlyReturns,
     yearlyReturns,
-    rollingSharpe30: rollingSharpe30 * 100,
+    rollingSharpe30,
     longestWinStreak: longestWin,
     longestLossStreak: longestLoss,
     navHistory,

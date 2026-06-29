@@ -395,3 +395,124 @@
     transition-duration: 0.001ms !important;
   }
 }
+
+/* ----------------------- Hero dot grid background ----------------------- */
+.hero-dot-grid {
+  background-image: radial-gradient(circle, rgba(212, 175, 55, 0.15) 1px, transparent 1px);
+  background-size: 32px 32px;
+  -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, #000 20%, transparent 75%);
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, #000 20%, transparent 75%);
+}
+
+/* ----------------------- Hero gold scanning line ----------------------- */
+@keyframes scan-line {
+  0% { top: -2px; opacity: 0; }
+  5% { opacity: 1; }
+  95% { opacity: 1; }
+  100% { top: calc(100% + 2px); opacity: 0; }
+}
+.hero-scan-line {
+  animation: scan-line 8s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* ----------------------- Hero particle glow pulse ----------------------- */
+@keyframes particle-pulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.7; }
+}
+
+/* ----------------------- Dashboard: Fund overview banner ----------------------- */
+@keyframes banner-gradient {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+.fund-banner-bg {
+  background: linear-gradient(135deg, rgba(212,175,55,0.06) 0%, transparent 40%, rgba(212,175,55,0.03) 70%, transparent 100%);
+  background-size: 200% 200%;
+  animation: banner-gradient 12s ease infinite;
+}
+
+/* ----------------------- Dashboard: Metric tile accent borders ----------------------- */
+.metric-tile-gold {
+  position: relative;
+}
+.metric-tile-gold::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #D4AF37, transparent);
+  opacity: 0.5;
+}
+
+.metric-tile-profit {
+  position: relative;
+}
+.metric-tile-profit::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #00c896, transparent);
+  opacity: 0.5;
+}
+
+.metric-tile-loss {
+  position: relative;
+}
+.metric-tile-loss::before {
+  content: '';
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #ff4d4f, transparent);
+  opacity: 0.5;
+}
+
+/* ----------------------- Dashboard: Timeline activity feed ----------------------- */
+.timeline-dot-pulse {
+  animation: pulse-gold 2s ease-in-out infinite;
+}
+
+/* ----------------------- Dashboard: Quick action card hover glow ----------------------- */
+.quick-action-glow {
+  transition: box-shadow 0.3s ease, transform 0.3s ease;
+}
+.quick-action-glow:hover {
+  box-shadow: 0 0 24px rgba(212,175,55,0.12), 0 0 1px rgba(212,175,55,0.3);
+}
+
+/* ----------------------- Dashboard: Sentiment gauge needle ----------------------- */
+@keyframes gauge-needle-settle {
+  0% { transform: rotate(-90deg); }
+  60% { transform: rotate(var(--gauge-angle, 0deg)); }
+  80% { transform: rotate(calc(var(--gauge-angle, 0deg) - 5deg)); }
+  100% { transform: rotate(var(--gauge-angle, 0deg)); }
+}
+
+/* ----------------------- Dashboard: Market intel card shimmer ----------------------- */
+.market-card-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+.market-card-shimmer::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, transparent 30%, rgba(212,175,55,0.05) 50%, transparent 70%);
+  background-size: 200% 100%;
+  animation: shimmer 4s linear infinite;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+.market-card-shimmer:hover::before {
+  opacity: 1;
+}

@@ -1,0 +1,702 @@
+     1→"use client";
+     2→import { useRef, useEffect } from "react";
+     3→import { motion } from "framer-motion";
+     4→import { useQuery } from "@tanstack/react-query";
+     5→import { api } from "@/lib/api-client";
+     6→import { useApp } from "@/lib/store";
+     7→import { Logo } from "@/components/brand/logo";
+     8→import { Button } from "@/components/ui/button";
+     9→import { GlassCard, MetricTile } from "@/components/brand/primitives";
+    10→import {
+    11→  ArrowRight,
+    12→  ShieldCheck,
+    13→  Lock,
+    14→  TrendingUp,
+    15→  Globe,
+    16→  PieChart,
+    17→  Layers,
+    18→  Zap,
+    19→  LineChart,
+    20→  CheckCircle2,
+    21→  Quote,
+    22→  Building2,
+    23→} from "lucide-react";
+    24→import { fmtUSD, fmtPct } from "@/lib/format";
+    25→
+    26→const navItems = [
+    27→  { label: "Fund", href: "fund" },
+    28→  { label: "Strategy", href: "strategy" },
+    29→  { label: "Performance", href: "performance" },
+    30→  { label: "Security", href: "security" },
+    31→];
+    32→
+    33→const stats = [
+    34→  { label: "Assets Under Management", value: "$284.6M", sub: "As of latest NAV" },
+    35→  { label: "Since Inception", value: "+147.2%", sub: "Net of fees" },
+    36→  { label: "Accredited Investors", value: "412", sub: "Across 23 jurisdictions" },
+    37→  { label: "Sharpe Ratio", value: "2.31", sub: "Risk-adjusted" },
+    38→];
+    39→
+    40→const allocation = [
+    41→  { asset: "Bitcoin", weight: 40, color: "#F7931A" },
+    42→  { asset: "Ethereum", weight: 25, color: "#627EEA" },
+    43→  { asset: "Solana", weight: 15, color: "#14F195" },
+    44→  { asset: "Stablecoin Yield", weight: 10, color: "#4A90E2" },
+    45→  { asset: "High Conviction Altcoins", weight: 10, color: "#D4AF37" },
+    46→];
+    47→
+    48→const benefits = [
+    49→  {
+    50→    icon: ShieldCheck,
+    51→    title: "Institutional Custody",
+    52→    desc: "Multi-signature cold storage with qualified custodians. SOC 2 Type II audited infrastructure.",
+    53→  },
+    54→  {
+    55→    icon: TrendingUp,
+    56→    title: "Asymmetric Alpha",
+    57→    desc: "Disciplined long-volatility positioning across the highest-conviction digital assets.",
+    58→  },
+    59→  {
+    60→    icon: Lock,
+    61→    title: "Confidential Access",
+    62→    desc: "Private, invitation-eligible capital pool. No retail. No exchange counterparty risk.",
+    63→  },
+    64→  {
+    65→    icon: LineChart,
+    66→    title: "Transparent Reporting",
+    67→    desc: "Daily NAV, institutional-grade analytics, and downloadable statements on demand.",
+    68→  },
+    69→  {
+    70→    icon: PieChart,
+    71→    title: "Managed Allocation",
+    72→    desc: "Expert portfolio construction rebalanced by the Nightmare investment committee.",
+    73→  },
+    74→  {
+    75→    icon: Globe,
+    76→    title: "Global Compliance",
+    77→    desc: "Engineered for accredited investors across compliant jurisdictions worldwide.",
+    78→  },
+    79→];
+    80→
+    81→const process = [
+    82→  { step: "01", title: "Request Access", desc: "Submit credentials for accredited-investor verification." },
+    83→  { step: "02", title: "Capital Commitment", desc: "Confirm allocation and execute subscription agreement." },
+    84→  { step: "03", title: "Monitor Performance", desc: "Track NAV, holdings, and analytics in your private portal." },
+    85→  { step: "04", title: "Liquidity Windows", desc: "Request deposits or withdrawals during scheduled windows." },
+    86→];
+    87→
+    88→export function Landing() {
+    89→  const setRoute = useApp((s) => s.setRoute);
+    90→
+    91→  const scrollTo = (id: string) => {
+    92→    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    93→  };
+    94→
+    95→  return (
+    96→    <div className="min-h-screen flex flex-col">
+    97→      {/* Live price ticker tape — sits above nav bar */}
+    98→      <TickerTape />
+    99→
+   100→      {/* Nav */}
+   101→      <header className="sticky top-7 z-50 border-b border-border/60 glass-strong">
+   102→        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+   103→          <Logo />
+   104→          <nav className="hidden items-center gap-8 md:flex">
+   105→            {navItems.map((n) => (
+   106→              <button
+   107→                key={n.label}
+   108→                onClick={() => scrollTo(n.href)}
+   109→                className="text-sm text-foreground/70 transition-colors hover:text-foreground"
+   110→              >
+   111→                {n.label}
+   112→              </button>
+   113→            ))}
+   114→          </nav>
+   115→          <div className="flex items-center gap-2">
+   116→            <Button
+   117→              variant="ghost"
+   118→              onClick={() => setRoute({ name: "login" })}
+   119→              className="text-foreground/70 hover:text-foreground"
+   120→            >
+   121→              Investor Login
+   122→            </Button>
+   123→            <Button
+   124→              onClick={() => setRoute({ name: "signup" })}
+   125→              className="bg-gold-gradient text-black hover:opacity-90 font-semibold"
+   126→            >
+   127→              Request Access
+   128→            </Button>
+   129→          </div>
+   130→        </div>
+   131→      </header>
+   132→
+   133→      {/* Hero */}
+   134→      <section className="relative overflow-hidden">
+   135→        <HeroCanvas />
+   136→        <div className="absolute inset-0 bg-grid bg-grid-fade opacity-60" />
+   137→        <div className="absolute -top-40 left-1/2 h-96 w-[800px] -translate-x-1/2 rounded-full bg-gold/10 blur-[120px]" />
+   138→        <div className="relative mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8 lg:py-28">
+   139→          <motion.div
+   140→            initial={{ opacity: 0, y: 20 }}
+   141→            animate={{ opacity: 1, y: 0 }}
+   142→            transition={{ duration: 0.7 }}
+   143→            className="mx-auto max-w-4xl text-center"
+   144→          >
+   145→            <div className="shimmer-badge mx-auto mb-6 inline-flex items-center gap-2 rounded-full border border-gold/30 bg-gold/5 px-4 py-1.5 text-xs font-medium text-gold">
+   146→              <span className="h-1.5 w-1.5 animate-pulse-gold rounded-full bg-gold" />
+   147→              Nightmare Alpha Crypto Fund · Now Accepting Allocations
+   148→            </div>
+   149→            <h1 className="glow-underline text-balance text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-6xl">
+   150→              Private Access to{" "}
+   151→              <span className="font-extrabold text-gold-gradient text-glow-gold">Institutional</span>{" "}
+   152→              Crypto Alpha
+   153→            </h1>
+   154→            <p className="mx-auto mt-8 max-w-2xl text-pretty text-base text-foreground/60 sm:text-lg">
+   155→              An elite hedge fund portal engineered for accredited investors. Allocate capital
+   156→              into a disciplined digital-asset strategy, monitor institutional-grade analytics,
+   157→              and access your portfolio with the confidentiality of a private bank.
+   158→            </p>
+   159→            <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+   160→              <Button
+   161→                size="lg"
+   162→                onClick={() => setRoute({ name: "signup" })}
+   163→                className="group w-full bg-gold-gradient text-black hover:opacity-90 sm:w-auto"
+   164→              >
+   165→                Request Investor Access
+   166→                <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+   167→              </Button>
+   168→              <Button
+   169→                size="lg"
+   170→                variant="outline"
+   171→                onClick={() => setRoute({ name: "login" })}
+   172→                className="w-full border-gold/30 text-gold hover:bg-gold/10 sm:w-auto"
+   173→              >
+   174→                Investor Login
+   175→              </Button>
+   176→            </div>
+   177→            <p className="mt-4 text-xs text-muted-foreground">
+   178→              Minimum commitment $50,000 · Accredited investors only
+   179→            </p>
+   180→            {/* Trust indicators */}
+   181→            <div className="mt-6 flex flex-wrap items-center justify-center gap-6 text-xs text-foreground/40">
+   182→              <div className="flex items-center gap-1.5">
+   183→                <Lock className="h-3.5 w-3.5" />
+   184→                <span>256-bit Encryption</span>
+   185→              </div>
+   186→              <div className="flex items-center gap-1.5">
+   187→                <ShieldCheck className="h-3.5 w-3.5" />
+   188→                <span>SOC 2 Audited</span>
+   189→              </div>
+   190→              <div className="flex items-center gap-1.5">
+   191→                <Building2 className="h-3.5 w-3.5" />
+   192→                <span>Qualified Custody</span>
+   193→              </div>
+   194→            </div>
+   195→          </motion.div>
+   196→
+   197→          {/* Hero stats */}
+   198→          <motion.div
+   199→            initial={{ opacity: 0, y: 24 }}
+   200→            animate={{ opacity: 1, y: 0 }}
+   201→            transition={{ duration: 0.7, delay: 0.2 }}
+   202→            className="mt-16 grid grid-cols-2 gap-4 lg:grid-cols-4"
+   203→          >
+   204→            {stats.map((s) => (
+   205→              <GlassCard key={s.label} gold className="stat-card-gold p-5 text-center">
+   206→                <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+   207→                  {s.label}
+   208→                </div>
+   209→                <div className="mt-2 font-metric text-2xl font-bold text-gold-gradient sm:text-3xl">
+   210→                  {s.value}
+   211→                </div>
+   212→                <div className="mt-1 text-xs text-muted-foreground">{s.sub}</div>
+   213→              </GlassCard>
+   214→            ))}
+   215→          </motion.div>
+   216→        </div>
+   217→      </section>
+   218→
+   219→      {/* Fund overview */}
+   220→      <section id="fund" className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
+   221→        <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
+   222→          <div>
+   223→            <span className="text-xs font-semibold uppercase tracking-[0.2em] text-gold">
+   224→              The Flagship Vehicle
+   225→            </span>
+   226→            <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
+   227→              Nightmare Alpha Crypto Fund
+   228→            </h2>
+   229→            <p className="mt-5 text-pretty text-muted-foreground">
+   230→              A single, institutionally-managed vehicle providing diversified exposure to the
+   231→              digital-asset class. Allocations are actively rebalanced by the Nightmare investment
+   232→              committee across Bitcoin, Ethereum, Solana, stablecoin yield strategies, and
+   233→              high-conviction altcoins — with the discretion of a private bank and the rigor of a
+   234→              hedge fund.
+   235→            </p>
+   236→            <div className="mt-8 space-y-3">
+   237→              {[
+   238→                "2% management fee · 20% performance fee (high-water mark)",
+   239→                "Daily NAV publication with full transparency",
+   240→                "Scheduled monthly liquidity windows",
+   241→                "Qualified custody with multi-signature cold storage",
+   242→              ].map((item) => (
+   243→                <div key={item} className="flex items-start gap-3">
+   244→                  <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-gold" />
+   245→                  <span className="text-sm text-foreground/90">{item}</span>
+   246→                </div>
+   247→              ))}
+   248→            </div>
+   249→          </div>
+   250→
+   251→          {/* Allocation donut */}
+   252→          <GlassCard gold className="p-8">
+   253→            <div className="flex items-center justify-between">
+   254→              <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+   255→                Target Allocation
+   256→              </h3>
+   257→              <Layers className="h-5 w-5 text-gold" />
+   258→            </div>
+   259→            <div className="mt-6 flex flex-col items-center gap-8 sm:flex-row sm:items-center">
+   260→              <div className="relative h-44 w-44 shrink-0">
+   261→                <AllocationDonut />
+   262→                <div className="absolute inset-0 flex flex-col items-center justify-center">
+   263→                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground">5 Assets</span>
+   264→                  <span className="font-metric text-xl font-bold text-foreground">100%</span>
+   265→                </div>
+   266→              </div>
+   267→              <div className="flex-1 space-y-2.5">
+   268→                {allocation.map((a) => (
+   269→                  <div key={a.asset} className="flex items-center justify-between gap-3">
+   270→                    <div className="flex items-center gap-2.5">
+   271→                      <span className="h-2.5 w-2.5 rounded-sm" style={{ background: a.color }} />
+   272→                      <span className="text-sm text-foreground/90">{a.asset}</span>
+   273→                    </div>
+   274→                    <span className="font-metric text-sm font-semibold text-foreground">{a.weight}%</span>
+   275→                  </div>
+   276→                ))}
+   277→              </div>
+   278→            </div>
+   279→          </GlassCard>
+   280→        </div>
+   281→      </section>
+   282→
+   283→      {/* Strategy / benefits */}
+   284→      <section id="strategy" className="border-y border-border/60 bg-black/30">
+   285→        <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
+   286→          <div className="mx-auto max-w-2xl text-center">
+   287→            <span className="text-xs font-semibold uppercase tracking-[0.2em] text-gold">
+   288→              Institutional by Design
+   289→            </span>
+   290→            <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
+   291→              Engineered for Capital That Demands More
+   292→            </h2>
+   293→            <p className="mt-4 text-muted-foreground">
+   294→              Every layer of the platform reflects institutional standards — from custody and
+   295→              compliance to analytics and reporting.
+   296→            </p>
+   297→          </div>
+   298→          <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+   299→            {benefits.map((b, i) => (
+   300→              <motion.div
+   301→                key={b.title}
+   302→                initial={{ opacity: 0, y: 16 }}
+   303→                whileInView={{ opacity: 1, y: 0 }}
+   304→                viewport={{ once: true }}
+   305→                transition={{ duration: 0.5, delay: i * 0.05 }}
+   306→              >
+   307→                <GlassCard hover className="h-full p-6">
+   308→                  <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-gold/10 text-gold">
+   309→                    <b.icon className="h-5 w-5" />
+   310→                  </div>
+   311→                  <h3 className="mt-4 text-base font-semibold text-foreground">{b.title}</h3>
+   312→                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{b.desc}</p>
+   313→                </GlassCard>
+   314→              </motion.div>
+   315→            ))}
+   316→          </div>
+   317→        </div>
+   318→      </section>
+   319→
+   320→      {/* Performance strip */}
+   321→      <section id="performance" className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
+   322→        <div className="grid gap-6 lg:grid-cols-3">
+   323→          <div className="lg:col-span-2">
+   324→            <GlassCard className="h-full p-8">
+   325→              <div className="flex items-center justify-between">
+   326→                <div>
+   327→                  <span className="text-xs font-semibold uppercase tracking-[0.2em] text-gold">
+   328→                    Fund Performance
+   329→                  </span>
+   330→                  <h3 className="mt-2 text-2xl font-bold">Net Asset Value Trajectory</h3>
+   331→                </div>
+   332→                <Zap className="h-6 w-6 text-gold" />
+   333→              </div>
+   334→              <Sparkline />
+   335→              <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
+   336→                {[
+   337→                  { label: "Daily", value: "+0.84%" },
+   338→                  { label: "Weekly", value: "+3.21%" },
+   339→                  { label: "Monthly", value: "+8.47%" },
+   340→                  { label: "Annual", value: "+42.6%" },
+   341→                ].map((r) => (
+   342→                  <div key={r.label} className="rounded-lg border border-border/60 bg-black/20 p-3">
+   343→                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{r.label}</div>
+   344→                    <div className="mt-1 font-metric text-lg font-semibold text-profit">{r.value}</div>
+   345→                  </div>
+   346→                ))}
+   347→              </div>
+   348→            </GlassCard>
+   349→          </div>
+   350→          <div className="space-y-4">
+   351→            <GlassCard gold className="p-6">
+   352→              <Quote className="h-6 w-6 text-gold/60" />
+   353→              <p className="mt-3 text-sm leading-relaxed text-foreground/90">
+   354→                “The institutional gateway to digital-asset alpha. Nightmare Invest delivers the
+   355→                confidentiality and rigor our family office demands.”
+   356→              </p>
+   357→              <div className="mt-4 text-xs text-muted-foreground">
+   358→                — Private Wealth Office, Geneva
+   359→              </div>
+   360→            </GlassCard>
+   361→            <GlassCard className="p-6">
+   362→              <div className="flex items-center gap-3">
+   363→                <ShieldCheck className="h-8 w-8 text-gold" />
+   364→                <div>
+   365→                  <div className="text-sm font-semibold">SOC 2 Type II</div>
+   366→                  <div className="text-xs text-muted-foreground">Audited infrastructure</div>
+   367→                </div>
+   368→              </div>
+   369→            </GlassCard>
+   370→          </div>
+   371→        </div>
+   372→      </section>
+   373→
+   374→      {/* Process */}
+   375→      <section id="security" className="border-y border-border/60 bg-black/30">
+   376→        <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
+   377→          <div className="mx-auto max-w-2xl text-center">
+   378→            <span className="text-xs font-semibold uppercase tracking-[0.2em] text-gold">Onboarding</span>
+   379→            <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">A Disciplined Path to Allocation</h2>
+   380→          </div>
+   381→          <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+   382→            {process.map((p) => (
+   383→              <GlassCard key={p.step} className="p-6">
+   384→                <div className="font-metric text-3xl font-bold text-gold-gradient">{p.step}</div>
+   385→                <h3 className="mt-3 text-base font-semibold">{p.title}</h3>
+   386→                <p className="mt-1.5 text-sm text-muted-foreground">{p.desc}</p>
+   387→              </GlassCard>
+   388→            ))}
+   389→          </div>
+   390→        </div>
+   391→      </section>
+   392→
+   393→      {/* CTA */}
+   394→      <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
+   395→        <GlassCard gold glow className="relative overflow-hidden p-10 text-center sm:p-16">
+   396→          <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-gold/20 blur-3xl" />
+   397→          <div className="relative">
+   398→            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
+   399→              Request Your Seat at the Table
+   400→            </h2>
+   401→            <p className="mx-auto mt-4 max-w-xl text-muted-foreground">
+   402→              Capital allocation is selective. Submit your access request and our investor relations
+   403→              team will respond within 48 hours.
+   404→            </p>
+   405→            <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+   406→              <Button
+   407→                size="lg"
+   408→                onClick={() => setRoute({ name: "signup" })}
+   409→                className="w-full bg-gold-gradient text-black hover:opacity-90 sm:w-auto"
+   410→              >
+   411→                Begin Access Request
+   412→                <ArrowRight className="ml-2 h-4 w-4" />
+   413→              </Button>
+   414→              <Button
+   415→                size="lg"
+   416→                variant="outline"
+   417→                onClick={() => setRoute({ name: "legal", doc: "risk" })}
+   418→                className="w-full border-gold/30 text-foreground hover:bg-gold/10 sm:w-auto"
+   419→              >
+   420→                Risk Disclosure
+   421→              </Button>
+   422→            </div>
+   423→          </div>
+   424→        </GlassCard>
+   425→      </section>
+   426→
+   427→      {/* Footer */}
+   428→      <footer className="mt-auto border-t border-border/60 bg-black/40">
+   429→        <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+   430→          <div className="grid gap-8 md:grid-cols-4">
+   431→            <div className="md:col-span-2">
+   432→              <Logo />
+   433→              <p className="mt-4 max-w-sm text-sm text-muted-foreground">
+   434→                Nightmare Invest is a private institutional crypto hedge fund portal for accredited
+   435→                investors. This is not a retail product.
+   436→              </p>
+   437→            </div>
+   438→            <div>
+   439→              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Legal</div>
+   440→              <ul className="mt-3 space-y-2 text-sm">
+   441→                <li><button onClick={() => setRoute({ name: "legal", doc: "tos" })} className="text-muted-foreground hover:text-foreground">Terms of Service</button></li>
+   442→                <li><button onClick={() => setRoute({ name: "legal", doc: "privacy" })} className="text-muted-foreground hover:text-foreground">Privacy Policy</button></li>
+   443→                <li><button onClick={() => setRoute({ name: "legal", doc: "cookies" })} className="text-muted-foreground hover:text-foreground">Cookie Policy</button></li>
+   444→                <li><button onClick={() => setRoute({ name: "legal", doc: "risk" })} className="text-muted-foreground hover:text-foreground">Risk Disclosure</button></li>
+   445→              </ul>
+   446→            </div>
+   447→            <div>
+   448→              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Investor Relations</div>
+   449→              <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
+   450→                <li>ir@nightmare.invest</li>
+   451→                <li>Zug · Geneva · Singapore</li>
+   452→                <li className="pt-2"><button onClick={() => setRoute({ name: "login" })} className="text-gold hover:underline">Investor Login →</button></li>
+   453→              </ul>
+   454→            </div>
+   455→          </div>
+   456→          <div className="mt-10 flex flex-col items-start justify-between gap-3 border-t border-border/60 pt-6 text-xs text-muted-foreground sm:flex-row sm:items-center">
+   457→            <span>© {new Date().getFullYear()} Nightmare Invest. All rights reserved.</span>
+   458→            <span>This platform is intended for accredited investors. Digital assets are subject to high volatility and risk of loss.</span>
+   459→          </div>
+   460→        </div>
+   461→      </footer>
+   462→    </div>
+   463→  );
+   464→}
+   465→
+   466→function AllocationDonut() {
+   467→  const r = 70;
+   468→  const c = 2 * Math.PI * r;
+   469→  // precompute cumulative offsets purely with reduce (no mutation after render)
+   470→  const segments = allocation.reduce<
+   471→    { asset: string; color: string; dash: number; offset: number }[]
+   472→  >((acc, a) => {
+   473→    const offset = acc.length > 0 ? acc[acc.length - 1].offset + acc[acc.length - 1].dash : 0;
+   474→    acc.push({ asset: a.asset, color: a.color, dash: (a.weight / 100) * c, offset });
+   475→    return acc;
+   476→  }, []);
+   477→  return (
+   478→    <svg viewBox="0 0 180 180" className="h-full w-full -rotate-90">
+   479→      <circle cx="90" cy="90" r={r} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="18" />
+   480→      {segments.map((s) => (
+   481→        <circle
+   482→          key={s.asset}
+   483→          cx="90"
+   484→          cy="90"
+   485→          r={r}
+   486→          fill="none"
+   487→          stroke={s.color}
+   488→          strokeWidth="18"
+   489→          strokeDasharray={`${s.dash} ${c - s.dash}`}
+   490→          strokeDashoffset={-s.offset}
+   491→          strokeLinecap="butt"
+   492→        />
+   493→      ))}
+   494→    </svg>
+   495→  );
+   496→}
+   497→
+   498→function Sparkline() {
+   499→  // deterministic upward-ish curve
+   500→  const pts: [number, number][] = [];
+   501→  let v = 40;
+   502→  for (let i = 0; i < 40; i++) {
+   503→    v += (Math.sin(i / 3) * 2) + 1.4 + Math.random() * 0.6;
+   504→    pts.push([i, v]);
+   505→  }
+   506→  const w = 600;
+   507→  const h = 160;
+   508→  const max = Math.max(...pts.map((p) => p[1]));
+   509→  const min = Math.min(...pts.map((p) => p[1]));
+   510→  const norm = (x: number) => (x - min) / (max - min);
+   511→  const path = pts
+   512→    .map((p, i) => `${i === 0 ? "M" : "L"} ${(p[0] / 39) * w} ${h - norm(p[1]) * h}`)
+   513→    .join(" ");
+   514→  const area = `${path} L ${w} ${h} L 0 ${h} Z`;
+   515→  return (
+   516→    <div className="mt-6 overflow-hidden rounded-lg border border-border/60 bg-black/20 p-4">
+   517→      <svg viewBox={`0 0 ${w} ${h}`} className="h-40 w-full" preserveAspectRatio="none">
+   518→        <defs>
+   519→          <linearGradient id="spark" x1="0" y1="0" x2="0" y2="1">
+   520→            <stop offset="0%" stopColor="#D4AF37" stopOpacity="0.35" />
+   521→            <stop offset="100%" stopColor="#D4AF37" stopOpacity="0" />
+   522→          </linearGradient>
+   523→        </defs>
+   524→        <path d={area} fill="url(#spark)" />
+   525→        <path d={path} fill="none" stroke="#D4AF37" strokeWidth="2" />
+   526→      </svg>
+   527→    </div>
+   528→  );
+   529→}
+   530→
+   531→function HeroCanvas() {
+   532→  const canvasRef = useRef<HTMLCanvasElement>(null);
+   533→
+   534→  useEffect(() => {
+   535→    const canvas = canvasRef.current;
+   536→    if (!canvas) return;
+   537→
+   538→    // Respect reduced-motion preference
+   539→    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+   540→    if (prefersReducedMotion) return;
+   541→
+   542→    const ctx = canvas.getContext("2d");
+   543→    if (!ctx) return;
+   544→
+   545→    let animationId: number;
+   546→    const PARTICLE_COUNT = 55;
+   547→    const CONNECTION_DISTANCE = 140;
+   548→
+   549→    interface Particle {
+   550→      x: number;
+   551→      y: number;
+   552→      vx: number;
+   553→      vy: number;
+   554→      r: number;
+   555→      o: number;
+   556→    }
+   557→
+   558→    const particles: Particle[] = [];
+   559→
+   560→    const resize = () => {
+   561→      const dpr = window.devicePixelRatio || 1;
+   562→      const rect = canvas.getBoundingClientRect();
+   563→      canvas.width = rect.width * dpr;
+   564→      canvas.height = rect.height * dpr;
+   565→      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+   566→    };
+   567→
+   568→    resize();
+   569→    window.addEventListener("resize", resize);
+   570→
+   571→    const w = () => canvas.getBoundingClientRect().width;
+   572→    const h = () => canvas.getBoundingClientRect().height;
+   573→
+   574→    // Initialize particles
+   575→    for (let i = 0; i < PARTICLE_COUNT; i++) {
+   576→      particles.push({
+   577→        x: Math.random() * w(),
+   578→        y: Math.random() * h(),
+   579→        vx: (Math.random() - 0.5) * 0.25,
+   580→        vy: -(Math.random() * 0.25 + 0.08), // slowly floating upward
+   581→        r: Math.random() * 1.5 + 0.5,
+   582→        o: Math.random() * 0.3 + 0.1, // opacity 0.1–0.4
+   583→      });
+   584→    }
+   585→
+   586→    const animate = () => {
+   587→      const cw = w();
+   588→      const ch = h();
+   589→      ctx.clearRect(0, 0, cw, ch);
+   590→
+   591→      // Update & draw particles
+   592→      for (const p of particles) {
+   593→        p.x += p.vx;
+   594→        p.y += p.vy;
+   595→
+   596→        // Wrap around edges
+   597→        if (p.y < -10) p.y = ch + 10;
+   598→        if (p.x < -10) p.x = cw + 10;
+   599→        if (p.x > cw + 10) p.x = -10;
+   600→
+   601→        ctx.beginPath();
+   602→        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+   603→        ctx.fillStyle = `rgba(212, 175, 55, ${p.o})`;
+   604→        ctx.fill();
+   605→      }
+   606→
+   607→      // Draw connecting lines between nearby particles
+   608→      for (let i = 0; i < particles.length; i++) {
+   609→        for (let j = i + 1; j < particles.length; j++) {
+   610→          const dx = particles[i].x - particles[j].x;
+   611→          const dy = particles[i].y - particles[j].y;
+   612→          const dist = Math.sqrt(dx * dx + dy * dy);
+   613→          if (dist < CONNECTION_DISTANCE) {
+   614→            const alpha = 0.05 + (1 - dist / CONNECTION_DISTANCE) * 0.05;
+   615→            ctx.beginPath();
+   616→            ctx.moveTo(particles[i].x, particles[i].y);
+   617→            ctx.lineTo(particles[j].x, particles[j].y);
+   618→            ctx.strokeStyle = `rgba(212, 175, 55, ${alpha})`;
+   619→            ctx.lineWidth = 0.5;
+   620→            ctx.stroke();
+   621→          }
+   622→        }
+   623→      }
+   624→
+   625→      animationId = requestAnimationFrame(animate);
+   626→    };
+   627→
+   628→    animate();
+   629→
+   630→    return () => {
+   631→      cancelAnimationFrame(animationId);
+   632→      window.removeEventListener("resize", resize);
+   633→    };
+   634→  }, []);
+   635→
+   636→  return <canvas ref={canvasRef} className="absolute inset-0 z-0 h-full w-full" />;
+   637→}
+   638→
+   639→interface TickerPrice {
+   640→  symbol: string;
+   641→  name: string;
+   642→  priceUsd: number;
+   643→  change24h: number;
+   644→}
+   645→
+   646→function TickerTape() {
+   647→  const { data } = useQuery<{ prices: TickerPrice[]; updatedAt: string }>({
+   648→    queryKey: ["market-prices"],
+   649→    queryFn: () => api.get("/api/market/prices"),
+   650→    refetchInterval: 30000,
+   651→    staleTime: 15000,
+   652→  });
+   653→
+   654→  const prices = data?.prices ?? [];
+   655→
+   656→  const renderItem = (p: TickerPrice, key: string) => (
+   657→    <div key={key} className="flex items-center gap-2 px-4 text-[11px] font-medium">
+   658→      <span className="font-semibold uppercase tracking-wide text-gold">{p.symbol}</span>
+   659→      <span className="font-metric text-foreground/90">
+   660→        {fmtUSD(p.priceUsd, { decimals: p.priceUsd > 1000 ? 0 : 2 })}
+   661→      </span>
+   662→      <span className={`font-metric ${p.change24h >= 0 ? "text-profit" : "text-loss"}`}>
+   663→        {p.change24h >= 0 ? "▲" : "▼"} {fmtPct(Math.abs(p.change24h))}
+   664→      </span>
+   665→      <span className="ml-3 text-gold/30">•</span>
+   666→    </div>
+   667→  );
+   668→
+   669→  // Loading fallback — keep ticker height stable to avoid layout shift
+   670→  if (prices.length === 0) {
+   671→    return (
+   672→      <div className="sticky top-0 z-[60] flex h-7 items-center overflow-hidden border-b border-gold/15 bg-black/95 backdrop-blur-sm">
+   673→        <div className="flex h-full shrink-0 items-center gap-1.5 border-r border-gold/15 bg-black px-3 text-[10px] font-bold uppercase tracking-[0.18em] text-gold">
+   674→          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-gold" />
+   675→          Live
+   676→        </div>
+   677→        <div className="flex-1 px-4 text-[11px] text-muted-foreground">
+   678→          Loading live market prices…
+   679→        </div>
+   680→      </div>
+   681→    );
+   682→  }
+   683→
+   684→  // Duplicate the price set so the marquee can loop seamlessly via translateX(-50%)
+   685→  return (
+   686→    <div className="ticker-tape-container sticky top-0 z-[60] flex h-7 items-center overflow-hidden border-b border-gold/15 bg-black/95 backdrop-blur-sm">
+   687→      <div className="flex h-full shrink-0 items-center gap-1.5 border-r border-gold/15 bg-black px-3 text-[10px] font-bold uppercase tracking-[0.18em] text-gold">
+   688→        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-gold" />
+   689→        Live
+   690→      </div>
+   691→      <div className="relative flex-1 overflow-hidden">
+   692→        <div className="ticker-tape-track">
+   693→          {prices.map((p) => renderItem(p, `a-${p.symbol}`))}
+   694→          <div aria-hidden="true" className="inline-flex">
+   695→            {prices.map((p) => renderItem(p, `b-${p.symbol}`))}
+   696→          </div>
+   697→        </div>
+   698→      </div>
+   699→    </div>
+   700→  );
+   701→}
+   702→

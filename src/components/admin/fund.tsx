@@ -71,11 +71,17 @@ export function AdminFund() {
               <Field label="Fund Name" icon={<Layers className="h-4 w-4" />} value={data.fund.name} readOnly />
               <Field label="Slug" icon={<TrendingUp className="h-4 w-4" />} value={data.fund.slug} readOnly />
               <Field label="Minimum Investment" icon={<DollarSign className="h-4 w-4" />} value={fmtUSD(data.fund.minInvest)} readOnly />
-              <Field label="Fee Structure" icon={<FileText className="h-4 w-4" />} value={data.fund.feeStructure} readOnly />
+              <Field label="Fee Structure" icon={<FileText className="h-4 w-4" />} value={data.fund.feeStructure} readOnly multirow />
             </div>
             <div className="mt-4">
               <Label className="text-xs uppercase tracking-wider text-muted-foreground">Description</Label>
-              <Textarea value={data.fund.description ?? ""} readOnly className="mt-1.5 border-border/60 bg-black/20 text-sm" rows={4} />
+              <Textarea
+                value={data.fund.description ?? ""}
+                readOnly
+                placeholder="No description set. Update fund metadata in the database to add marketing copy here."
+                className="mt-1.5 border-border/60 bg-black/20 text-sm"
+                rows={4}
+              />
             </div>
           </GlassCard>
         </FadeIn>
@@ -174,11 +180,17 @@ export function AdminFund() {
   );
 }
 
-function Field({ label, value, icon, readOnly }: { label: string; value: string; icon: React.ReactNode; readOnly?: boolean }) {
+function Field({ label, value, icon, readOnly, multirow }: { label: string; value: string; icon: React.ReactNode; readOnly?: boolean; multirow?: boolean }) {
   return (
     <div className="space-y-1.5">
       <Label className="flex items-center gap-1.5 text-xs uppercase tracking-wider text-muted-foreground">{icon}{label}</Label>
-      <Input value={value} readOnly={readOnly} className="border-border/60 bg-black/20" />
+      {multirow ? (
+        <div className="min-h-[40px] rounded-md border border-border/60 bg-black/20 px-3 py-2.5 text-sm font-medium text-foreground [overflow-wrap:anywhere]">
+          {value}
+        </div>
+      ) : (
+        <Input value={value} readOnly={readOnly} className="border-border/60 bg-black/20" />
+      )}
     </div>
   );
 }

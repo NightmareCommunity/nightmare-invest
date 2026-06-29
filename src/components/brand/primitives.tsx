@@ -54,6 +54,7 @@ export function MetricTile({
   trend,
   sparkline,
   className,
+  children,
 }: {
   label: string;
   value: ReactNode;
@@ -63,27 +64,29 @@ export function MetricTile({
   trend?: number;
   sparkline?: number[];
   className?: string;
+  children?: ReactNode;
 }) {
   const accentColor =
     accent === "profit" ? "text-profit" : accent === "loss" ? "text-loss" : accent === "gold" ? "text-gold" : "text-foreground";
   return (
     <GlassCard className={cn("metric-bottom-border p-5 transition-transform duration-200 hover:scale-[1.02]", className)} hover>
       <div className="relative">
-        <div className="flex items-start justify-between gap-3">
-          <span className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+        <div className="flex items-start justify-between gap-2">
+          <span className="text-[10.5px] font-medium uppercase leading-tight tracking-[0.12em] text-foreground/60 [overflow-wrap:anywhere]">
             {label}
           </span>
-          {icon && <span className="text-gold/70">{icon}</span>}
+          {icon && <span className="shrink-0 text-gold/70">{icon}</span>}
         </div>
         <div className={cn("mt-3 font-metric text-2xl font-semibold tracking-tight text-shadow-metric", accentColor)}>
           {value}
         </div>
-        {sub && <div className="mt-1 text-xs text-muted-foreground">{sub}</div>}
+        {sub && <div className="mt-1 text-xs text-foreground/50">{sub}</div>}
         {sparkline && sparkline.length >= 2 && (
           <div className="pointer-events-none absolute bottom-2 right-3 opacity-80">
             <SparklineSVG data={sparkline} />
           </div>
         )}
+        {children}
       </div>
     </GlassCard>
   );

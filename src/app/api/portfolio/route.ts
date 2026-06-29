@@ -15,7 +15,7 @@ export async function GET() {
   const holding = await db.holding.findUnique({ where: { userId_fundId: { userId: user.id, fundId: fund.id } } });
 
   return json({
-    fund: { id: fund.id, name: fund.name, slug: fund.slug, minInvest: fund.minInvest, feeStructure: fund.feeStructure },
+    fund: { id: fund.id, name: fund.name, slug: fund.slug, minInvest: fund.minInvest, feeStructure: fund.feeStructure, description: fund.description, inceptionNav: fund.inceptionNav },
     holding: holding
       ? { units: holding.units, avgPrice: holding.avgPrice, updatedAt: holding.updatedAt }
       : null,

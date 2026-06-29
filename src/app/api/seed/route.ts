@@ -134,14 +134,34 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // 9. Audit bootstrap
-    await db.auditLog.create({
-      data: {
-        action: "SYSTEM_SEED",
-        resourceType: "Fund",
-        resourceId: fund.id,
-        metadata: JSON.stringify({ note: "Initial fund + demo data seeded" }),
-      },
+    // 9. Seed fund updates (news/commentary)
+    const existingUpdates = await db.fundUpdate.count();
+    if (existingUpdates === 0) {
+      const adminUser = await db.user.findFirst({ where: { role: "ADMIN" } });
+      const updates = [
+        { title: "Q2 2026 Performance Update", body: "The fund delivered +18.4% in Q2 2026, outperforming BTC (+12.1%) and ETH (+9.8%). Our multi-strategy approach with concentrated BTC exposure and tactical alt positions drove strong alpha generation. Key contributors: BTC momentum, SOL DeFi yield, and timely ETH positions ahead of the Pectra upgrade.", category: "PERFORMANCE", priority: "IMPORTANT", pinned: true },
+        { title: "Portfolio Rebalance Effective July 1", body: "Following the investment committee's quarterly review, we are adjusting allocations: BTC 40%→38%, ETH 25%→27%, SOL 15%→15%, Stablecoins 10%→8%, Altcoins 10%→12%. The shift reflects growing confidence in ETH's ecosystem momentum and selective alt opportunities in the AI+crypto convergence theme.", category: "STRATEGY", priority: "IMPORTANT", pinned: false },
+        { title: "New Custody Partnership with Fireblocks", body: "We are pleased to announce our partnership with Fireblocks for enhanced institutional custody. All fund assets are now secured with MPC-TSS technology, multi-layer approval workflows, and $150M insurance coverage. This upgrade reinforces our commitment to institutional-grade security standards.", category: "GENERAL", priority: "NORMAL", pinned: false },
+        { title: "Market Outlook: Navigating Q3 Volatility", body: "With the Fed rate decision and BTC halving effects still unfolding, we anticipate elevated volatility in Q3. Our risk management framework has reduced net exposure by 5% and increased stablecoin allocation as a tactical buffer. The fund remains well-positioned to capitalize on dislocations while protecting downside.", category: "MARKET", priority: "NORMAL", pinned: false },
+        { title: "Regulatory Update: MiCA Compliance", body: "In line with the EU Markets in Crypto-Assets (MiCA) regulation taking effect, Nightmare Invest has completed all compliance requirements. Our registration and operational procedures have been updated to ensure full regulatory alignment across all jurisdictions we serve.", category: "REGULATORY", priority: "NORMAL", pinned: false },
+        { title: "Monthly NAV Update — June 2026", body: "NAV as of June 30, 2026: $176.9572 per unit. Monthly return: +6.2%. AUM: $64.28M across 2 investor accounts. The fund continues its upward trajectory with disciplined risk management and strategic asset allocation.", category: "PERFORMANCE", priority: "NORMAL", pinned: false },
+      ];
+      for (const u of updates) {
+        await db.fundUpdate.create({
+          data: { ...u, authorId: adminUser?.id ?? null, createdAt: new Date(Date.now() - Math.random() * 30 * 86400000) },
+        });
+      }
+      // Re-pin the first update to ensure it's the most recent
+      await db.fundUpdate.updateMany({ where: { pinned: true }, data: { createdAt: new Date() } });
+    }
+
+    // 10. Audit bootstrap (using the hash-chained audit() helper)
+    const { audit } = await import("@/lib/audit");
+    await audit({
+      action: "SYSTEM_SEED",
+      resourceType: "Fund",
+      resourceId: fund.id,
+      metadata: { note: "Initial fund + demo data seeded" },
     });
 
     return json({ ok: true, fund: { id: fund.id, name: fund.name, slug: fund.slug }, demoInvestor: { email: demoEmail, password: "investor123" } });
