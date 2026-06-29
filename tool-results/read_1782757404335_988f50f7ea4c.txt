@@ -1,0 +1,818 @@
+     1→"use client";
+     2→import { useRef, useEffect, useState } from "react";
+     3→import { motion, useInView } from "framer-motion";
+     4→import { useQuery } from "@tanstack/react-query";
+     5→import { api } from "@/lib/api-client";
+     6→import { useApp } from "@/lib/store";
+     7→import { Logo } from "@/components/brand/logo";
+     8→import { Button } from "@/components/ui/button";
+     9→import { GlassCard, FadeIn } from "@/components/brand/primitives";
+    10→import {
+    11→  ArrowRight,
+    12→  ShieldCheck,
+    13→  Lock,
+    14→  TrendingUp,
+    15→  Globe,
+    16→  Layers,
+    17→  Zap,
+    18→  LineChart,
+    19→  CheckCircle2,
+    20→  Quote,
+    21→  Building2,
+    22→  FileCheck2,
+    23→  Wallet,
+    24→  BarChart3,
+    25→  ChevronDown,
+    26→  BadgeCheck,
+    27→  Eye,
+    28→  Scale,
+    29→} from "lucide-react";
+    30→import { fmtUSD, fmtPct, fmtNum } from "@/lib/format";
+    31→import {
+    32→  ResponsiveContainer,
+    33→  AreaChart,
+    34→  Area,
+    35→  XAxis,
+    36→  YAxis,
+    37→  Tooltip,
+    38→} from "recharts";
+    39→
+    40→/* ------------------------------------------------------------------ */
+    41→/*  Static data                                                        */
+    42→/* ------------------------------------------------------------------ */
+    43→
+    44→const heroStats = [
+    45→  { label: "Assets Under Management", value: "$284.6M", sub: "As of latest NAV" },
+    46→  { label: "Since Inception Return", value: "+147.2%", sub: "Net of fees" },
+    47→  { label: "Sharpe Ratio", value: "2.31", sub: "Risk-adjusted" },
+    48→  { label: "Accredited Investors", value: "412", sub: "Across 23 jurisdictions" },
+    49→];
+    50→
+    51→const strategyCards = [
+    52→  {
+    53→    icon: Wallet,
+    54→    asset: "Bitcoin",
+    55→    ticker: "BTC",
+    56→    weight: 40,
+    57→    color: "#F7931A",
+    58→    note: "Core position — long-term store-of-value thesis with tactical rebalancing around halving cycles.",
+    59→  },
+    60→  {
+    61→    icon: Layers,
+    62→    asset: "Ethereum",
+    63→    ticker: "ETH",
+    64→    weight: 25,
+    65→    color: "#627EEA",
+    66→    note: "Smart-contract ecosystem exposure via the leading Layer 1, including staking yield.",
+    67→  },
+    68→  {
+    69→    icon: Zap,
+    70→    asset: "Solana",
+    71→    ticker: "SOL",
+    72→    weight: 15,
+    73→    color: "#14F195",
+    74→    note: "High-throughput blockchain growth play — DeFi, DePIN, and consumer applications.",
+    75→  },
+    76→  {
+    77→    icon: BarChart3,
+    78→    asset: "Stablecoin Yield",
+    79→    ticker: "USDC/USDT",
+    80→    weight: 10,
+    81→    color: "#4A90E2",
+    82→    note: "Low-volatility anchor generating 4-8% APY through institutional DeFi lending strategies.",
+    83→  },
+    84→  {
+    85→    icon: TrendingUp,
+    86→    asset: "High-Conviction Alts",
+    87→    ticker: "Various",
+    88→    weight: 10,
+    89→    color: "#D4AF37",
+    90→    note: "Concentrated bets on emerging L1s, infrastructure, and AI-crypto convergence narratives.",
+    91→  },
+    92→];
+    93→
+    94→const securityItems = [
+    95→  {
+    96→    icon: ShieldCheck,
+    97→    title: "Institutional Custody",
+    98→    desc: "Multi-signature cold storage with qualified custodians. SOC 2 Type II audited infrastructure.",
+    99→  },
+   100→  {
+   101→    icon: Lock,
+   102→    title: "256-bit Encryption",
+   103→    desc: "End-to-end AES-256 encryption for all data at rest and in transit. Zero-knowledge architecture.",
+   104→  },
+   105→  {
+   106→    icon: FileCheck2,
+   107→    title: "Audit Trail",
+   108→    desc: "Immutable on-chain audit logs for every transaction, NAV publication, and portfolio action.",
+   109→  },
+   110→  {
+   111→    icon: BadgeCheck,
+   112→    title: "SOC 2 Compliance",
+   113→    desc: "Independently audited security controls meeting the highest institutional standards.",
+   114→  },
+   115→  {
+   116→    icon: Eye,
+   117→    title: "Transparent Reporting",
+   118→    desc: "Daily NAV, institutional-grade analytics, and downloadable statements on demand.",
+   119→  },
+   120→  {
+   121→    icon: Scale,
+   122→    title: "Global Compliance",
+   123→    desc: "Engineered for accredited investors across compliant jurisdictions worldwide.",
+   124→  },
+   125→];
+   126→
+   127→const trustBadges = [
+   128→  { label: "Regulated", icon: Building2 },
+   129→  { label: "Audited", icon: FileCheck2 },
+   130→  { label: "Insured", icon: ShieldCheck },
+   131→];
+   132→
+   133→/* ------------------------------------------------------------------ */
+   134→/*  Main Landing Component                                             */
+   135→/* ------------------------------------------------------------------ */
+   136→
+   137→export function Landing() {
+   138→  const setRoute = useApp((s) => s.setRoute);
+   139→
+   140→  const scrollTo = (id: string) => {
+   141→    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+   142→  };
+   143→
+   144→  return (
+   145→    <div className="min-h-screen flex flex-col">
+   146→      {/* ---- Sticky nav ---- */}
+   147→      <header className="fixed top-0 left-0 right-0 z-50 topbar-glow-line glass-strong">
+   148→        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+   149→          <Logo />
+   150→          <nav className="hidden items-center gap-8 md:flex">
+   151→            {[
+   152→              { label: "Strategy", href: "strategy" },
+   153→              { label: "Performance", href: "performance" },
+   154→              { label: "Security", href: "security" },
+   155→            ].map((n) => (
+   156→              <button
+   157→                key={n.label}
+   158→                onClick={() => scrollTo(n.href)}
+   159→                className="text-sm text-foreground/60 transition-colors hover:text-gold"
+   160→              >
+   161→                {n.label}
+   162→              </button>
+   163→            ))}
+   164→          </nav>
+   165→          <div className="flex items-center gap-2">
+   166→            <Button
+   167→              variant="ghost"
+   168→              onClick={() => setRoute({ name: "login" })}
+   169→              className="text-foreground/60 hover:text-foreground"
+   170→            >
+   171→              Login
+   172→            </Button>
+   173→            <Button
+   174→              onClick={() => setRoute({ name: "signup" })}
+   175→              className="bg-gold-gradient text-black hover:opacity-90 font-semibold"
+   176→            >
+   177→              Request Access
+   178→            </Button>
+   179→          </div>
+   180→        </div>
+   181→      </header>
+   182→
+   183→      {/* ============================================================ */}
+   184→      {/*  HERO — Full viewport                                        */}
+   185→      {/* ============================================================ */}
+   186→      <section className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden">
+   187→        {/* Gold particle dot grid background */}
+   188→        <div className="hero-dot-grid absolute inset-0 z-0" />
+   189→        {/* Gold scanning line */}
+   190→        <div className="hero-scan-line absolute inset-x-0 z-[1] h-px bg-gradient-to-r from-transparent via-gold/60 to-transparent" />
+   191→        {/* Radial gold glow */}
+   192→        <div className="absolute -top-40 left-1/2 h-[600px] w-[1000px] -translate-x-1/2 rounded-full bg-gold/[0.07] blur-[160px]" />
+   193→        <div className="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-[#0a0a0b] to-transparent z-[2]" />
+   194→
+   195→        {/* Content */}
+   196→        <div className="relative z-10 mx-auto max-w-5xl px-4 pt-20 text-center sm:px-6 lg:px-8">
+   197→          <motion.div
+   198→            initial={{ opacity: 0, y: 30 }}
+   199→            animate={{ opacity: 1, y: 0 }}
+   200→            transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+   201→          >
+   202→            {/* Badge */}
+   203→            <div className="shimmer-badge mx-auto mb-8 inline-flex items-center gap-2 rounded-full border border-gold/30 bg-gold/[0.06] px-5 py-2 text-xs font-medium text-gold">
+   204→              <span className="h-1.5 w-1.5 animate-pulse-gold rounded-full bg-gold" />
+   205→              Nightmare Alpha Crypto Fund · Now Accepting Allocations
+   206→            </div>
+   207→
+   208→            {/* Headline */}
+   209→            <h1 className="text-balance text-5xl font-extrabold leading-[1.05] tracking-tight sm:text-6xl lg:text-7xl">
+   210→              <span className="text-gold-gradient text-glow-gold">NIGHTMARE ALPHA</span>
+   211→              <br />
+   212→              <span className="text-foreground">CRYPTO FUND</span>
+   213→            </h1>
+   214→
+   215→            {/* Subheadline */}
+   216→            <p className="mx-auto mt-6 max-w-2xl text-pretty text-lg text-foreground/55 sm:text-xl">
+   217→              Institutional-Grade Digital Asset Management for Accredited Investors
+   218→            </p>
+   219→
+   220→            {/* CTAs */}
+   221→            <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
+   222→              <Button
+   223→                size="lg"
+   224→                onClick={() => setRoute({ name: "signup" })}
+   225→                className="group h-13 rounded-lg bg-gold-gradient px-8 text-base font-bold text-black shadow-[0_0_32px_rgba(212,175,55,0.25)] hover:shadow-[0_0_48px_rgba(212,175,55,0.35)] hover:opacity-90 transition-all"
+   226→              >
+   227→                Request Access
+   228→                <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
+   229→              </Button>
+   230→              <Button
+   231→                size="lg"
+   232→                variant="outline"
+   233→                onClick={() => scrollTo("strategy")}
+   234→                className="h-13 rounded-lg border-gold/30 px-8 text-base text-gold hover:bg-gold/10"
+   235→              >
+   236→                Learn More
+   237→                <ChevronDown className="ml-2 h-4 w-4" />
+   238→              </Button>
+   239→            </div>
+   240→            <p className="mt-4 text-xs text-muted-foreground">
+   241→              For accredited investors only · Minimum commitment $50,000
+   242→            </p>
+   243→          </motion.div>
+   244→
+   245→          {/* Hero stats row */}
+   246→          <motion.div
+   247→            initial={{ opacity: 0, y: 32 }}
+   248→            animate={{ opacity: 1, y: 0 }}
+   249→            transition={{ duration: 0.8, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
+   250→            className="mt-16 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4"
+   251→          >
+   252→            {heroStats.map((s) => (
+   253→              <GlassCard key={s.label} gold className="stat-card-gold p-4 text-center sm:p-5">
+   254→                <div className="text-[10px] font-medium uppercase tracking-[0.16em] text-muted-foreground sm:text-[11px]">
+   255→                  {s.label}
+   256→                </div>
+   257→                <div className="mt-2 font-metric text-xl font-bold text-gold-gradient sm:text-2xl lg:text-3xl">
+   258→                  {s.value}
+   259→                </div>
+   260→                <div className="mt-1 text-[11px] text-muted-foreground">{s.sub}</div>
+   261→              </GlassCard>
+   262→            ))}
+   263→          </motion.div>
+   264→        </div>
+   265→      </section>
+   266→
+   267→      {/* ============================================================ */}
+   268→      {/*  LIVE TICKER TAPE                                            */}
+   269→      {/* ============================================================ */}
+   270→      <TickerTape />
+   271→
+   272→      {/* ============================================================ */}
+   273→      {/*  FUND STRATEGY — Allocation cards                            */}
+   274→      {/* ============================================================ */}
+   275→      <section id="strategy" className="relative overflow-hidden">
+   276→        <div className="absolute inset-0 bg-grid bg-grid-fade opacity-40" />
+   277→        <div className="relative mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8 lg:py-32">
+   278→          <FadeIn>
+   279→            <div className="mx-auto max-w-2xl text-center">
+   280→              <span className="text-xs font-semibold uppercase tracking-[0.2em] text-gold">
+   281→                Fund Strategy
+   282→              </span>
+   283→              <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
+   284→                Disciplined, Multi-Asset Allocation
+   285→              </h2>
+   286→              <p className="mt-4 text-muted-foreground">
+   287→                Actively managed across five strategic buckets, rebalanced by the Nightmare investment
+   288→                committee to capture asymmetric upside while preserving capital through market cycles.
+   289→              </p>
+   290→            </div>
+   291→          </FadeIn>
+   292→
+   293→          <div className="mt-14 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+   294→            {strategyCards.map((card, i) => (
+   295→              <motion.div
+   296→                key={card.asset}
+   297→                initial={{ opacity: 0, y: 20 }}
+   298→                whileInView={{ opacity: 1, y: 0 }}
+   299→                viewport={{ once: true }}
+   300→                transition={{ duration: 0.5, delay: i * 0.06 }}
+   301→              >
+   302→                <GlassCard
+   303→                  gold={card.weight >= 25}
+   304→                  hover
+   305→                  className="h-full p-6"
+   306→                >
+   307→                  <div className="flex items-start justify-between">
+   308→                    <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-white/[0.06] bg-white/[0.03]" style={{ boxShadow: `inset 0 0 12px ${card.color}15` }}>
+   309→                      <card.icon className="h-6 w-6" style={{ color: card.color }} />
+   310→                    </div>
+   311→                    <span
+   312→                      className="font-metric text-3xl font-extrabold"
+   313→                      style={{ color: card.color }}
+   314→                    >
+   315→                      {card.weight}%
+   316→                    </span>
+   317→                  </div>
+   318→                  <div className="mt-4">
+   319→                    <h3 className="text-base font-semibold text-foreground">{card.asset}</h3>
+   320→                    <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+   321→                      {card.ticker}
+   322→                    </span>
+   323→                  </div>
+   324→                  <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+   325→                    {card.note}
+   326→                  </p>
+   327→                  {/* Allocation bar */}
+   328→                  <div className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-white/[0.05]">
+   329→                    <motion.div
+   330→                      initial={{ width: 0 }}
+   331→                      whileInView={{ width: `${card.weight}%` }}
+   332→                      viewport={{ once: true }}
+   333→                      transition={{ duration: 1, delay: 0.2 + i * 0.06, ease: "easeOut" }}
+   334→                      className="h-full rounded-full"
+   335→                      style={{ background: `linear-gradient(90deg, ${card.color}cc, ${card.color}66)` }}
+   336→                    />
+   337→                  </div>
+   338→                </GlassCard>
+   339→              </motion.div>
+   340→            ))}
+   341→          </div>
+   342→
+   343→          {/* Fee structure */}
+   344→          <FadeIn delay={0.3}>
+   345→            <div className="mt-10 flex flex-wrap items-center justify-center gap-6 text-sm text-muted-foreground">
+   346→              {[
+   347→                "2% Management Fee",
+   348→                "20% Performance Fee (High-Water Mark)",
+   349→                "Monthly Liquidity Windows",
+   350→              ].map((item) => (
+   351→                <div key={item} className="flex items-center gap-2">
+   352→                  <CheckCircle2 className="h-4 w-4 text-gold" />
+   353→                  <span>{item}</span>
+   354→                </div>
+   355→              ))}
+   356→            </div>
+   357→          </FadeIn>
+   358→        </div>
+   359→      </section>
+   360→
+   361→      {/* ============================================================ */}
+   362→      {/*  PERFORMANCE — NAV chart + metrics                           */}
+   363→      {/* ============================================================ */}
+   364→      <section id="performance" className="relative border-y border-border/60 bg-black/30">
+   365→        <div className="mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8 lg:py-32">
+   366→          <FadeIn>
+   367→            <div className="mx-auto max-w-2xl text-center">
+   368→              <span className="text-xs font-semibold uppercase tracking-[0.2em] text-gold">
+   369→                Track Record
+   370→              </span>
+   371→              <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
+   372→                Consistent, Risk-Adjusted Returns
+   373→              </h2>
+   374→              <p className="mt-4 text-muted-foreground">
+   375→                Net Asset Value trajectory since inception — net of all fees and expenses.
+   376→              </p>
+   377→            </div>
+   378→          </FadeIn>
+   379→
+   380→          {/* NAV Area Chart */}
+   381→          <FadeIn delay={0.15}>
+   382→            <GlassCard className="mt-12 p-4 sm:p-6 lg:p-8">
+   383→              <div className="flex items-center justify-between">
+   384→                <div>
+   385→                  <h3 className="text-lg font-semibold text-foreground">Net Asset Value</h3>
+   386→                  <p className="text-sm text-muted-foreground">Since inception · NAV per share</p>
+   387→                </div>
+   388→                <Zap className="h-6 w-6 text-gold" />
+   389→              </div>
+   390→              <div className="mt-6 h-72 sm:h-80">
+   391→                <NavChart />
+   392→              </div>
+   393→            </GlassCard>
+   394→          </FadeIn>
+   395→
+   396→          {/* Stat cards */}
+   397→          <FadeIn delay={0.25}>
+   398→            <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+   399→              {[
+   400→                { label: "Annual Return", value: "+42.6%", accent: "text-profit" },
+   401→                { label: "Sharpe Ratio", value: "2.31", accent: "text-gold" },
+   402→                { label: "Max Drawdown", value: "-8.4%", accent: "text-loss" },
+   403→                { label: "CAGR", value: "+38.9%", accent: "text-profit" },
+   404→              ].map((m) => (
+   405→                <GlassCard key={m.label} gold className="stat-card-gold p-5 text-center">
+   406→                  <div className="text-[10px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+   407→                    {m.label}
+   408→                  </div>
+   409→                  <div className={`mt-2 font-metric text-2xl font-bold ${m.accent} sm:text-3xl`}>
+   410→                    {m.value}
+   411→                  </div>
+   412→                </GlassCard>
+   413→              ))}
+   414→            </div>
+   415→          </FadeIn>
+   416→
+   417→          {/* Period returns */}
+   418→          <FadeIn delay={0.35}>
+   419→            <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+   420→              {[
+   421→                { label: "Daily", value: "+0.84%" },
+   422→                { label: "Weekly", value: "+3.21%" },
+   423→                { label: "Monthly", value: "+8.47%" },
+   424→                { label: "YTD", value: "+31.2%" },
+   425→              ].map((r) => (
+   426→                <div key={r.label} className="rounded-lg border border-border/60 bg-white/[0.02] p-3 text-center">
+   427→                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{r.label}</div>
+   428→                  <div className="mt-1 font-metric text-lg font-semibold text-profit">{r.value}</div>
+   429→                </div>
+   430→              ))}
+   431→            </div>
+   432→          </FadeIn>
+   433→        </div>
+   434→      </section>
+   435→
+   436→      {/* ============================================================ */}
+   437→      {/*  SECURITY & COMPLIANCE                                       */}
+   438→      {/* ============================================================ */}
+   439→      <section id="security" className="relative overflow-hidden">
+   440→        <div className="absolute inset-0 bg-grid bg-grid-fade opacity-30" />
+   441→        <div className="relative mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8 lg:py-32">
+   442→          <FadeIn>
+   443→            <div className="mx-auto max-w-2xl text-center">
+   444→              <span className="text-xs font-semibold uppercase tracking-[0.2em] text-gold">
+   445→                Security & Compliance
+   446→              </span>
+   447→              <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
+   448→                Institutional-Grade Protection
+   449→              </h2>
+   450→              <p className="mt-4 text-muted-foreground">
+   451→                Every layer of the platform reflects institutional standards — from custody and
+   452→                compliance to encryption and auditability.
+   453→              </p>
+   454→            </div>
+   455→          </FadeIn>
+   456→
+   457→          <div className="mt-14 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+   458→            {securityItems.map((item, i) => (
+   459→              <motion.div
+   460→                key={item.title}
+   461→                initial={{ opacity: 0, y: 18 }}
+   462→                whileInView={{ opacity: 1, y: 0 }}
+   463→                viewport={{ once: true }}
+   464→                transition={{ duration: 0.5, delay: i * 0.05 }}
+   465→              >
+   466→                <GlassCard hover className="h-full p-6">
+   467→                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gold/10 text-gold">
+   468→                    <item.icon className="h-6 w-6" />
+   469→                  </div>
+   470→                  <h3 className="mt-4 text-base font-semibold text-foreground">{item.title}</h3>
+   471→                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{item.desc}</p>
+   472→                </GlassCard>
+   473→              </motion.div>
+   474→            ))}
+   475→          </div>
+   476→        </div>
+   477→      </section>
+   478→
+   479→      {/* ============================================================ */}
+   480→      {/*  TESTIMONIAL & TRUST                                         */}
+   481→      {/* ============================================================ */}
+   482→      <section className="relative border-y border-border/60 bg-black/30">
+   483→        <div className="mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8 lg:py-32">
+   484→          <div className="grid gap-8 lg:grid-cols-2 lg:items-center">
+   485→            {/* Testimonial */}
+   486→            <FadeIn>
+   487→              <GlassCard gold glow className="relative overflow-hidden p-8 sm:p-10">
+   488→                <div className="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-gold/10 blur-3xl" />
+   489→                <Quote className="h-10 w-10 text-gold/40" />
+   490→                <blockquote className="mt-4 text-lg leading-relaxed text-foreground/90 sm:text-xl">
+   491→                  &ldquo;Nightmare Invest delivers the institutional rigor and confidentiality our
+   492→                  family office demands. The transparency of daily NAV reporting combined with
+   493→                  their disciplined risk management sets a new standard for digital-asset
+   494→                  fund administration.&rdquo;
+   495→                </blockquote>
+   496→                <div className="mt-6 flex items-center gap-4">
+   497→                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gold-gradient text-black font-bold text-lg">
+   498→                    M
+   499→                  </div>
+   500→                  <div>
+   501→                    <div className="text-sm font-semibold text-foreground">Marcus Chen</div>
+   502→                    <div className="text-xs text-muted-foreground">
+   503→                      Chief Investment Officer · Meridian Family Office, Geneva
+   504→                    </div>
+   505→                  </div>
+   506→                </div>
+   507→                <div className="mt-4 text-[11px] text-muted-foreground/60">
+   508→                  AUM: $1.2B · Invested since 2023
+   509→                </div>
+   510→              </GlassCard>
+   511→            </FadeIn>
+   512→
+   513→            {/* Trust badges + onboarding */}
+   514→            <FadeIn delay={0.15}>
+   515→              <div className="space-y-6">
+   516→                <div>
+   517→                  <span className="text-xs font-semibold uppercase tracking-[0.2em] text-gold">
+   518→                    Trusted Infrastructure
+   519→                  </span>
+   520→                  <h3 className="mt-2 text-2xl font-bold text-foreground">
+   521→                    Built for Capital That Demands Certainty
+   522→                  </h3>
+   523→                </div>
+   524→
+   525→                {/* Trust badges */}
+   526→                <div className="flex flex-wrap gap-4">
+   527→                  {trustBadges.map((b) => (
+   528→                    <div
+   529→                      key={b.label}
+   530→                      className="flex items-center gap-2.5 rounded-lg border border-gold/20 bg-gold/[0.04] px-4 py-3"
+   531→                    >
+   532→                      <b.icon className="h-5 w-5 text-gold" />
+   533→                      <span className="text-sm font-medium text-foreground">{b.label}</span>
+   534→                    </div>
+   535→                  ))}
+   536→                </div>
+   537→
+   538→                {/* Process steps */}
+   539→                <div className="space-y-3">
+   540→                  {[
+   541→                    { step: "01", title: "Request Access", desc: "Submit credentials for accredited-investor verification." },
+   542→                    { step: "02", title: "Capital Commitment", desc: "Confirm allocation and execute subscription agreement." },
+   543→                    { step: "03", title: "Monitor Performance", desc: "Track NAV, holdings, and analytics in your private portal." },
+   544→                    { step: "04", title: "Liquidity Windows", desc: "Request deposits or withdrawals during scheduled windows." },
+   545→                  ].map((p) => (
+   546→                    <div key={p.step} className="flex items-start gap-4">
+   547→                      <span className="font-metric text-lg font-bold text-gold-gradient">{p.step}</span>
+   548→                      <div>
+   549→                        <div className="text-sm font-semibold text-foreground">{p.title}</div>
+   550→                        <div className="text-xs text-muted-foreground">{p.desc}</div>
+   551→                      </div>
+   552→                    </div>
+   553→                  ))}
+   554→                </div>
+   555→              </div>
+   556→            </FadeIn>
+   557→          </div>
+   558→        </div>
+   559→      </section>
+   560→
+   561→      {/* ============================================================ */}
+   562→      {/*  FINAL CTA                                                   */}
+   563→      {/* ============================================================ */}
+   564→      <section className="relative overflow-hidden">
+   565→        <div className="absolute inset-0 hero-dot-grid opacity-30" />
+   566→        <div className="absolute left-1/2 top-1/2 h-[500px] w-[800px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-gold/[0.06] blur-[160px]" />
+   567→        <div className="relative mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8 lg:py-32">
+   568→          <FadeIn>
+   569→            <GlassCard gold glow className="relative overflow-hidden p-10 text-center sm:p-16 lg:p-20">
+   570→              <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-gold/20 blur-3xl" />
+   571→              <div className="absolute -bottom-20 -left-20 h-48 w-48 rounded-full bg-gold/10 blur-3xl" />
+   572→              <div className="relative">
+   573→                <h2 className="text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
+   574→                  Begin Your{" "}
+   575→                  <span className="text-gold-gradient text-glow-gold">Investment Journey</span>
+   576→                </h2>
+   577→                <p className="mx-auto mt-4 max-w-xl text-muted-foreground">
+   578→                  Capital allocation is selective. Submit your access request and our investor
+   579→                  relations team will respond within 48 hours.
+   580→                </p>
+   581→                <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
+   582→                  <Button
+   583→                    size="lg"
+   584→                    onClick={() => setRoute({ name: "signup" })}
+   585→                    className="group h-14 rounded-lg bg-gold-gradient px-10 text-base font-bold text-black shadow-[0_0_32px_rgba(212,175,55,0.25)] hover:shadow-[0_0_48px_rgba(212,175,55,0.4)] hover:opacity-90 transition-all"
+   586→                  >
+   587→                    Begin Access Request
+   588→                    <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
+   589→                  </Button>
+   590→                  <Button
+   591→                    size="lg"
+   592→                    variant="outline"
+   593→                    onClick={() => setRoute({ name: "legal", doc: "risk" })}
+   594→                    className="h-14 rounded-lg border-gold/30 px-8 text-base text-foreground hover:bg-gold/10"
+   595→                  >
+   596→                    Risk Disclosure
+   597→                  </Button>
+   598→                </div>
+   599→                <p className="mt-6 text-xs text-muted-foreground">
+   600→                  For accredited investors only. Minimum investment $50,000.
+   601→                </p>
+   602→              </div>
+   603→            </GlassCard>
+   604→          </FadeIn>
+   605→        </div>
+   606→      </section>
+   607→
+   608→      {/* ============================================================ */}
+   609→      {/*  FOOTER                                                      */}
+   610→      {/* ============================================================ */}
+   611→      <footer className="mt-auto border-t border-border/60 bg-black/40">
+   612→        <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+   613→          <div className="grid gap-8 md:grid-cols-4">
+   614→            <div className="md:col-span-2">
+   615→              <Logo />
+   616→              <p className="mt-4 max-w-sm text-sm text-muted-foreground">
+   617→                Nightmare Invest is a private institutional crypto hedge fund portal for accredited
+   618→                investors. This is not a retail product.
+   619→              </p>
+   620→            </div>
+   621→            <div>
+   622→              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Legal</div>
+   623→              <ul className="mt-3 space-y-2 text-sm">
+   624→                <li><button onClick={() => setRoute({ name: "legal", doc: "tos" })} className="text-muted-foreground hover:text-foreground transition-colors">Terms of Service</button></li>
+   625→                <li><button onClick={() => setRoute({ name: "legal", doc: "privacy" })} className="text-muted-foreground hover:text-foreground transition-colors">Privacy Policy</button></li>
+   626→                <li><button onClick={() => setRoute({ name: "legal", doc: "cookies" })} className="text-muted-foreground hover:text-foreground transition-colors">Cookie Policy</button></li>
+   627→                <li><button onClick={() => setRoute({ name: "legal", doc: "risk" })} className="text-muted-foreground hover:text-foreground transition-colors">Risk Disclosure</button></li>
+   628→              </ul>
+   629→            </div>
+   630→            <div>
+   631→              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Investor Relations</div>
+   632→              <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
+   633→                <li>ir@nightmare.invest</li>
+   634→                <li>Zug · Geneva · Singapore</li>
+   635→                <li className="pt-2"><button onClick={() => setRoute({ name: "login" })} className="text-gold hover:underline transition-colors">Investor Login →</button></li>
+   636→              </ul>
+   637→            </div>
+   638→          </div>
+   639→          <div className="mt-10 flex flex-col items-start justify-between gap-3 border-t border-border/60 pt-6 text-xs text-muted-foreground sm:flex-row sm:items-center">
+   640→            <span>© {new Date().getFullYear()} Nightmare Invest. All rights reserved.</span>
+   641→            <span>This platform is intended for accredited investors. Digital assets are subject to high volatility and risk of loss.</span>
+   642→          </div>
+   643→        </div>
+   644→      </footer>
+   645→    </div>
+   646→  );
+   647→}
+   648→
+   649→/* ------------------------------------------------------------------ */
+   650→/*  NAV CHART (Recharts)                                              */
+   651→/* ------------------------------------------------------------------ */
+   652→
+   653→function NavChart() {
+   654→  const { data: fundData } = useQuery<{
+   655→    fund: { id: string } | null;
+   656→    metrics: Record<string, number>;
+   657→  }>({
+   658→    queryKey: ["fund"],
+   659→    queryFn: () => api.get("/api/fund"),
+   660→    staleTime: 60000,
+   661→  });
+   662→
+   663→  const { data: navHistory } = useQuery<{ date: string; nav: number; aum: number }[]>({
+   664→    queryKey: ["nav-history", fundData?.fund?.id],
+   665→    queryFn: () => api.get(`/api/fund/nav-history?fundId=${fundData!.fund!.id}&range=ALL`),
+   666→    enabled: !!fundData?.fund?.id,
+   667→    staleTime: 60000,
+   668→  });
+   669→
+   670→  // Generate fallback deterministic data if no real data
+   671→  const chartData = navHistory && navHistory.length > 0
+   672→    ? navHistory.map((p) => ({
+   673→        date: new Date(p.date).toLocaleDateString("en-US", { month: "short", year: "2-digit" }),
+   674→        NAV: p.nav,
+   675→      }))
+   676→    : generateFallbackNav();
+   677→
+   678→  return (
+   679→    <ResponsiveContainer width="100%" height="100%">
+   680→      <AreaChart data={chartData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+   681→        <defs>
+   682→          <linearGradient id="navGradient" x1="0" y1="0" x2="0" y2="1">
+   683→            <stop offset="0%" stopColor="#D4AF37" stopOpacity={0.35} />
+   684→            <stop offset="50%" stopColor="#D4AF37" stopOpacity={0.1} />
+   685→            <stop offset="100%" stopColor="#D4AF37" stopOpacity={0} />
+   686→          </linearGradient>
+   687→        </defs>
+   688→        <XAxis
+   689→          dataKey="date"
+   690→          axisLine={false}
+   691→          tickLine={false}
+   692→          tick={{ fontSize: 11, fill: "rgba(255,255,255,0.35)" }}
+   693→          interval="preserveStartEnd"
+   694→        />
+   695→        <YAxis
+   696→          axisLine={false}
+   697→          tickLine={false}
+   698→          tick={{ fontSize: 11, fill: "rgba(255,255,255,0.35)" }}
+   699→          tickFormatter={(v: number) => `$${fmtNum(v, 0)}`}
+   700→          domain={["dataMin * 0.95", "dataMax * 1.02"]}
+   701→        />
+   702→        <Tooltip
+   703→          contentStyle={{
+   704→            backgroundColor: "rgba(20, 20, 22, 0.9)",
+   705→            border: "1px solid rgba(212, 175, 55, 0.3)",
+   706→            borderRadius: "8px",
+   707→            fontSize: "12px",
+   708→            color: "#f5f5f4",
+   709→            backdropFilter: "blur(12px)",
+   710→          }}
+   711→          labelStyle={{ color: "rgba(255,255,255,0.5)", fontSize: "11px" }}
+   712→          formatter={(value: number) => [fmtUSD(value, { decimals: 2 }), "NAV"]}
+   713→        />
+   714→        <Area
+   715→          type="monotone"
+   716→          dataKey="NAV"
+   717→          stroke="#D4AF37"
+   718→          strokeWidth={2}
+   719→          fill="url(#navGradient)"
+   720→          dot={false}
+   721→          activeDot={{ r: 4, fill: "#FFD700", stroke: "#D4AF37", strokeWidth: 2 }}
+   722→        />
+   723→      </AreaChart>
+   724→    </ResponsiveContainer>
+   725→  );
+   726→}
+   727→
+   728→function generateFallbackNav() {
+   729→  const data: { date: string; NAV: number }[] = [];
+   730→  let nav = 100;
+   731→  const months = [
+   732→    "Jan 23","Feb 23","Mar 23","Apr 23","May 23","Jun 23",
+   733→    "Jul 23","Aug 23","Sep 23","Oct 23","Nov 23","Dec 23",
+   734→    "Jan 24","Feb 24","Mar 24","Apr 24","May 24","Jun 24",
+   735→    "Jul 24","Aug 24","Sep 24","Oct 24","Nov 24","Dec 24",
+   736→    "Jan 25","Feb 25","Mar 25","Apr 25","May 25","Jun 25",
+   737→  ];
+   738→  // Use a seeded pseudo-random for deterministic output
+   739→  let seed = 42;
+   740→  const rand = () => {
+   741→    seed = (seed * 16807 + 0) % 2147483647;
+   742→    return seed / 2147483647;
+   743→  };
+   744→  for (const m of months) {
+   745→    nav += (rand() * 8 - 1.5);
+   746→    nav = Math.max(nav, 85);
+   747→    data.push({ date: m, NAV: Math.round(nav * 100) / 100 });
+   748→  }
+   749→  return data;
+   750→}
+   751→
+   752→/* ------------------------------------------------------------------ */
+   753→/*  TICKER TAPE (live crypto prices)                                   */
+   754→/* ------------------------------------------------------------------ */
+   755→
+   756→interface TickerPrice {
+   757→  symbol: string;
+   758→  name: string;
+   759→  priceUsd: number;
+   760→  change24h: number;
+   761→}
+   762→
+   763→function TickerTape() {
+   764→  const { data } = useQuery<{ prices: TickerPrice[]; updatedAt: string }>({
+   765→    queryKey: ["market-prices"],
+   766→    queryFn: () => api.get("/api/market/prices"),
+   767→    refetchInterval: 30000,
+   768→    staleTime: 15000,
+   769→  });
+   770→
+   771→  const prices = data?.prices ?? [];
+   772→
+   773→  const renderItem = (p: TickerPrice, key: string) => (
+   774→    <div key={key} className="flex items-center gap-2.5 px-5 text-[12px] font-medium">
+   775→      <span className="font-semibold uppercase tracking-wide text-gold">{p.symbol}</span>
+   776→      <span className="font-metric text-foreground/90">
+   777→        {fmtUSD(p.priceUsd, { decimals: p.priceUsd > 1000 ? 0 : 2 })}
+   778→      </span>
+   779→      <span className={`font-metric ${p.change24h >= 0 ? "text-profit" : "text-loss"}`}>
+   780→        {p.change24h >= 0 ? "▲" : "▼"} {fmtPct(Math.abs(p.change24h))}
+   781→      </span>
+   782→      <span className="ml-4 text-gold/20">│</span>
+   783→    </div>
+   784→  );
+   785→
+   786→  // Loading fallback
+   787→  if (prices.length === 0) {
+   788→    return (
+   789→      <div className="flex h-9 items-center overflow-hidden border-y border-gold/15 bg-black/95 backdrop-blur-sm">
+   790→        <div className="flex h-full shrink-0 items-center gap-1.5 border-r border-gold/15 bg-black px-4 text-[10px] font-bold uppercase tracking-[0.18em] text-gold">
+   791→          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-gold" />
+   792→          Live
+   793→        </div>
+   794→        <div className="flex-1 px-4 text-[12px] text-muted-foreground">
+   795→          Loading live market prices…
+   796→        </div>
+   797→      </div>
+   798→    );
+   799→  }
+   800→
+   801→  return (
+   802→    <div className="ticker-tape-container flex h-9 items-center overflow-hidden border-y border-gold/15 bg-black/95 backdrop-blur-sm">
+   803→      <div className="flex h-full shrink-0 items-center gap-1.5 border-r border-gold/15 bg-black px-4 text-[10px] font-bold uppercase tracking-[0.18em] text-gold">
+   804→        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-gold" />
+   805→        Live
+   806→      </div>
+   807→      <div className="relative flex-1 overflow-hidden">
+   808→        <div className="ticker-tape-track">
+   809→          {prices.map((p) => renderItem(p, `a-${p.symbol}`))}
+   810→          <div aria-hidden="true" className="inline-flex">
+   811→            {prices.map((p) => renderItem(p, `b-${p.symbol}`))}
+   812→          </div>
+   813→        </div>
+   814→      </div>
+   815→    </div>
+   816→  );
+   817→}
+   818→

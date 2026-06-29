@@ -1,9 +1,9 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
-import { json } from "@/lib/api";
+import { json, safeHandler } from "@/lib/api";
 
-export async function GET(req: NextRequest) {
+export const GET = safeHandler(async (req: NextRequest) => {
   await requireAdmin();
   const { searchParams } = new URL(req.url);
   const userId = searchParams.get("userId");
@@ -15,4 +15,4 @@ export async function GET(req: NextRequest) {
     take: 500,
   });
   return json({ entries });
-}
+});

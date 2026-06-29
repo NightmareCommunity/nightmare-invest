@@ -2,18 +2,41 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api-client";
-import { GlassCard, SectionTitle, StatusPill, TypePill, FadeIn } from "@/components/brand/primitives";
+import { GlassCard, SectionTitle, StatusPill, TypePill, FadeIn, SkeletonCard, SkeletonMetric, SkeletonTable, EmptyState } from "@/components/brand/primitives";
 import { Button } from "@/components/ui/button";
 import { fmtUSD, fmtPct, fmtDate, fmtDateTime } from "@/lib/format";
 import { FileText, Download, FileSpreadsheet, TrendingUp, Calendar } from "lucide-react";
 import { toast } from "sonner";
 
 export function ReportsPage() {
-  const { data: report } = useQuery<any>({ queryKey: ["report"], queryFn: () => api.get("/api/reports") });
+  const { data: report, isLoading } = useQuery<any>({ queryKey: ["report"], queryFn: () => api.get("/api/reports") });
   const { data: txnData } = useQuery<any>({ queryKey: ["my-transactions"], queryFn: () => api.get("/api/transactions") });
   const [downloading, setDownloading] = useState(false);
 
-  if (!report) return <div className="h-80 rounded-xl glass shimmer" />;
+  if (isLoading || !report) {
+    return (
+      <div className="space-y-6">
+        <FadeIn>
+          <div>
+            <span className="text-xs font-medium uppercase tracking-[0.18em] text-gold">Investor Portal</span>
+            <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">Reports &amp; Statements</h1>
+            <p className="text-sm text-muted-foreground">Download portfolio statements and transaction records</p>
+          </div>
+        </FadeIn>
+        <FadeIn delay={0.05}>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {[0, 1, 2].map((i) => <SkeletonCard key={i} className="h-48 hover-lift" />)}
+          </div>
+        </FadeIn>
+        <FadeIn delay={0.1}>
+          <GlassCard className="p-5">
+            <SkeletonMetric className="h-6 w-40 rounded mb-4" />
+            <SkeletonTable rows={4} cols={4} />
+          </GlassCard>
+        </FadeIn>
+      </div>
+    );
+  }
 
   const downloadStatement = (format: "csv-ledger" | "csv-transactions" | "json-full") => {
     setDownloading(true);
@@ -107,7 +130,7 @@ export function ReportsPage() {
             title="Portfolio Statement"
             desc="Complete statement with holdings, performance, and analytics"
             actions={
-              <Button size="sm" onClick={downloadPdf} disabled={downloading} className="bg-gold-gradient text-black hover:opacity-90">
+              <Button size="sm" onClick={downloadPdf} disabled={downloading} className="bg-gold-gradient text-black hover:opacity-90 press-scale">
                 <Download className="mr-1.5 h-3.5 w-3.5" /> PDF
               </Button>
             }
@@ -168,7 +191,7 @@ export function ReportsPage() {
 
 function ReportCard({ icon, title, desc, actions }: { icon: React.ReactNode; title: string; desc: string; actions: React.ReactNode }) {
   return (
-    <GlassCard hover className="flex flex-col p-5">
+    <GlassCard hover className="flex flex-col p-5 hover-lift">
       <div className="flex items-start justify-between">
         <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gold/10 text-gold">{icon}</div>
       </div>
@@ -182,7 +205,7 @@ function ReportCard({ icon, title, desc, actions }: { icon: React.ReactNode; tit
 function Stat({ label, value, accent }: { label: string; value: string; accent?: "gold" | "profit" | "loss" }) {
   const color = accent === "gold" ? "text-gold" : accent === "profit" ? "text-profit" : accent === "loss" ? "text-loss" : "text-foreground";
   return (
-    <div className="rounded-lg border border-border/60 bg-black/20 p-4">
+    <div className="rounded-lg border border-border/60 bg-black/20 p-4 hover-lift">
       <div className="text-[11px] uppercase tracking-wider text-muted-foreground">{label}</div>
       <div className={`mt-1 font-metric text-xl font-bold ${color}`}>{value}</div>
     </div>

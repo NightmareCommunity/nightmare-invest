@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api-client";
-import { GlassCard, SectionTitle, StatusPill, TypePill, FadeIn } from "@/components/brand/primitives";
+import { GlassCard, SectionTitle, StatusPill, TypePill, FadeIn, EmptyState } from "@/components/brand/primitives";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -76,11 +76,11 @@ export function AdminTransactions() {
       <FadeIn delay={0.1}>
         <GlassCard className="p-5">
           {txns.length === 0 ? (
-            <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
-              <Inbox className="h-10 w-10 text-gold/40" />
-              <h3 className="text-base font-semibold">No {tab.toLowerCase()} transactions</h3>
-              <p className="text-sm text-muted-foreground">{tab === "PENDING" ? "All caught up. New requests will appear here." : `No ${tab.toLowerCase()} transactions to display.`}</p>
-            </div>
+            <EmptyState
+              icon={<Inbox className="h-10 w-10" />}
+              title={`No ${tab.toLowerCase()} transactions`}
+              description={tab === "PENDING" ? "All caught up. New requests will appear here." : `No ${tab.toLowerCase()} transactions to display.`}
+            />
           ) : (
             <div className="space-y-3">
               {txns.map((t: any) => (

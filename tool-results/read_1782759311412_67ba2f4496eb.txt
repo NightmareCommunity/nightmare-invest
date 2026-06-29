@@ -1,0 +1,753 @@
+     1→"use client";
+     2→
+     3→import { useState } from "react";
+     4→import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+     5→import { motion, AnimatePresence } from "framer-motion";
+     6→import { api } from "@/lib/api-client";
+     7→import { fmtUSD, fmtPct } from "@/lib/format";
+     8→import { GlassCard, FadeIn } from "@/components/brand/primitives";
+     9→import { Button } from "@/components/ui/button";
+    10→import { Input } from "@/components/ui/input";
+    11→import { Label } from "@/components/ui/label";
+    12→import { Textarea } from "@/components/ui/textarea";
+    13→import {
+    14→  Dialog,
+    15→  DialogContent,
+    16→  DialogHeader,
+    17→  DialogTitle,
+    18→  DialogTrigger,
+    19→  DialogFooter,
+    20→} from "@/components/ui/dialog";
+    21→import {
+    22→  Select,
+    23→  SelectContent,
+    24→  SelectItem,
+    25→  SelectTrigger,
+    26→  SelectValue,
+    27→} from "@/components/ui/select";
+    28→import {
+    29→  Plus,
+    30→  Trash2,
+    31→  Bell,
+    32→  BellRing,
+    33→  Pencil,
+    34→  TrendingUp,
+    35→  TrendingDown,
+    36→  Search,
+    37→  ChevronUp,
+    38→  ChevronDown,
+    39→  Eye,
+    40→} from "lucide-react";
+    41→import { toast } from "sonner";
+    42→import { cn } from "@/lib/utils";
+    43→
+    44→// ─── Types ───────────────────────────────────────────────────────
+    45→interface WatchlistItem {
+    46→  id: string;
+    47→  symbol: string;
+    48→  name: string;
+    49→  alertPrice: number | null;
+    50→  alertDirection: string | null;
+    51→  notes: string | null;
+    52→  createdAt: string;
+    53→  currentPrice: number | null;
+    54→  change24h: number | null;
+    55→  alertTriggered: boolean;
+    56→}
+    57→
+    58→// ─── Available coins for adding to watchlist ─────────────────────
+    59→const AVAILABLE_COINS = [
+    60→  { symbol: "bitcoin", name: "Bitcoin", color: "#F7931A", icon: "₿" },
+    61→  { symbol: "ethereum", name: "Ethereum", color: "#627EEA", icon: "Ξ" },
+    62→  { symbol: "solana", name: "Solana", color: "#14F195", icon: "◎" },
+    63→];
+    64→
+    65→// ─── Sort helpers ────────────────────────────────────────────────
+    66→type SortKey = "name" | "price" | "change";
+    67→type SortDir = "asc" | "desc";
+    68→
+    69→function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
+    70→  return (
+    71→    <span className="ml-1 inline-flex flex-col">
+    72→      <ChevronUp className={cn("h-3 w-3 -mb-1", active && dir === "asc" ? "text-gold" : "text-muted-foreground/40")} />
+    73→      <ChevronDown className={cn("h-3 w-3 -mt-1", active && dir === "desc" ? "text-gold" : "text-muted-foreground/40")} />
+    74→    </span>
+    75→  );
+    76→}
+    77→
+    78→function sortItems(items: WatchlistItem[], key: SortKey, dir: SortDir): WatchlistItem[] {
+    79→  return [...items].sort((a, b) => {
+    80→    let va: number | string = 0;
+    81→    let vb: number | string = 0;
+    82→    switch (key) {
+    83→      case "name":
+    84→        va = a.name.toLowerCase();
+    85→        vb = b.name.toLowerCase();
+    86→        break;
+    87→      case "price":
+    88→        va = a.currentPrice ?? 0;
+    89→        vb = b.currentPrice ?? 0;
+    90→        break;
+    91→      case "change":
+    92→        va = a.change24h ?? 0;
+    93→        vb = b.change24h ?? 0;
+    94→        break;
+    95→    }
+    96→    if (va < vb) return dir === "asc" ? -1 : 1;
+    97→    if (va > vb) return dir === "asc" ? 1 : -1;
+    98→    return 0;
+    99→  });
+   100→}
+   101→
+   102→// ─── Component ───────────────────────────────────────────────────
+   103→export function WatchlistPage() {
+   104→  const qc = useQueryClient();
+   105→  const [sortKey, setSortKey] = useState<SortKey>("name");
+   106→  const [sortDir, setSortDir] = useState<SortDir>("asc");
+   107→  const [addOpen, setAddOpen] = useState(false);
+   108→  const [editItem, setEditItem] = useState<WatchlistItem | null>(null);
+   109→  const [search, setSearch] = useState("");
+   110→
+   111→  // Fetch watchlist
+   112→  const { data, isLoading } = useQuery({
+   113→    queryKey: ["watchlist"],
+   114→    queryFn: () => api.get<{ items: WatchlistItem[] }>("/api/watchlist"),
+   115→    refetchInterval: 30000,
+   116→  });
+   117→
+   118→  const items = data?.items ?? [];
+   119→  const filtered = sortItems(
+   120→    items.filter((i) =>
+   121→      i.name.toLowerCase().includes(search.toLowerCase()) ||
+   122→      i.symbol.toLowerCase().includes(search.toLowerCase())
+   123→    ),
+   124→    sortKey,
+   125→    sortDir
+   126→  );
+   127→
+   128→  // Which coins are already on watchlist?
+   129→  const existingSymbols = new Set(items.map((i) => i.symbol));
+   130→  const availableToAdd = AVAILABLE_COINS.filter((c) => !existingSymbols.has(c.symbol));
+   131→
+   132→  // Delete mutation
+   133→  const deleteMutation = useMutation({
+   134→    mutationFn: (id: string) => api.del(`/api/watchlist?id=${id}`),
+   135→    onSuccess: () => {
+   136→      qc.invalidateQueries({ queryKey: ["watchlist"] });
+   137→      toast.success("Asset removed from watchlist");
+   138→    },
+   139→    onError: (e: Error) => toast.error(e.message),
+   140→  });
+   141→
+   142→  const toggleSort = (key: SortKey) => {
+   143→    if (sortKey === key) {
+   144→      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+   145→    } else {
+   146→      setSortKey(key);
+   147→      setSortDir("asc");
+   148→    }
+   149→  };
+   150→
+   151→  const coinMeta = (symbol: string) => AVAILABLE_COINS.find((c) => c.symbol === symbol) ?? AVAILABLE_COINS[0];
+   152→
+   153→  return (
+   154→    <div className="space-y-6">
+   155→      {/* Header */}
+   156→      <FadeIn>
+   157→        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+   158→          <div>
+   159→            <h1 className="text-2xl font-bold tracking-tight">
+   160→              <span className="text-gold-gradient">Watchlist</span>
+   161→            </h1>
+   162→            <p className="mt-1 text-sm text-muted-foreground">Track your favorite crypto assets and set price alerts</p>
+   163→          </div>
+   164→          <Dialog open={addOpen} onOpenChange={setAddOpen}>
+   165→            <DialogTrigger asChild>
+   166→              <Button className="bg-gold-gradient text-black font-semibold hover:opacity-90">
+   167→                <Plus className="mr-2 h-4 w-4" />
+   168→                Add Asset
+   169→              </Button>
+   170→            </DialogTrigger>
+   171→            <AddAssetDialog
+   172→              available={availableToAdd}
+   173→              onSuccess={() => {
+   174→                setAddOpen(false);
+   175→                qc.invalidateQueries({ queryKey: ["watchlist"] });
+   176→              }}
+   177→            />
+   178→          </Dialog>
+   179→        </div>
+   180→      </FadeIn>
+   181→
+   182→      {/* Search & Stats */}
+   183→      <FadeIn delay={0.1}>
+   184→        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+   185→          <div className="relative max-w-xs">
+   186→            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+   187→            <Input
+   188→              placeholder="Search assets..."
+   189→              value={search}
+   190→              onChange={(e) => setSearch(e.target.value)}
+   191→              className="pl-9 bg-black/30 border-border/60"
+   192→            />
+   193→          </div>
+   194→          <div className="flex gap-4 text-xs text-muted-foreground">
+   195→            <span>
+   196→              <span className="text-gold font-semibold">{items.length}</span> asset{items.length !== 1 ? "s" : ""}
+   197→            </span>
+   198→            <span>
+   199→              <span className="text-profit font-semibold">
+   200→                {items.filter((i) => i.alertTriggered).length}
+   201→              </span>{" "}
+   202→              alert{items.filter((i) => i.alertTriggered).length !== 1 ? "s" : ""} triggered
+   203→            </span>
+   204→          </div>
+   205→        </div>
+   206→      </FadeIn>
+   207→
+   208→      {/* Content */}
+   209→      {isLoading ? (
+   210→        <WatchlistSkeleton />
+   211→      ) : items.length === 0 ? (
+   212→        <EmptyState onAddClick={() => setAddOpen(true)} />
+   213→      ) : (
+   214→        <FadeIn delay={0.2}>
+   215→          {/* Desktop table */}
+   216→          <div className="hidden md:block">
+   217→            <GlassCard>
+   218→              <table className="w-full">
+   219→                <thead>
+   220→                  <tr className="border-b border-border/40">
+   221→                    <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+   222→                      Asset
+   223→                    </th>
+   224→                    <th
+   225→                      className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-gold transition-colors"
+   226→                      onClick={() => toggleSort("price")}
+   227→                    >
+   228→                      Price <SortIcon active={sortKey === "price"} dir={sortDir} />
+   229→                    </th>
+   230→                    <th
+   231→                      className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-gold transition-colors"
+   232→                      onClick={() => toggleSort("change")}
+   233→                    >
+   234→                      24h Change <SortIcon active={sortKey === "change"} dir={sortDir} />
+   235→                    </th>
+   236→                    <th
+   237→                      className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-gold transition-colors"
+   238→                      onClick={() => toggleSort("name")}
+   239→                    >
+   240→                      Alert <SortIcon active={sortKey === "name"} dir={sortDir} />
+   241→                    </th>
+   242→                    <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+   243→                      Actions
+   244→                    </th>
+   245→                  </tr>
+   246→                </thead>
+   247→                <tbody>
+   248→                  <AnimatePresence>
+   249→                    {filtered.map((item, idx) => {
+   250→                      const meta = coinMeta(item.symbol);
+   251→                      const isUp = (item.change24h ?? 0) >= 0;
+   252→                      return (
+   253→                        <motion.tr
+   254→                          key={item.id}
+   255→                          initial={{ opacity: 0, y: 8 }}
+   256→                          animate={{ opacity: 1, y: 0 }}
+   257→                          exit={{ opacity: 0, x: -20 }}
+   258→                          transition={{ delay: idx * 0.05, duration: 0.3 }}
+   259→                          className={cn(
+   260→                            "border-b border-border/20 transition-colors hover:bg-gold/[0.03]",
+   261→                            item.alertTriggered && "border-l-2 border-l-gold bg-gold/[0.04]"
+   262→                          )}
+   263→                        >
+   264→                          <td className="px-4 py-3.5">
+   265→                            <div className="flex items-center gap-3">
+   266→                              <div
+   267→                                className="flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold"
+   268→                                style={{ backgroundColor: `${meta.color}20`, color: meta.color }}
+   269→                              >
+   270→                                {meta.icon}
+   271→                              </div>
+   272→                              <div>
+   273→                                <div className="text-sm font-semibold text-foreground">{item.name}</div>
+   274→                                <div className="text-[11px] uppercase text-muted-foreground">{item.symbol}</div>
+   275→                              </div>
+   276→                            </div>
+   277→                          </td>
+   278→                          <td className="px-4 py-3.5">
+   279→                            <span className="font-metric text-sm text-foreground">
+   280→                              {item.currentPrice ? fmtUSD(item.currentPrice, { decimals: 2 }) : "—"}
+   281→                            </span>
+   282→                          </td>
+   283→                          <td className="px-4 py-3.5">
+   284→                            {item.change24h !== null ? (
+   285→                              <span
+   286→                                className={cn(
+   287→                                  "inline-flex items-center gap-1 text-sm font-medium",
+   288→                                  isUp ? "text-profit" : "text-loss"
+   289→                                )}
+   290→                              >
+   291→                                {isUp ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />}
+   292→                                {fmtPct(item.change24h)}
+   293→                              </span>
+   294→                            ) : (
+   295→                              <span className="text-muted-foreground">—</span>
+   296→                            )}
+   297→                          </td>
+   298→                          <td className="px-4 py-3.5">
+   299→                            <AlertStatus item={item} />
+   300→                          </td>
+   301→                          <td className="px-4 py-3.5">
+   302→                            <div className="flex items-center justify-end gap-1">
+   303→                              <Button
+   304→                                variant="ghost"
+   305→                                size="sm"
+   306→                                className="h-8 w-8 p-0 text-muted-foreground hover:text-gold"
+   307→                                onClick={() => setEditItem(item)}
+   308→                              >
+   309→                                <Pencil className="h-3.5 w-3.5" />
+   310→                              </Button>
+   311→                              <Button
+   312→                                variant="ghost"
+   313→                                size="sm"
+   314→                                className="h-8 w-8 p-0 text-muted-foreground hover:text-loss"
+   315→                                onClick={() => deleteMutation.mutate(item.id)}
+   316→                                disabled={deleteMutation.isPending}
+   317→                              >
+   318→                                <Trash2 className="h-3.5 w-3.5" />
+   319→                              </Button>
+   320→                            </div>
+   321→                          </td>
+   322→                        </motion.tr>
+   323→                      );
+   324→                    })}
+   325→                  </AnimatePresence>
+   326→                </tbody>
+   327→              </table>
+   328→            </GlassCard>
+   329→          </div>
+   330→
+   331→          {/* Mobile cards */}
+   332→          <div className="space-y-3 md:hidden">
+   333→            <AnimatePresence>
+   334→              {filtered.map((item, idx) => {
+   335→                const meta = coinMeta(item.symbol);
+   336→                const isUp = (item.change24h ?? 0) >= 0;
+   337→                return (
+   338→                  <motion.div
+   339→                    key={item.id}
+   340→                    initial={{ opacity: 0, y: 8 }}
+   341→                    animate={{ opacity: 1, y: 0 }}
+   342→                    exit={{ opacity: 0, x: -20 }}
+   343→                    transition={{ delay: idx * 0.05, duration: 0.3 }}
+   344→                  >
+   345→                    <GlassCard
+   346→                      className={cn(
+   347→                        "p-4",
+   348→                        item.alertTriggered && "border-gold/40"
+   349→                      )}
+   350→                    >
+   351→                      <div className="flex items-start justify-between">
+   352→                        <div className="flex items-center gap-3">
+   353→                          <div
+   354→                            className="flex h-10 w-10 items-center justify-center rounded-full text-base font-bold"
+   355→                            style={{ backgroundColor: `${meta.color}20`, color: meta.color }}
+   356→                          >
+   357→                            {meta.icon}
+   358→                          </div>
+   359→                          <div>
+   360→                            <div className="font-semibold text-foreground">{item.name}</div>
+   361→                            <div className="text-[11px] uppercase text-muted-foreground">{item.symbol}</div>
+   362→                          </div>
+   363→                        </div>
+   364→                        <div className="flex gap-1">
+   365→                          <Button
+   366→                            variant="ghost"
+   367→                            size="sm"
+   368→                            className="h-8 w-8 p-0 text-muted-foreground hover:text-gold"
+   369→                            onClick={() => setEditItem(item)}
+   370→                          >
+   371→                            <Pencil className="h-3.5 w-3.5" />
+   372→                          </Button>
+   373→                          <Button
+   374→                            variant="ghost"
+   375→                            size="sm"
+   376→                            className="h-8 w-8 p-0 text-muted-foreground hover:text-loss"
+   377→                            onClick={() => deleteMutation.mutate(item.id)}
+   378→                            disabled={deleteMutation.isPending}
+   379→                          >
+   380→                            <Trash2 className="h-3.5 w-3.5" />
+   381→                          </Button>
+   382→                        </div>
+   383→                      </div>
+   384→                      <div className="mt-3 grid grid-cols-2 gap-3">
+   385→                        <div>
+   386→                          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Price</div>
+   387→                          <div className="font-metric text-sm text-foreground">
+   388→                            {item.currentPrice ? fmtUSD(item.currentPrice, { decimals: 2 }) : "—"}
+   389→                          </div>
+   390→                        </div>
+   391→                        <div>
+   392→                          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">24h Change</div>
+   393→                          <div
+   394→                            className={cn(
+   395→                              "font-metric text-sm font-medium",
+   396→                              isUp ? "text-profit" : "text-loss"
+   397→                            )}
+   398→                          >
+   399→                            {item.change24h !== null ? fmtPct(item.change24h) : "—"}
+   400→                          </div>
+   401→                        </div>
+   402→                      </div>
+   403→                      {item.alertPrice !== null && (
+   404→                        <div className="mt-3 flex items-center justify-between rounded-lg border border-border/30 bg-black/20 px-3 py-2">
+   405→                          <AlertStatus item={item} />
+   406→                          <div className="text-xs text-muted-foreground">
+   407→                            {item.alertDirection === "ABOVE" ? "↑" : "↓"} {fmtUSD(item.alertPrice, { decimals: 2 })}
+   408→                          </div>
+   409→                        </div>
+   410→                      )}
+   411→                    </GlassCard>
+   412→                  </motion.div>
+   413→                );
+   414→              })}
+   415→            </AnimatePresence>
+   416→          </div>
+   417→        </FadeIn>
+   418→      )}
+   419→
+   420→      {/* Edit Alert Dialog */}
+   421→      <EditAlertDialog
+   422→        item={editItem}
+   423→        onClose={() => setEditItem(null)}
+   424→        onSuccess={() => {
+   425→          setEditItem(null);
+   426→          qc.invalidateQueries({ queryKey: ["watchlist"] });
+   427→        }}
+   428→      />
+   429→    </div>
+   430→  );
+   431→}
+   432→
+   433→// ─── Alert Status Pill ───────────────────────────────────────────
+   434→function AlertStatus({ item }: { item: WatchlistItem }) {
+   435→  if (item.alertPrice === null) {
+   436→    return (
+   437→      <span className="inline-flex items-center gap-1.5 rounded-full border border-border/30 bg-muted/10 px-2.5 py-0.5 text-[11px] text-muted-foreground">
+   438→        <Bell className="h-3 w-3" />
+   439→        No alert
+   440→      </span>
+   441→    );
+   442→  }
+   443→
+   444→  if (item.alertTriggered) {
+   445→    return (
+   446→      <span className="inline-flex items-center gap-1.5 rounded-full border border-gold/40 bg-gold/10 px-2.5 py-0.5 text-[11px] text-gold animate-pulse-gold">
+   447→        <BellRing className="h-3 w-3" />
+   448→        Triggered
+   449→      </span>
+   450→    );
+   451→  }
+   452→
+   453→  return (
+   454→    <span className="inline-flex items-center gap-1.5 rounded-full border border-profit/30 bg-profit/10 px-2.5 py-0.5 text-[11px] text-profit">
+   455→      <Bell className="h-3 w-3" />
+   456→      {item.alertDirection === "ABOVE" ? "Above" : "Below"} {fmtUSD(item.alertPrice, { decimals: 2 })}
+   457→    </span>
+   458→  );
+   459→}
+   460→
+   461→// ─── Add Asset Dialog ────────────────────────────────────────────
+   462→function AddAssetDialog({
+   463→  available,
+   464→  onSuccess,
+   465→}: {
+   466→  available: typeof AVAILABLE_COINS;
+   467→  onSuccess: () => void;
+   468→}) {
+   469→  const [selected, setSelected] = useState<string>("");
+   470→  const [alertPrice, setAlertPrice] = useState<string>("");
+   471→  const [alertDirection, setAlertDirection] = useState<"ABOVE" | "BELOW">("ABOVE");
+   472→  const [notes, setNotes] = useState("");
+   473→
+   474→  const addMutation = useMutation({
+   475→    mutationFn: () =>
+   476→      api.post("/api/watchlist", {
+   477→        symbol: selected,
+   478→        alertPrice: alertPrice ? parseFloat(alertPrice) : null,
+   479→        alertDirection,
+   480→        notes: notes || null,
+   481→      }),
+   482→    onSuccess: () => {
+   483→      toast.success(`${AVAILABLE_COINS.find((c) => c.symbol === selected)?.name ?? "Asset"} added to watchlist`);
+   484→      onSuccess();
+   485→    },
+   486→    onError: (e: Error) => toast.error(e.message),
+   487→  });
+   488→
+   489→  const selectedCoin = AVAILABLE_COINS.find((c) => c.symbol === selected);
+   490→
+   491→  return (
+   492→    <DialogContent className="glass-strong border-gold/20 sm:max-w-md">
+   493→      <DialogHeader>
+   494→        <DialogTitle className="text-gold-gradient">Add Asset to Watchlist</DialogTitle>
+   495→      </DialogHeader>
+   496→      <div className="space-y-4 py-2">
+   497→        {/* Coin selection */}
+   498→        <div>
+   499→          <Label className="text-xs uppercase tracking-wider text-muted-foreground">Select Asset</Label>
+   500→          <div className="mt-2 grid grid-cols-3 gap-2">
+   501→            {available.map((coin) => (
+   502→              <button
+   503→                key={coin.symbol}
+   504→                onClick={() => setSelected(coin.symbol)}
+   505→                className={cn(
+   506→                  "flex flex-col items-center gap-1.5 rounded-lg border p-3 transition-all",
+   507→                  selected === coin.symbol
+   508→                    ? "border-gold/60 bg-gold/10 text-gold"
+   509→                    : "border-border/40 bg-black/20 text-muted-foreground hover:border-gold/30 hover:text-foreground"
+   510→                )}
+   511→              >
+   512→                <div
+   513→                  className="flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold"
+   514→                  style={{ backgroundColor: `${coin.color}20`, color: coin.color }}
+   515→                >
+   516→                  {coin.icon}
+   517→                </div>
+   518→                <span className="text-[11px] font-medium">{coin.name}</span>
+   519→              </button>
+   520→            ))}
+   521→            {available.length === 0 && (
+   522→              <div className="col-span-3 py-4 text-center text-sm text-muted-foreground">
+   523→                All available assets are already in your watchlist
+   524→              </div>
+   525→            )}
+   526→          </div>
+   527→        </div>
+   528→
+   529→        {/* Alert settings */}
+   530→        {selectedCoin && (
+   531→          <>
+   532→            <div>
+   533→              <Label className="text-xs uppercase tracking-wider text-muted-foreground">
+   534→                Price Alert <span className="text-muted-foreground/60">(optional)</span>
+   535→              </Label>
+   536→              <div className="mt-2 flex gap-2">
+   537→                <Select value={alertDirection} onValueChange={(v) => setAlertDirection(v as "ABOVE" | "BELOW")}>
+   538→                  <SelectTrigger className="w-28 bg-black/30 border-border/60 text-xs">
+   539→                    <SelectValue />
+   540→                  </SelectTrigger>
+   541→                  <SelectContent className="glass-strong border-gold/20">
+   542→                    <SelectItem value="ABOVE">Above ↑</SelectItem>
+   543→                    <SelectItem value="BELOW">Below ↓</SelectItem>
+   544→                  </SelectContent>
+   545→                </Select>
+   546→                <Input
+   547→                  type="number"
+   548→                  placeholder="Alert price..."
+   549→                  value={alertPrice}
+   550→                  onChange={(e) => setAlertPrice(e.target.value)}
+   551→                  className="flex-1 bg-black/30 border-border/60"
+   552→                />
+   553→              </div>
+   554→            </div>
+   555→            <div>
+   556→              <Label className="text-xs uppercase tracking-wider text-muted-foreground">
+   557→                Notes <span className="text-muted-foreground/60">(optional)</span>
+   558→              </Label>
+   559→              <Textarea
+   560→                placeholder="Any notes about this asset..."
+   561→                value={notes}
+   562→                onChange={(e) => setNotes(e.target.value)}
+   563→                className="mt-2 bg-black/30 border-border/60 min-h-[60px]"
+   564→              />
+   565→            </div>
+   566→          </>
+   567→        )}
+   568→      </div>
+   569→      <DialogFooter>
+   570→        <Button
+   571→          onClick={() => addMutation.mutate()}
+   572→          disabled={!selected || addMutation.isPending}
+   573→          className="bg-gold-gradient text-black font-semibold hover:opacity-90"
+   574→        >
+   575→          {addMutation.isPending ? "Adding..." : "Add to Watchlist"}
+   576→        </Button>
+   577→      </DialogFooter>
+   578→    </DialogContent>
+   579→  );
+   580→}
+   581→
+   582→// ─── Edit Alert Dialog ───────────────────────────────────────────
+   583→function EditAlertDialog({
+   584→  item,
+   585→  onClose,
+   586→  onSuccess,
+   587→}: {
+   588→  item: WatchlistItem | null;
+   589→  onClose: () => void;
+   590→  onSuccess: () => void;
+   591→}) {
+   592→  return (
+   593→    <Dialog open={!!item} onOpenChange={(open) => { if (!open) onClose(); }}>
+   594→      <DialogContent className="glass-strong border-gold/20 sm:max-w-md">
+   595→        <DialogHeader>
+   596→          <DialogTitle className="text-gold-gradient">
+   597→            Edit Alert — {item?.name}
+   598→          </DialogTitle>
+   599→        </DialogHeader>
+   600→        {item && (
+   601→          <EditAlertForm key={item.id} item={item} onSuccess={onSuccess} />
+   602→        )}
+   603→      </DialogContent>
+   604→    </Dialog>
+   605→  );
+   606→}
+   607→
+   608→function EditAlertForm({
+   609→  item,
+   610→  onSuccess,
+   611→}: {
+   612→  item: WatchlistItem;
+   613→  onSuccess: () => void;
+   614→}) {
+   615→  const [alertPrice, setAlertPrice] = useState(item.alertPrice !== null ? String(item.alertPrice) : "");
+   616→  const [alertDirection, setAlertDirection] = useState<"ABOVE" | "BELOW">((item.alertDirection as "ABOVE" | "BELOW") ?? "ABOVE");
+   617→  const [notes, setNotes] = useState(item.notes ?? "");
+   618→
+   619→  const updateMutation = useMutation({
+   620→    mutationFn: () =>
+   621→      api.put(`/api/watchlist/${item.id}`, {
+   622→        alertPrice: alertPrice ? parseFloat(alertPrice) : null,
+   623→        alertDirection,
+   624→        notes: notes || null,
+   625→      }),
+   626→    onSuccess: () => {
+   627→      toast.success("Alert updated");
+   628→      onSuccess();
+   629→    },
+   630→    onError: (e: Error) => toast.error(e.message),
+   631→  });
+   632→
+   633→  const removeAlertMutation = useMutation({
+   634→    mutationFn: () =>
+   635→      api.put(`/api/watchlist/${item.id}`, {
+   636→        alertPrice: null,
+   637→        alertDirection: null,
+   638→        notes: null,
+   639→      }),
+   640→    onSuccess: () => {
+   641→      toast.success("Alert removed");
+   642→      onSuccess();
+   643→    },
+   644→    onError: (e: Error) => toast.error(e.message),
+   645→  });
+   646→
+   647→  return (
+   648→    <>
+   649→      <div className="space-y-4 py-2">
+   650→        <div>
+   651→          <Label className="text-xs uppercase tracking-wider text-muted-foreground">Price Alert</Label>
+   652→          <div className="mt-2 flex gap-2">
+   653→            <Select value={alertDirection} onValueChange={(v) => setAlertDirection(v as "ABOVE" | "BELOW")}>
+   654→              <SelectTrigger className="w-28 bg-black/30 border-border/60 text-xs">
+   655→                <SelectValue />
+   656→              </SelectTrigger>
+   657→              <SelectContent className="glass-strong border-gold/20">
+   658→                <SelectItem value="ABOVE">Above ↑</SelectItem>
+   659→                <SelectItem value="BELOW">Below ↓</SelectItem>
+   660→              </SelectContent>
+   661→            </Select>
+   662→            <Input
+   663→              type="number"
+   664→              placeholder="Alert price..."
+   665→              value={alertPrice}
+   666→              onChange={(e) => setAlertPrice(e.target.value)}
+   667→              className="flex-1 bg-black/30 border-border/60"
+   668→            />
+   669→          </div>
+   670→        </div>
+   671→        <div>
+   672→          <Label className="text-xs uppercase tracking-wider text-muted-foreground">Notes</Label>
+   673→          <Textarea
+   674→            placeholder="Notes about this asset..."
+   675→            value={notes}
+   676→            onChange={(e) => setNotes(e.target.value)}
+   677→            className="mt-2 bg-black/30 border-border/60 min-h-[60px]"
+   678→          />
+   679→        </div>
+   680→        {item.alertPrice !== null && (
+   681→          <Button
+   682→            variant="outline"
+   683→            size="sm"
+   684→            onClick={() => removeAlertMutation.mutate()}
+   685→            disabled={removeAlertMutation.isPending}
+   686→            className="w-full border-loss/30 text-loss hover:bg-loss/10"
+   687→          >
+   688→            <Trash2 className="mr-2 h-3.5 w-3.5" />
+   689→            Remove Alert
+   690→          </Button>
+   691→        )}
+   692→      </div>
+   693→      <DialogFooter className="gap-2">
+   694→        <Button variant="ghost" onClick={onSuccess} className="text-muted-foreground">
+   695→          Cancel
+   696→        </Button>
+   697→        <Button
+   698→          onClick={() => updateMutation.mutate()}
+   699→          disabled={updateMutation.isPending}
+   700→          className="bg-gold-gradient text-black font-semibold hover:opacity-90"
+   701→        >
+   702→          {updateMutation.isPending ? "Saving..." : "Save Changes"}
+   703→        </Button>
+   704→      </DialogFooter>
+   705→    </>
+   706→  );
+   707→}
+   708→
+   709→// ─── Empty State ─────────────────────────────────────────────────
+   710→function EmptyState({ onAddClick }: { onAddClick: () => void }) {
+   711→  return (
+   712→    <FadeIn delay={0.2}>
+   713→      <GlassCard className="p-12 text-center">
+   714→        <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-gold/10">
+   715→          <Eye className="h-10 w-10 text-gold/60" />
+   716→        </div>
+   717→        <h3 className="text-lg font-semibold text-foreground">Your watchlist is empty</h3>
+   718→        <p className="mt-2 max-w-sm mx-auto text-sm text-muted-foreground">
+   719→          Add your first crypto asset to start tracking prices and setting custom alerts.
+   720→        </p>
+   721→        <Button
+   722→          onClick={onAddClick}
+   723→          className="mt-6 bg-gold-gradient text-black font-semibold hover:opacity-90"
+   724→        >
+   725→          <Plus className="mr-2 h-4 w-4" />
+   726→          Add Your First Asset
+   727→        </Button>
+   728→      </GlassCard>
+   729→    </FadeIn>
+   730→  );
+   731→}
+   732→
+   733→// ─── Skeleton Loader ─────────────────────────────────────────────
+   734→function WatchlistSkeleton() {
+   735→  return (
+   736→    <GlassCard className="p-4">
+   737→      <div className="space-y-4">
+   738→        {Array.from({ length: 3 }).map((_, i) => (
+   739→          <div key={i} className="flex items-center gap-4 animate-pulse">
+   740→            <div className="h-8 w-8 rounded-full bg-muted/20" />
+   741→            <div className="flex-1 space-y-2">
+   742→              <div className="h-4 w-24 rounded bg-muted/20" />
+   743→              <div className="h-3 w-16 rounded bg-muted/10" />
+   744→            </div>
+   745→            <div className="h-4 w-20 rounded bg-muted/20" />
+   746→            <div className="h-4 w-16 rounded bg-muted/10" />
+   747→          </div>
+   748→        ))}
+   749→      </div>
+   750→    </GlassCard>
+   751→  );
+   752→}
+   753→

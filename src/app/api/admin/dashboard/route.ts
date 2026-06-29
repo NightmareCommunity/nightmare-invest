@@ -1,9 +1,9 @@
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 import { getFundMetrics } from "@/lib/analytics";
-import { json } from "@/lib/api";
+import { json, safeHandler } from "@/lib/api";
 
-export async function GET() {
+export const GET = safeHandler(async () => {
   await requireAdmin();
   const fund = await db.fund.findFirst({ include: { allocations: true } });
 
@@ -59,5 +59,9 @@ export async function GET() {
     depositVolume,
     withdrawalVolume,
     navTrend,
+    capitalFlows: [],
+    pendingDepositsCount: pendingDeposits,
+    pendingWithdrawalsCount: pendingWithdrawals,
+    lastNavUpdate: navTrend.length > 0 ? navTrend[navTrend.length - 1].date : null,
   });
-}
+});

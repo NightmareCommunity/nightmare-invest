@@ -10,6 +10,7 @@ import {
   LayoutDashboard, Wallet, ArrowLeftRight, FileText, Settings,
   Users, TrendingUp, Database, ScrollText, History, Menu, X, LogOut,
   ChevronDown, ShieldCheck, BarChart3, FileCheck2, Megaphone,
+  Star, Calculator, Activity, Mail,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { fmtDate } from "@/lib/format";
@@ -26,6 +27,9 @@ const INVESTOR_NAV: NavItem[] = [
   { label: "Dashboard", route: { name: "dashboard" }, icon: LayoutDashboard, description: "Portfolio overview & metrics" },
   { label: "Portfolio", route: { name: "portfolio" }, icon: Wallet, description: "Holdings, exposures & allocations" },
   { label: "Analytics", route: { name: "analytics" }, icon: BarChart3, description: "Advanced risk & performance analytics" },
+  { label: "Watchlist", route: { name: "watchlist" }, icon: Star, description: "Track favorite crypto assets & price alerts" },
+  { label: "Calculator", route: { name: "calculator" }, icon: Calculator, description: "Profit/loss projection calculator" },
+  { label: "Inbox", route: { name: "inbox" }, icon: Mail, description: "Messages & announcements from the fund" },
   { label: "Transactions", route: { name: "transactions" }, icon: ArrowLeftRight, description: "Deposits, withdrawals & history" },
   { label: "Reports", route: { name: "reports" }, icon: FileText, description: "Download statements & ledger exports" },
   { label: "Settings", route: { name: "settings" }, icon: Settings, description: "Profile, security & preferences" },
@@ -39,6 +43,8 @@ const ADMIN_NAV: NavItem[] = [
   { label: "Transactions", route: { name: "admin-transactions" }, icon: ArrowLeftRight, description: "Review pending deposits & withdrawals", badge: "pendingAdmin" },
   { label: "KYC Review", route: { name: "admin-kyc" }, icon: FileCheck2, description: "Review investor accreditation documents" },
   { label: "Fund Updates", route: { name: "admin-fund-updates" }, icon: Megaphone, description: "Publish news & updates for investors" },
+  { label: "Communications", route: { name: "admin-communications" }, icon: Mail, description: "Message investors & broadcast announcements" },
+  { label: "System Health", route: { name: "admin-system-health" }, icon: Activity, description: "Infrastructure monitoring & diagnostics" },
   { label: "Ledger", route: { name: "admin-ledger" }, icon: ScrollText, description: "Fund ledger entries & CSV export" },
   { label: "Audit Logs", route: { name: "admin-audit" }, icon: History, description: "System action history & metadata" },
 ];
@@ -142,10 +148,10 @@ export function PortalShell({ children, admin = false }: { children: ReactNode; 
             <AnimatePresence mode="wait">
               <motion.div
                 key={current}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -4 }}
-                transition={{ duration: 0.25 }}
+                initial={{ opacity: 0, y: 12, scale: 0.995 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -6, scale: 0.998 }}
+                transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
               >
                 {children}
               </motion.div>

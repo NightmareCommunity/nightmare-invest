@@ -48,6 +48,9 @@ model User {
   kycDocuments KycDocument[]
   reviewedKyc  KycDocument[] @relation("KycReviewer")
   fundUpdates  FundUpdate[]  @relation("FundUpdateAuthor")
+  watchlist    WatchlistItem[]
+  sentMessages     AdminMessage[] @relation("SentMessages")
+  receivedMessages AdminMessage[] @relation("ReceivedMessages")
 }
 
 // ----------------------------- Fund ------------------------------
@@ -223,4 +226,41 @@ model KycDocument {
 
   @@index([userId])
   @@index([status])
+}
+
+// ------------------------ Watchlist Items -------------------------
+// Investor watchlist for tracking favorite crypto assets with price alerts
+model WatchlistItem {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  symbol         String   // bitcoin, ethereum, solana, etc.
+  name           String   // Bitcoin, Ethereum, Solana
+  alertPrice     Float?   // price alert threshold (nullable)
+  alertDirection  String?  @default("ABOVE") // ABOVE | BELOW
+  notes          String?
+  createdAt      DateTime @default(now())
+
+  @@unique([userId, symbol])
+  @@index([userId])
+}
+
+// ------------------------ Admin Messages -------------------------
+// Admin-to-investor messaging system (individual + broadcast)
+model AdminMessage {
+  id          String    @id @default(cuid())
+  senderId    String
+  sender      User      @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  recipientId String?
+  recipient   User?     @relation("ReceivedMessages", fields: [recipientId], references: [id], onDelete: SetNull)
+  subject     String
+  body        String
+  priority    String    @default("NORMAL") // NORMAL | IMPORTANT | URGENT
+  isBroadcast Boolean   @default(false) // true = sent to all investors
+  isRead      Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+
+  @@index([recipientId])
+  @@index([senderId])
+  @@index([isBroadcast])
 }

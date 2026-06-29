@@ -2,9 +2,9 @@ import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 import { verifyAuditChain } from "@/lib/audit";
-import { json } from "@/lib/api";
+import { json, safeHandler } from "@/lib/api";
 
-export async function GET(req: NextRequest) {
+export const GET = safeHandler(async (req: NextRequest) => {
   await requireAdmin();
   const { searchParams } = new URL(req.url);
   const action = searchParams.get("action");
@@ -24,5 +24,4 @@ export async function GET(req: NextRequest) {
   ]);
 
   return json({ logs, chainVerification });
-}
-// trigger recompile
+});

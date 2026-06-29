@@ -23,7 +23,13 @@ export type Route =
   | { name: "admin-kyc" }
   | { name: "admin-ledger" }
   | { name: "admin-audit" }
-  | { name: "admin-fund-updates" };
+  | { name: "admin-fund-updates" }
+  | { name: "admin-system-health" }
+  | { name: "admin-communications" }
+  // investor tools
+  | { name: "watchlist" }
+  | { name: "calculator" }
+  | { name: "inbox" };
 
 interface AppState {
   user: PublicUser | null;

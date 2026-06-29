@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api-client";
-import { GlassCard, SectionTitle, FadeIn } from "@/components/brand/primitives";
+import { GlassCard, SectionTitle, FadeIn, SkeletonTable, SkeletonMetric, EmptyState } from "@/components/brand/primitives";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { fmtUSD, fmtDateTime } from "@/lib/format";
@@ -106,9 +106,12 @@ export function AdminLedger() {
                   </tr>
                 ))}
                 {entries.length === 0 && (
-                  <tr><td colSpan={6} className="py-10 text-center text-muted-foreground">
-                    <ScrollText className="mx-auto mb-2 h-8 w-8 text-gold/40" />
-                    No ledger entries
+                  <tr><td colSpan={6}>
+                    <EmptyState
+                      icon={<ScrollText className="h-7 w-7" />}
+                      title="No ledger entries"
+                      description="No financial transactions have been recorded yet."
+                    />
                   </td></tr>
                 )}
               </tbody>

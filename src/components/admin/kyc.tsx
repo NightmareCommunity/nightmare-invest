@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api-client";
-import { GlassCard, MetricTile, SectionTitle, FadeIn } from "@/components/brand/primitives";
+import { GlassCard, MetricTile, SectionTitle, FadeIn, SkeletonCard, SkeletonMetric, EmptyState } from "@/components/brand/primitives";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -169,12 +169,11 @@ export function AdminKyc() {
                 <Loader2 className="h-4 w-4 animate-spin" /> Loading documents…
               </div>
             ) : docs.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-border/40 bg-black/20 p-8 text-center">
-                <Filter className="mx-auto h-8 w-8 text-muted-foreground/50" />
-                <div className="mt-2 text-sm text-muted-foreground">
-                  No {tab.toLowerCase()} documents
-                </div>
-              </div>
+              <EmptyState
+                icon={<Filter className="h-8 w-8" />}
+                title={`No ${tab.toLowerCase()} documents`}
+                description={`There are no ${tab.toLowerCase()} KYC documents to review.`}
+              />
             ) : (
               <div className="space-y-2">
                 {docs.map((d) => {

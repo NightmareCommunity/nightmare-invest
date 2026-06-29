@@ -1,7 +1,7 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api-client";
-import { GlassCard, MetricTile, SectionTitle, StatusPill, FadeIn } from "@/components/brand/primitives";
+import { GlassCard, MetricTile, SectionTitle, StatusPill, FadeIn, SkeletonCard, SkeletonMetric } from "@/components/brand/primitives";
 import { fmtUSD, fmtPct, fmtNum, fmtDate, timeAgo } from "@/lib/format";
 import { useCountUp } from "@/hooks/use-count-up";
 import { useApp } from "@/lib/store";
@@ -10,6 +10,7 @@ import {
   Wallet, Database, ShieldCheck, Clock, Server, Cpu, CheckCircle2,
   AlertTriangle, ChevronRight, CircleDot, Zap, Eye,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid,
   BarChart, Bar, Line, ComposedChart, PieChart, Pie, Cell, Legend,
@@ -22,42 +23,63 @@ import {
 export function AdminDashboard() {
   const setRoute = useApp((s) => s.setRoute);
 
-  const { data } = useQuery<any>({
+  const { data, error: dashError, refetch } = useQuery<any>({
     queryKey: ["admin-dashboard"],
     queryFn: () => api.get("/api/admin/dashboard"),
     refetchInterval: 30000,
+    retry: 2,
   });
 
   const { data: auditLogs } = useQuery<any[]>({
     queryKey: ["admin-audit-logs"],
     queryFn: () => api.get("/api/admin/audit-logs"),
     refetchInterval: 60000,
+    retry: 1,
   });
 
   const { data: usersData } = useQuery<any>({
     queryKey: ["admin-users"],
     queryFn: () => api.get("/api/admin/users"),
     refetchInterval: 60000,
+    retry: 1,
   });
+
+  /* ── Error state ──────────────────────────────────────────────────── */
+  if (dashError) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-4 py-20 text-center">
+        <div className="flex h-16 w-16 items-center justify-center rounded-full border border-loss/30 bg-loss/10">
+          <AlertTriangle className="h-8 w-8 text-loss" />
+        </div>
+        <h2 className="text-xl font-semibold">Dashboard Load Error</h2>
+        <p className="max-w-md text-sm text-muted-foreground">
+          Failed to load dashboard data. This may be a temporary issue.
+        </p>
+        <Button onClick={() => refetch()} className="bg-gold-gradient text-black hover:opacity-90">
+          Retry
+        </Button>
+      </div>
+    );
+  }
 
   /* ── Loading skeleton ──────────────────────────────────────────────────── */
   if (!data) {
     return (
       <div className="space-y-6">
-        <div className="h-8 w-48 rounded bg-muted/40 shimmer" />
+        <SkeletonMetric className="h-8 w-48 rounded" />
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {[0, 1, 2, 3].map((i) => (
-            <div key={i} className="h-32 rounded-xl glass shimmer" />
+            <SkeletonMetric key={i} className="h-32" />
           ))}
         </div>
         <div className="grid gap-4 lg:grid-cols-3">
-          <div className="h-80 rounded-xl glass shimmer lg:col-span-2" />
-          <div className="h-80 rounded-xl glass shimmer" />
+          <SkeletonCard className="h-80 lg:col-span-2 chart-hover-glow" />
+          <SkeletonCard className="h-80 hover-lift" />
         </div>
-        <div className="h-60 rounded-xl glass shimmer" />
+        <SkeletonCard className="h-60 hover-lift" />
         <div className="grid gap-4 lg:grid-cols-2">
-          <div className="h-60 rounded-xl glass shimmer" />
-          <div className="h-60 rounded-xl glass shimmer" />
+          <SkeletonCard className="h-60 hover-lift" />
+          <SkeletonCard className="h-60 hover-lift" />
         </div>
       </div>
     );
@@ -69,8 +91,9 @@ export function AdminDashboard() {
 
   // Derived data for new sections
   const pendingCount = (data.pendingDeposits ?? 0) + (data.pendingWithdrawals ?? 0);
-  const recentAudit = (auditLogs ?? []).slice(0, 5);
-  const allUsers = usersData?.users ?? usersData ?? [];
+  const auditLogsArr = Array.isArray(auditLogs) ? auditLogs : (auditLogs?.logs ?? []);
+  const recentAudit = auditLogsArr.slice(0, 5);
+  const allUsers = usersData?.users ?? (Array.isArray(usersData) ? usersData : []);
   const topInvestors = Array.isArray(allUsers)
     ? [...allUsers]
         .sort((a: any, b: any) => (b.aum ?? b.totalAum ?? 0) - (a.aum ?? a.totalAum ?? 0))

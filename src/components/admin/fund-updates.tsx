@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api-client";
-import { GlassCard, SectionTitle, FadeIn } from "@/components/brand/primitives";
+import { GlassCard, SectionTitle, FadeIn, SkeletonCard, EmptyState } from "@/components/brand/primitives";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -198,13 +198,20 @@ export function AdminFundUpdates() {
               })}
             </AnimatePresence>
             {updates.length === 0 && !isLoading && (
-              <div className="py-12 text-center text-sm text-muted-foreground">
-                No updates yet. Click "New Update" to publish your first fund announcement.
-              </div>
+              <EmptyState
+                icon={<Megaphone className="h-8 w-8" />}
+                title="No updates yet"
+                description="Publish your first fund announcement to keep investors informed."
+                action={
+                  <Button onClick={() => setOpen(true)} className="bg-gold-gradient text-black hover:opacity-90 press-scale">
+                    <Plus className="mr-1.5 h-4 w-4" /> New Update
+                  </Button>
+                }
+              />
             )}
             {isLoading && (
               <div className="space-y-3">
-                {[0, 1, 2].map((i) => <div key={i} className="h-20 rounded-lg glass shimmer" />)}
+                {[0, 1, 2].map((i) => <SkeletonCard key={i} className="h-20 hover-lift" />)}
               </div>
             )}
           </div>

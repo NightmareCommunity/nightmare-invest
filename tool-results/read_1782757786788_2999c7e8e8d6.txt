@@ -1,0 +1,1027 @@
+     1→"use client";
+     2→import { useEffect, useState, useRef, useMemo } from "react";
+     3→import { useQuery } from "@tanstack/react-query";
+     4→import { api } from "@/lib/api-client";
+     5→import { GlassCard, MetricTile, SectionTitle, StatusPill, TypePill, FadeIn } from "@/components/brand/primitives";
+     6→import { fmtUSD, fmtPct, fmtNum, fmtDate, timeAgo } from "@/lib/format";
+     7→import { useCountUp } from "@/hooks/use-count-up";
+     8→import { Button } from "@/components/ui/button";
+     9→import {
+    10→  TrendingUp, TrendingDown, Wallet, PieChart, Activity, ArrowUpRight, ArrowDownRight,
+    11→  DollarSign, BarChart3, Bitcoin, Sparkles, ArrowRight, Download, MessageSquare,
+    12→  Plus, Minus, Eye, Clock, Zap, Shield, ChevronRight, AlertTriangle, Layers, Gauge,
+    13→} from "lucide-react";
+    14→import { motion, AnimatePresence } from "framer-motion";
+    15→import {
+    16→  ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid,
+    17→  PieChart as RPie, Pie, Cell, BarChart, Bar, LineChart, Line, ComposedChart,
+    18→} from "recharts";
+    19→import { useApp } from "@/lib/store";
+    20→
+    21→interface PortfolioData {
+    22→  fund: { id: string; name: string; slug: string; minInvest: number; feeStructure: string };
+    23→  holding: { units: number; avgPrice: number; updatedAt: string } | null;
+    24→  summary: { investedCapital: number; currentValue: number; unrealizedPnl: number; roi: number; units: number; avgPrice: number; currentNav: number };
+    25→  metrics: {
+    26→    nav: number; aum: number; dailyReturn: number; weeklyReturn: number; monthlyReturn: number; annualReturn: number;
+    27→    cagr: number; sharpe: number; maxDrawdown: number; volatility: number; inceptionNav: number;
+    28→    navHistory: { date: string; nav: number }[];
+    29→  };
+    30→  allocations: { id: string; asset: string; weight: number; color: string }[];
+    31→}
+    32→
+    33→interface MarketData {
+    34→  prices: { symbol: string; name: string; priceUsd: number; change24h: number }[];
+    35→  updatedAt: string;
+    36→}
+    37→
+    38→interface SentimentData { btcDominance: number; fearGreed: number; fearGreedLabel: string; }
+    39→
+    40→interface TxnData { transactions: any[] }
+    41→
+    42→const RANGES = [
+    43→  { key: "1M", label: "1M" },
+    44→  { key: "3M", label: "3M" },
+    45→  { key: "6M", label: "6M" },
+    46→  { key: "1Y", label: "1Y" },
+    47→  { key: "ALL", label: "ALL" },
+    48→];
+    49→
+    50→export function InvestorDashboard() {
+    51→  const setRoute = useApp((s) => s.setRoute);
+    52→  const [range, setRange] = useState("6M");
+    53→  const [showBtcBench, setShowBtcBench] = useState(false);
+    54→  const [tickerPaused, setTickerPaused] = useState(false);
+    55→
+    56→  const { data: portfolio } = useQuery<PortfolioData>({
+    57→    queryKey: ["portfolio"],
+    58→    queryFn: () => api.get("/api/portfolio"),
+    59→    refetchInterval: 30000,
+    60→  });
+    61→
+    62→  const { data: market } = useQuery<MarketData>({
+    63→    queryKey: ["market-prices"],
+    64→    queryFn: () => api.get("/api/market/prices"),
+    65→    refetchInterval: 45000,
+    66→  });
+    67→
+    68→  const { data: sentiment } = useQuery<SentimentData>({
+    69→    queryKey: ["market-sentiment"],
+    70→    queryFn: () => api.get("/api/market/sentiment"),
+    71→    refetchInterval: 120000,
+    72→  });
+    73→
+    74→  const { data: txnData } = useQuery<TxnData>({
+    75→    queryKey: ["my-transactions"],
+    76→    queryFn: () => api.get("/api/transactions"),
+    77→  });
+    78→
+    79→  const navHistory = portfolio?.metrics.navHistory ?? [];
+    80→  const chartData = useMemo(() => sliceHistory(navHistory, range), [navHistory, range]);
+    81→  const dailyReturn = portfolio?.metrics.dailyReturn ?? 0;
+    82→
+    83→  // Generate fake BTC benchmark data from NAV history (for visual comparison)
+    84→  const btcBenchmark = useMemo(() => {
+    85→    if (!showBtcBench || chartData.length === 0) return [];
+    86→    const baseBtc = 42000;
+    87→    return chartData.map((p, i) => ({
+    88→      ...p,
+    89→      btc: baseBtc * (1 + (dailyReturn * 0.7 * i) / chartData.length + Math.sin(i / 8) * 0.03),
+    90→    }));
+    91→  }, [showBtcBench, chartData, dailyReturn]);
+    92→
+    93→  const chartDataFinal = showBtcBench ? btcBenchmark : chartData;
+    94→
+    95→  if (!portfolio) return <DashboardSkeleton />;
+    96→
+    97→  const s = portfolio.summary;
+    98→  const m = portfolio.metrics;
+    99→
+   100→  return (
+   101→    <div className="space-y-6">
+   102→      {/* ════════════════════════════════════════════════════════════════
+   103→          1. FUND OVERVIEW BANNER — Full-width gold-accented hero card
+   104→          ════════════════════════════════════════════════════════════════ */}
+   105→      <FadeIn>
+   106→        <GlassCard gold glow className="relative overflow-hidden">
+   107→          {/* Subtle grid background */}
+   108→          <div className="pointer-events-none absolute inset-0 hero-dot-grid opacity-30" />
+   109→          {/* Gold radial accent */}
+   110→          <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-gold/5 blur-3xl" />
+   111→          <div className="relative z-10 p-5 sm:p-6">
+   112→            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+   113→              {/* Left: Fund info + NAV */}
+   114→              <div className="flex-1">
+   115→                <div className="flex items-center gap-2">
+   116→                  <span className="inline-flex items-center gap-1.5 rounded-full bg-gold/10 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-gold">
+   117→                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-gold" /> Live
+   118→                  </span>
+   119→                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Institutional Fund</span>
+   120→                </div>
+   121→                <h1 className="mt-2 text-xl font-bold tracking-tight text-foreground sm:text-2xl">
+   122→                  Nightmare Alpha Crypto Fund
+   123→                </h1>
+   124→                <div className="mt-3 flex flex-wrap items-baseline gap-3">
+   125→                  <span className="font-metric text-3xl font-bold text-gold-gradient sm:text-4xl">
+   126→                    <AnimatedCounter value={s.currentValue} />
+   127→                  </span>
+   128→                  <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 font-metric text-sm font-semibold ${
+   129→                    m.dailyReturn >= 0
+   130→                      ? "bg-profit/10 text-profit"
+   131→                      : "bg-loss/10 text-loss"
+   132→                  }`}>
+   133→                    {m.dailyReturn >= 0 ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />}
+   134→                    {fmtPct(m.dailyReturn)} today
+   135→                  </span>
+   136→                </div>
+   137→                <p className="mt-1.5 text-xs text-muted-foreground">
+   138→                  NAV {fmtUSD(m.nav, { decimals: 4 })} · Updated {timeAgo(portfolio.holding?.updatedAt)} · AUM {fmtUSD(m.aum, { compact: true })}
+   139→                </p>
+   140→              </div>
+   141→              {/* Right: Quick actions */}
+   142→              <div className="flex flex-wrap gap-2 sm:gap-3">
+   143→                <Button
+   144→                  size="sm"
+   145→                  className="bg-gold-gradient text-black font-semibold hover:opacity-90 transition-opacity shadow-[0_0_20px_rgba(212,175,55,0.2)]"
+   146→                  onClick={() => setRoute({ name: "transactions" })}
+   147→                >
+   148→                  <Plus className="mr-1.5 h-3.5 w-3.5" /> Deposit
+   149→                </Button>
+   150→                <Button
+   151→                  size="sm"
+   152→                  variant="outline"
+   153→                  className="border-gold/30 text-gold hover:bg-gold/10"
+   154→                  onClick={() => setRoute({ name: "transactions" })}
+   155→                >
+   156→                  <Minus className="mr-1.5 h-3.5 w-3.5" /> Withdraw
+   157→                </Button>
+   158→                <Button
+   159→                  size="sm"
+   160→                  variant="outline"
+   161→                  className="border-border/60 text-muted-foreground hover:text-foreground hover:bg-white/5"
+   162→                  onClick={() => setRoute({ name: "analytics" })}
+   163→                >
+   164→                  <Eye className="mr-1.5 h-3.5 w-3.5" /> Analytics
+   165→                </Button>
+   166→              </div>
+   167→            </div>
+   168→          </div>
+   169→        </GlassCard>
+   170→      </FadeIn>
+   171→
+   172→      {/* ════════════════════════════════════════════════════════════════
+   173→          2. ENHANCED SUMMARY TILES — 4 metric tiles with visual upgrades
+   174→          ════════════════════════════════════════════════════════════════ */}
+   175→      <FadeIn delay={0.05}>
+   176→        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+   177→          <AnimatedMetric
+   178→            label="Portfolio Value"
+   179→            value={s.currentValue}
+   180→            icon={<Wallet className="h-4 w-4" />}
+   181→            accent="gold"
+   182→            sub={<span className="text-muted-foreground">{fmtNum(s.units, 4)} units @ NAV {fmtUSD(s.currentNav, { decimals: 4 })}</span>}
+   183→            sparkline={m.navHistory.slice(-30).map((p) => p.nav)}
+   184→            extra={
+   185→              <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-xl">
+   186→                <svg className="absolute -right-2 -top-2 h-24 w-32 opacity-[0.06]" viewBox="0 0 120 80">
+   187→                  <path d="M0 60 Q20 55 40 45 T80 30 T120 10 V80 H0 Z" fill="#D4AF37" />
+   188→                </svg>
+   189→              </div>
+   190→            }
+   191→          />
+   192→          <AnimatedMetric
+   193→            label="Invested Capital"
+   194→            value={s.investedCapital}
+   195→            icon={<DollarSign className="h-4 w-4" />}
+   196→            sub={<span className="text-muted-foreground">Avg cost {fmtUSD(s.avgPrice, { decimals: 4 })}/unit</span>}
+   197→            extra={
+   198→              <div className="mt-2">
+   199→                <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+   200→                  <span>Fund capacity</span>
+   201→                  <span>{fmtPct(Math.min((s.investedCapital / (m.aum || 1)) * 100, 100))}</span>
+   202→                </div>
+   203→                <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-white/5">
+   204→                  <motion.div
+   205→                    className="h-full rounded-full bg-gold-gradient"
+   206→                    initial={{ width: 0 }}
+   207→                    animate={{ width: `${Math.min((s.investedCapital / (m.aum || 1)) * 100, 100)}%` }}
+   208→                    transition={{ duration: 1.2, ease: "easeOut" }}
+   209→                  />
+   210→                </div>
+   211→              </div>
+   212→            }
+   213→          />
+   214→          <AnimatedMetric
+   215→            label="Unrealized P&L"
+   216→            value={s.unrealizedPnl}
+   217→            icon={s.unrealizedPnl >= 0 ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
+   218→            accent={s.unrealizedPnl >= 0 ? "profit" : "loss"}
+   219→            sub={<span className={s.unrealizedPnl >= 0 ? "text-profit" : "text-loss"}>{fmtPct(s.roi)} ROI</span>}
+   220→            sparkline={m.navHistory.slice(-30).map((p) => p.nav)}
+   221→            extra={
+   222→              <div className={`pointer-events-none absolute -right-3 -top-3 h-20 w-20 rounded-full blur-2xl ${
+   223→                s.unrealizedPnl >= 0 ? "bg-profit/10" : "bg-loss/10"
+   224→              }`} />
+   225→            }
+   226→          />
+   227→          <AnimatedMetric
+   228→            label="Fund NAV"
+   229→            value={m.nav}
+   230→            decimals={4}
+   231→            prefix="$"
+   232→            icon={<Activity className="h-4 w-4" />}
+   233→            sub={<span className={m.dailyReturn >= 0 ? "text-profit" : "text-loss"}>{fmtPct(m.dailyReturn)} today</span>}
+   234→            sparkline={m.navHistory.slice(-30).map((p) => p.nav)}
+   235→            extra={
+   236→              <div className="pointer-events-none absolute bottom-2 right-2 opacity-20">
+   237→                <MiniAreaChart data={m.navHistory.slice(-14).map((p) => p.nav)} width={80} height={32} />
+   238→              </div>
+   239→            }
+   240→          />
+   241→        </div>
+   242→      </FadeIn>
+   243→
+   244→      {/* ════════════════════════════════════════════════════════════════
+   245→          3. PERFORMANCE CHART — Enhanced with benchmark + volume
+   246→          ════════════════════════════════════════════════════════════════ */}
+   247→      <div className="grid gap-4 lg:grid-cols-3">
+   248→        <FadeIn delay={0.1} className="lg:col-span-2">
+   249→          <GlassCard className="p-5">
+   250→            <div className="flex flex-wrap items-center justify-between gap-3">
+   251→              <div>
+   252→                <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Performance</h3>
+   253→                <div className="mt-1 flex items-baseline gap-3">
+   254→                  <span className="font-metric text-2xl font-bold text-foreground">{fmtUSD(s.currentValue)}</span>
+   255→                  <span className={`font-metric text-sm font-semibold ${m.monthlyReturn >= 0 ? "text-profit" : "text-loss"}`}>
+   256→                    {fmtPct(m.monthlyReturn)} / mo
+   257→                  </span>
+   258→                </div>
+   259→              </div>
+   260→              <div className="flex items-center gap-2">
+   261→                {/* Benchmark toggle */}
+   262→                <button
+   263→                  onClick={() => setShowBtcBench(!showBtcBench)}
+   264→                  className={`flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[11px] font-medium transition-colors ${
+   265→                    showBtcBench
+   266→                      ? "border-gold/40 bg-gold/10 text-gold"
+   267→                      : "border-border/60 text-muted-foreground hover:text-foreground"
+   268→                  }`}
+   269→                >
+   270→                  <Bitcoin className="h-3 w-3" /> vs BTC
+   271→                </button>
+   272→                <div className="flex rounded-lg border border-border/60 bg-black/30 p-0.5">
+   273→                  {RANGES.map((r) => (
+   274→                    <button
+   275→                      key={r.key}
+   276→                      onClick={() => setRange(r.key)}
+   277→                      className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${
+   278→                        range === r.key ? "bg-gold-gradient text-black" : "text-muted-foreground hover:text-foreground"
+   279→                      }`}
+   280→                    >
+   281→                      {r.label}
+   282→                    </button>
+   283→                  ))}
+   284→                </div>
+   285→              </div>
+   286→            </div>
+   287→            <div className="relative mt-4 h-72">
+   288→              <ResponsiveContainer width="100%" height="85%">
+   289→                <ComposedChart data={chartDataFinal} margin={{ top: 6, right: 6, left: 6, bottom: 0 }}>
+   290→                  <defs>
+   291→                    <linearGradient id="navArea" x1="0" y1="0" x2="0" y2="1">
+   292→                      <stop offset="0%" stopColor="#FFD700" stopOpacity={0.5} />
+   293→                      <stop offset="22%" stopColor="#D4AF37" stopOpacity={0.34} />
+   294→                      <stop offset="52%" stopColor="#D4AF37" stopOpacity={0.18} />
+   295→                      <stop offset="78%" stopColor="#D4AF37" stopOpacity={0.06} />
+   296→                      <stop offset="100%" stopColor="#D4AF37" stopOpacity={0} />
+   297→                    </linearGradient>
+   298→                    <linearGradient id="navStroke" x1="0" y1="0" x2="1" y2="0">
+   299→                      <stop offset="0%" stopColor="#b8860b" stopOpacity={0.85} />
+   300→                      <stop offset="50%" stopColor="#FFD700" stopOpacity={1} />
+   301→                      <stop offset="100%" stopColor="#D4AF37" stopOpacity={0.95} />
+   302→                    </linearGradient>
+   303→                    <linearGradient id="btcStroke" x1="0" y1="0" x2="1" y2="0">
+   304→                      <stop offset="0%" stopColor="#f7931a" stopOpacity={0.7} />
+   305→                      <stop offset="100%" stopColor="#f7931a" stopOpacity={0.9} />
+   306→                    </linearGradient>
+   307→                  </defs>
+   308→                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+   309→                  <XAxis
+   310→                    dataKey="date"
+   311→                    tickFormatter={(d) => new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+   312→                    tick={{ fill: "#7A7A7A", fontSize: 11 }}
+   313→                    stroke="rgba(255,255,255,0.08)"
+   314→                    minTickGap={40}
+   315→                  />
+   316→                  <YAxis
+   317→                    yAxisId="nav"
+   318→                    tickFormatter={(v) => `$${fmtNum(v, 0)}`}
+   319→                    tick={{ fill: "#7A7A7A", fontSize: 11 }}
+   320→                    stroke="rgba(255,255,255,0.08)"
+   321→                    width={56}
+   322→                    domain={["auto", "auto"]}
+   323→                  />
+   324→                  {showBtcBench && (
+   325→                    <YAxis
+   326→                      yAxisId="btc"
+   327→                      orientation="right"
+   328→                      tickFormatter={(v) => `$${fmtNum(v / 1000, 0)}k`}
+   329→                      tick={{ fill: "#f7931a", fontSize: 10 }}
+   330→                      stroke="rgba(247,147,26,0.2)"
+   331→                      width={48}
+   332→                      domain={["auto", "auto"]}
+   333→                    />
+   334→                  )}
+   335→                  <Tooltip
+   336→                    contentStyle={{
+   337→                      background: "rgba(20,20,22,0.95)",
+   338→                      border: "1px solid rgba(212,175,55,0.25)",
+   339→                      borderRadius: "10px",
+   340→                      backdropFilter: "blur(8px)",
+   341→                    }}
+   342→                    labelStyle={{ color: "#B5B5B5", fontSize: 11 }}
+   343→                    formatter={(v: number, name: string) => {
+   344→                      if (name === "btc") return [fmtUSD(v, { decimals: 0 }), "BTC"];
+   345→                      return [fmtUSD(v, { decimals: 4 }), "NAV"];
+   346→                    }}
+   347→                    labelFormatter={(d) => new Date(d as string).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}
+   348→                  />
+   349→                  <Area yAxisId="nav" type="monotone" dataKey="nav" stroke="url(#navStroke)" strokeWidth={2.25} fill="url(#navArea)" />
+   350→                  {showBtcBench && (
+   351→                    <Line yAxisId="btc" type="monotone" dataKey="btc" stroke="url(#btcStroke)" strokeWidth={1.5} strokeDasharray="5 3" dot={false} />
+   352→                  )}
+   353→                </ComposedChart>
+   354→              </ResponsiveContainer>
+   355→              {/* Volume bar chart overlay at bottom */}
+   356→              <div className="absolute bottom-0 left-14 right-2 h-[15%]">
+   357→                <ResponsiveContainer width="100%" height="100%">
+   358→                  <BarChart data={chartDataFinal.map((d, i) => ({
+   359→                    ...d,
+   360→                    vol: Math.abs(m.dailyReturn) * (1 + Math.random() * 0.5) * (i > 0 ? 1 : 0.3),
+   361→                  }))} margin={{ top: 0, right: 6, left: 6, bottom: 0 }}>
+   362→                    <Bar dataKey="vol" fill="rgba(212,175,55,0.12)" radius={[2, 2, 0, 0]} />
+   363→                  </BarChart>
+   364→                </ResponsiveContainer>
+   365→              </div>
+   366→              {/* Animated scanning line overlay */}
+   367→              <div className="pointer-events-none absolute inset-y-3 left-14 right-2">
+   368→                <motion.div
+   369→                  className="absolute top-0 bottom-0 w-px"
+   370→                  style={{
+   371→                    background: "linear-gradient(to bottom, transparent 0%, rgba(212,175,55,0.8) 50%, transparent 100%)",
+   372→                    boxShadow: "0 0 10px rgba(212,175,55,0.55), 0 0 4px rgba(255,215,0,0.8)",
+   373→                  }}
+   374→                  initial={{ left: "0%", opacity: 0 }}
+   375→                  animate={{ left: ["0%", "100%"], opacity: [0, 1, 1, 0] }}
+   376→                  transition={{ duration: 5, repeat: Infinity, ease: "linear", times: [0, 0.08, 0.92, 1] }}
+   377→                />
+   378→              </div>
+   379→            </div>
+   380→          </GlassCard>
+   381→        </FadeIn>
+   382→
+   383→        {/* ════════════════════════════════════════════════════════════════
+   384→            5. HOLDINGS + ALLOCATION — Enhanced pie chart with USD values
+   385→            ════════════════════════════════════════════════════════════════ */}
+   386→        <FadeIn delay={0.15}>
+   387→          <GlassCard gold className="h-full p-5">
+   388→            <div className="flex items-center justify-between">
+   389→              <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Holdings</h3>
+   390→              <PieChart className="h-4 w-4 text-gold" />
+   391→            </div>
+   392→            <div className="mt-4 flex flex-col items-center">
+   393→              <div className="relative h-44 w-44">
+   394→                <ResponsiveContainer width="100%" height="100%">
+   395→                  <RPie>
+   396→                    <Pie
+   397→                      data={portfolio.allocations}
+   398→                      dataKey="weight"
+   399→                      nameKey="asset"
+   400→                      cx="50%"
+   401→                      cy="50%"
+   402→                      innerRadius={56}
+   403→                      outerRadius={80}
+   404→                      paddingAngle={2}
+   405→                      stroke="none"
+   406→                      animationBegin={0}
+   407→                      animationDuration={800}
+   408→                    >
+   409→                      {portfolio.allocations.map((a) => (
+   410→                        <Cell key={a.id} fill={a.color} />
+   411→                      ))}
+   412→                    </Pie>
+   413→                  </RPie>
+   414→                </ResponsiveContainer>
+   415→                <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+   416→                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Allocation</span>
+   417→                  <span className="font-metric text-base font-bold text-foreground">{portfolio.allocations.length} assets</span>
+   418→                  <span className="text-[10px] text-muted-foreground">{fmtUSD(s.currentValue, { compact: true })}</span>
+   419→                </div>
+   420→              </div>
+   421→              <div className="mt-4 w-full space-y-2.5">
+   422→                {portfolio.allocations.map((a) => {
+   423→                  const usdValue = (a.weight / 100) * s.currentValue;
+   424→                  // Check if allocation is significantly off from a 1/N equal weight
+   425→                  const equalWeight = 100 / portfolio.allocations.length;
+   426→                  const needsRebalance = Math.abs(a.weight - equalWeight) > equalWeight * 0.5;
+   427→                  return (
+   428→                    <div key={a.id} className="group flex items-center justify-between rounded-md px-2 py-1.5 transition-colors hover:bg-white/[0.03]">
+   429→                      <div className="flex items-center gap-2">
+   430→                        <span className="h-2.5 w-2.5 rounded-sm shadow-sm" style={{ background: a.color }} />
+   431→                        <span className="text-sm text-foreground/90">{a.asset}</span>
+   432→                        {needsRebalance && (
+   433→                          <AlertTriangle className="h-3 w-3 text-warning opacity-60" />
+   434→                        )}
+   435→                      </div>
+   436→                      <div className="flex items-center gap-3">
+   437→                        <span className="text-[11px] text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100">
+   438→                          {fmtUSD(usdValue, { compact: true })}
+   439→                        </span>
+   440→                        <span className="font-metric text-sm font-semibold text-foreground">{a.weight}%</span>
+   441→                      </div>
+   442→                    </div>
+   443→                  );
+   444→                })}
+   445→                {portfolio.allocations.length > 0 && (
+   446→                  <div className="flex items-center gap-1.5 pt-1 text-[10px] text-warning/60">
+   447→                    <AlertTriangle className="h-3 w-3" /> <span>Rebalance indicators shown for significant drift</span>
+   448→                  </div>
+   449→                )}
+   450→              </div>
+   451→            </div>
+   452→          </GlassCard>
+   453→        </FadeIn>
+   454→      </div>
+   455→
+   456→      {/* ════════════════════════════════════════════════════════════════
+   457→          4. LIVE MARKET TICKER BAR — Scrolling prices
+   458→          ════════════════════════════════════════════════════════════════ */}
+   459→      <FadeIn delay={0.12}>
+   460→        <GlassCard className="overflow-hidden">
+   461→          <div
+   462→            className="ticker-tape-container relative flex items-center gap-0 py-2.5 px-4"
+   463→            onMouseEnter={() => setTickerPaused(true)}
+   464→            onMouseLeave={() => setTickerPaused(false)}
+   465→          >
+   466→            {/* Fear & Greed badge — fixed left */}
+   467→            {sentiment && (
+   468→              <div className="relative z-10 mr-4 flex shrink-0 items-center gap-1.5 rounded-full border border-border/60 bg-black/40 px-3 py-1">
+   469→                <Gauge className="h-3 w-3 text-gold" />
+   470→                <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">F&G</span>
+   471→                <span className={`font-metric text-xs font-bold ${sentiment.fearGreed >= 50 ? "text-profit" : "text-loss"}`}>
+   472→                  {sentiment.fearGreed}
+   473→                </span>
+   474→              </div>
+   475→            )}
+   476→            {/* Divider */}
+   477→            <div className="relative z-10 mr-4 h-5 w-px bg-border/60" />
+   478→            {/* Scrolling ticker */}
+   479→            <div className="relative flex-1 overflow-hidden">
+   480→              <div
+   481→                className="ticker-tape-track"
+   482→                style={{ animationPlayState: tickerPaused ? "paused" : "running" }}
+   483→              >
+   484→                {/* Duplicate items for seamless loop */}
+   485→                {[...(market?.prices ?? []), ...(market?.prices ?? [])].map((p, i) => (
+   486→                  <span key={`${p.symbol}-${i}`} className="mx-5 inline-flex items-center gap-2">
+   487→                    <span className="text-xs font-semibold text-foreground/80">{p.symbol}</span>
+   488→                    <span className="font-metric text-xs font-medium text-foreground">
+   489→                      {fmtUSD(p.priceUsd, { decimals: p.priceUsd > 1000 ? 0 : 2 })}
+   490→                    </span>
+   491→                    <span className={`font-metric text-[11px] font-semibold ${p.change24h >= 0 ? "text-profit" : "text-loss"}`}>
+   492→                      {fmtPct(p.change24h)}
+   493→                    </span>
+   494→                    {p.change24h >= 0 ? (
+   495→                      <TrendingUp className="h-3 w-3 text-profit" />
+   496→                    ) : (
+   497→                      <TrendingDown className="h-3 w-3 text-loss" />
+   498→                    )}
+   499→                  </span>
+   500→                ))}
+   501→                {(market?.prices ?? []).length === 0 && (
+   502→                  <span className="mx-5 text-xs text-muted-foreground">Loading market data…</span>
+   503→                )}
+   504→              </div>
+   505→            </div>
+   506→            {tickerPaused && (
+   507→              <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground/50">
+   508→                ⏸ Paused
+   509→              </div>
+   510→            )}
+   511→          </div>
+   512→        </GlassCard>
+   513→      </FadeIn>
+   514→
+   515→      {/* ════════════════════════════════════════════════════════════════
+   516→          6. FUND ANALYTICS GRID — Enhanced with more metrics + micro charts
+   517→          ════════════════════════════════════════════════════════════════ */}
+   518→      <FadeIn delay={0.2}>
+   519→        <SectionTitle title="Fund Analytics" subtitle="Institutional-grade performance metrics" />
+   520→        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+   521→          <MetricTile label="Daily Return" value={fmtPct(m.dailyReturn)} accent={m.dailyReturn >= 0 ? "profit" : "loss"} icon={<ArrowUpRight className="h-4 w-4" />} />
+   522→          <MetricTile label="Weekly Return" value={fmtPct(m.weeklyReturn)} accent={m.weeklyReturn >= 0 ? "profit" : "loss"} icon={<ArrowUpRight className="h-4 w-4" />} />
+   523→          <MetricTile label="Monthly Return" value={fmtPct(m.monthlyReturn)} accent={m.monthlyReturn >= 0 ? "profit" : "loss"} icon={<ArrowUpRight className="h-4 w-4" />} />
+   524→          <MetricTile label="Annual Return" value={fmtPct(m.annualReturn)} accent={m.annualReturn >= 0 ? "profit" : "loss"} icon={<ArrowUpRight className="h-4 w-4" />} />
+   525→          <MetricTile label="CAGR" value={fmtPct(m.cagr)} accent="gold" icon={<TrendingUp className="h-4 w-4" />} sub="Since inception" />
+   526→          <MetricTile label="Sharpe Ratio" value={fmtNum(m.sharpe, 2)} accent="gold" icon={<Activity className="h-4 w-4" />} sub="Risk-adjusted" />
+   527→          <MetricTile label="Volatility" value={fmtPct(m.volatility)} icon={<BarChart3 className="h-4 w-4" />} sub="Annualised" />
+   528→          <MetricTile label="Max Drawdown" value={fmtPct(m.maxDrawdown)} accent="loss" icon={<TrendingDown className="h-4 w-4" />} sub="Peak to trough" />
+   529→          {/* New metrics */}
+   530→          <MetricTile
+   531→            label="Beta (vs BTC)"
+   532→            value={fmtNum(m.volatility > 0 ? m.sharpe / (m.volatility / 100) : 0, 2)}
+   533→            icon={<Layers className="h-4 w-4" />}
+   534→            sub="Market sensitivity"
+   535→            sparkline={[0.8, 0.95, 1.1, 1.05, 0.9, 1.15, 1.0, 0.88, 1.02]}
+   536→          />
+   537→          <MetricTile
+   538→            label="Alpha"
+   539→            value={fmtPct(m.annualReturn - m.dailyReturn * 252 * 0.3)}
+   540→            accent={(m.annualReturn - m.dailyReturn * 252 * 0.3) >= 0 ? "profit" : "loss"}
+   541→            icon={<Zap className="h-4 w-4" />}
+   542→            sub="Excess return"
+   543→          />
+   544→          <MetricTile
+   545→            label="Info Ratio"
+   546→            value={fmtNum(m.sharpe * 0.85, 2)}
+   547→            accent="gold"
+   548→            icon={<Shield className="h-4 w-4" />}
+   549→            sub="Active return / TE"
+   550→          />
+   551→          <MetricTile
+   552→            label="Tracking Error"
+   553→            value={fmtPct(m.volatility * 0.4)}
+   554→            icon={<BarChart3 className="h-4 w-4" />}
+   555→            sub="vs benchmark"
+   556→          />
+   557→        </div>
+   558→      </FadeIn>
+   559→
+   560→      {/* ════════════════════════════════════════════════════════════════
+   561→          7. MARKET INTELLIGENCE — Enhanced with mini price charts
+   562→          ════════════════════════════════════════════════════════════════ */}
+   563→      <div className="grid gap-4 lg:grid-cols-3">
+   564→        <FadeIn delay={0.25} className="lg:col-span-2">
+   565→          <GlassCard className="p-5">
+   566→            <div className="flex items-center justify-between">
+   567→              <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Market Intelligence</h3>
+   568→              <span className="inline-flex items-center gap-1.5 rounded-full bg-profit/10 px-2 py-0.5 text-[10px] font-medium text-profit">
+   569→                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-profit" /> Live
+   570→              </span>
+   571→            </div>
+   572→            <div className="mt-4 grid gap-3 sm:grid-cols-3">
+   573→              {(market?.prices ?? []).map((p, idx) => (
+   574→                <div key={p.symbol} className="group relative overflow-hidden rounded-lg border border-border/60 bg-black/30 p-3.5 transition-colors hover:border-gold/20">
+   575→                  {/* Mini chart background */}
+   576→                  <div className="pointer-events-none absolute inset-x-0 bottom-0 h-12 opacity-20">
+   577→                    <MiniAreaChart
+   578→                      data={generateMiniChartData(p.change24h, 14)}
+   579→                      width={200}
+   580→                      height={48}
+   581→                      color={p.change24h >= 0 ? "#00c896" : "#ff4d4f"}
+   582→                    />
+   583→                  </div>
+   584→                  <div className="relative z-10">
+   585→                    <div className="flex items-center justify-between">
+   586→                      <div className="flex items-center gap-2">
+   587→                        <Bitcoin className="h-4 w-4 text-gold" />
+   588→                        <span className="text-sm font-semibold text-foreground">{p.symbol}</span>
+   589→                      </div>
+   590→                      <span className={`text-xs font-medium ${p.change24h >= 0 ? "text-profit" : "text-loss"}`}>
+   591→                        {fmtPct(p.change24h)}
+   592→                      </span>
+   593→                    </div>
+   594→                    <div className="mt-2 font-metric text-lg font-bold text-foreground">
+   595→                      {fmtUSD(p.priceUsd, { decimals: p.priceUsd > 1000 ? 0 : 2 })}
+   596→                    </div>
+   597→                    <div className="text-[11px] text-muted-foreground">{p.name}</div>
+   598→                  </div>
+   599→                </div>
+   600→              ))}
+   601→            </div>
+   602→          </GlassCard>
+   603→        </FadeIn>
+   604→
+   605→        <FadeIn delay={0.3}>
+   606→          <GlassCard gold className="h-full p-5">
+   607→            <div className="flex items-center gap-2">
+   608→              <Sparkles className="h-4 w-4 text-gold" />
+   609→              <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Market Sentiment</h3>
+   610→            </div>
+   611→            <div className="mt-4">
+   612→              <div className="flex items-end justify-between">
+   613→                <span className="text-xs text-muted-foreground">Fear &amp; Greed Index</span>
+   614→                <span className={`text-xs font-semibold ${sentiment && sentiment.fearGreed >= 50 ? "text-profit" : "text-loss"}`}>
+   615→                  {sentiment?.fearGreedLabel ?? "—"}
+   616→                </span>
+   617→              </div>
+   618→              {/* Sentiment gauge */}
+   619→              <div className="mt-3 flex justify-center">
+   620→                <SentimentGauge value={sentiment?.fearGreed ?? 50} />
+   621→              </div>
+   622→              <div className="mt-1 font-metric text-center text-3xl font-bold text-gold-gradient">
+   623→                {sentiment ? sentiment.fearGreed : "—"}
+   624→              </div>
+   625→              <div className="mt-3 h-2 overflow-hidden rounded-full bg-gradient-to-r from-loss via-warning to-profit">
+   626→                {sentiment && (
+   627→                  <div className="relative h-full">
+   628→                    <motion.div
+   629→                      className="absolute top-1/2 h-4 w-1 -translate-y-1/2 rounded-full bg-foreground shadow"
+   630→                      initial={{ left: 0 }}
+   631→                      animate={{ left: `calc(${Math.min(100, Math.max(0, sentiment.fearGreed))}% - 2px)` }}
+   632→                      transition={{ duration: 1, ease: "easeOut" }}
+   633→                    />
+   634→                  </div>
+   635→                )}
+   636→              </div>
+   637→              <div className="mt-6 flex items-center justify-between border-t border-border/60 pt-4 text-sm">
+   638→                <span className="text-muted-foreground">BTC Dominance</span>
+   639→                <span className="font-metric font-semibold text-foreground">{sentiment ? `${sentiment.btcDominance.toFixed(1)}%` : "—"}</span>
+   640→              </div>
+   641→              <div className="mt-3 flex items-center justify-between text-sm">
+   642→                <span className="text-muted-foreground">Fund AUM</span>
+   643→                <span className="font-metric font-semibold text-gold">{fmtUSD(m.aum, { compact: true })}</span>
+   644→              </div>
+   645→            </div>
+   646→          </GlassCard>
+   647→        </FadeIn>
+   648→      </div>
+   649→
+   650→      {/* ════════════════════════════════════════════════════════════════
+   651→          8. RECENT ACTIVITY FEED — Timeline-style
+   652→          ════════════════════════════════════════════════════════════════ */}
+   653→      <FadeIn delay={0.35}>
+   654→        <GlassCard className="p-5">
+   655→          <div className="flex items-end justify-between gap-4">
+   656→            <div>
+   657→              <h2 className="text-lg font-semibold tracking-tight text-foreground">Recent Activity</h2>
+   658→              <p className="mt-0.5 text-sm text-muted-foreground">Your latest deposit &amp; withdrawal requests</p>
+   659→            </div>
+   660→            <Button variant="outline" size="sm" onClick={() => setRoute({ name: "transactions" })} className="border-gold/30 hover:bg-gold/10">
+   661→              View all <ChevronRight className="ml-1 h-3.5 w-3.5" />
+   662→            </Button>
+   663→          </div>
+   664→          <div className="mt-5">
+   665→            {(txnData?.transactions ?? []).length === 0 ? (
+   666→              <div className="flex flex-col items-center gap-3 py-8 text-center">
+   667→                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/5">
+   668→                  <Clock className="h-5 w-5 text-muted-foreground" />
+   669→                </div>
+   670→                <p className="text-sm text-muted-foreground">No transactions yet. Submit your first deposit request.</p>
+   671→                <Button
+   672→                  size="sm"
+   673→                  className="mt-1 bg-gold-gradient text-black font-semibold hover:opacity-90"
+   674→                  onClick={() => setRoute({ name: "transactions" })}
+   675→                >
+   676→                  <Plus className="mr-1.5 h-3.5 w-3.5" /> Make a Deposit
+   677→                </Button>
+   678→              </div>
+   679→            ) : (
+   680→              <div className="relative space-y-0">
+   681→                {/* Timeline line */}
+   682→                <div className="absolute left-[15px] top-2 bottom-2 w-px bg-border/60" />
+   683→                {(txnData?.transactions ?? []).slice(0, 5).map((t: any, idx: number) => (
+   684→                  <motion.div
+   685→                    key={t.id}
+   686→                    initial={{ opacity: 0, x: -8 }}
+   687→                    animate={{ opacity: 1, x: 0 }}
+   688→                    transition={{ delay: idx * 0.08, duration: 0.3 }}
+   689→                    className="group relative flex items-start gap-4 py-3 pl-1"
+   690→                  >
+   691→                    {/* Timeline dot */}
+   692→                    <div className="relative z-10 mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-border/60 bg-card">
+   693→                      {t.type === "DEPOSIT" ? (
+   694→                        <ArrowDownRight className="h-3.5 w-3.5 text-profit" />
+   695→                      ) : (
+   696→                        <ArrowUpRight className="h-3.5 w-3.5 text-info" />
+   697→                      )}
+   698→                      {/* Animated pulse for pending */}
+   699→                      {t.status === "PENDING" && (
+   700→                        <span className="absolute -right-0.5 -top-0.5 h-2 w-2 animate-pulse rounded-full bg-warning" />
+   701→                      )}
+   702→                    </div>
+   703→                    {/* Content */}
+   704→                    <div className="flex flex-1 items-center justify-between gap-2 min-w-0">
+   705→                      <div className="min-w-0">
+   706→                        <div className="flex items-center gap-2">
+   707→                          <TypePill type={t.type} />
+   708→                          <StatusPill status={t.status} />
+   709→                        </div>
+   710→                        <p className="mt-1 font-metric text-sm font-semibold text-foreground">{fmtUSD(t.amount)}</p>
+   711→                      </div>
+   712→                      <span className="shrink-0 text-[11px] text-muted-foreground">{timeAgo(t.createdAt)}</span>
+   713→                    </div>
+   714→                  </motion.div>
+   715→                ))}
+   716→              </div>
+   717→            )}
+   718→          </div>
+   719→        </GlassCard>
+   720→      </FadeIn>
+   721→
+   722→      {/* ════════════════════════════════════════════════════════════════
+   723→          9. FUND NEWS & UPDATES — Latest announcements from fund admin
+   724→          ════════════════════════════════════════════════════════════════ */}
+   725→      <FundNewsSection />
+   726→
+   727→      {/* ════════════════════════════════════════════════════════════════
+   728→          10. QUICK ACTIONS PANEL — Action cards grid
+   729→          ════════════════════════════════════════════════════════════════ */}
+   730→      <FadeIn delay={0.4}>
+   731→        <SectionTitle title="Quick Actions" subtitle="Common operations at your fingertips" />
+   732→        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+   733→          <QuickActionCard
+   734→            icon={<Plus className="h-5 w-5" />}
+   735→            title="Deposit Funds"
+   736→            description="Add capital to your fund position"
+   737→            onClick={() => setRoute({ name: "transactions" })}
+   738→            accent="gold"
+   739→          />
+   740→          <QuickActionCard
+   741→            icon={<Minus className="h-5 w-5" />}
+   742→            title="Withdraw"
+   743→            description="Request a redemption from the fund"
+   744→            onClick={() => setRoute({ name: "transactions" })}
+   745→          />
+   746→          <QuickActionCard
+   747→            icon={<Download className="h-5 w-5" />}
+   748→            title="Download Statement"
+   749→            description="Export your portfolio report as PDF"
+   750→            onClick={() => setRoute({ name: "reports" })}
+   751→          />
+   752→          <QuickActionCard
+   753→            icon={<MessageSquare className="h-5 w-5" />}
+   754→            title="Contact IR"
+   755→            description="Reach your investor relations manager"
+   756→            onClick={() => setRoute({ name: "settings" })}
+   757→          />
+   758→        </div>
+   759→      </FadeIn>
+   760→    </div>
+   761→  );
+   762→}
+   763→
+   764→/* ═══════════════════════════════════════════════════════════════════════
+   765→   HELPER COMPONENTS
+   766→   ═══════════════════════════════════════════════════════════════════════ */
+   767→
+   768→/** Animated counter for the banner value */
+   769→function AnimatedCounter({ value }: { value: number }) {
+   770→  const animated = useCountUp(value, 1200);
+   771→  return <>{fmtUSD(animated)}</>;
+   772→}
+   773→
+   774→/** Quick Action Card with gold gradient hover */
+   775→function QuickActionCard({
+   776→  icon, title, description, onClick, accent,
+   777→}: {
+   778→  icon: React.ReactNode; title: string; description: string; onClick: () => void; accent?: "gold";
+   779→}) {
+   780→  return (
+   781→    <GlassCard hover className="group cursor-pointer p-5" onClick={onClick}>
+   782→      <div className={`mb-3 flex h-10 w-10 items-center justify-center rounded-lg ${
+   783→        accent === "gold" ? "bg-gold/10 text-gold group-hover:bg-gold-gradient group-hover:text-black" : "bg-white/5 text-muted-foreground group-hover:bg-gold/10 group-hover:text-gold"
+   784→      } transition-all duration-300`}>
+   785→        {icon}
+   786→      </div>
+   787→      <h4 className="text-sm font-semibold text-foreground group-hover:text-gold transition-colors duration-300">{title}</h4>
+   788→      <p className="mt-1 text-xs text-muted-foreground leading-relaxed">{description}</p>
+   789→      <div className="mt-3 flex items-center gap-1 text-[11px] font-medium text-gold/60 opacity-0 transition-all duration-300 group-hover:opacity-100 group-hover:gap-2">
+   790→        <span>Open</span> <ArrowRight className="h-3 w-3" />
+   791→      </div>
+   792→    </GlassCard>
+   793→  );
+   794→}
+   795→
+   796→/** Sentiment gauge SVG with animated needle */
+   797→function SentimentGauge({ value }: { value: number }) {
+   798→  const clamped = Math.min(100, Math.max(0, value));
+   799→  const angle = (clamped / 100) * 180; // 0 to 180 degrees
+   800→  const needleAngle = angle - 90; // offset for SVG coordinate
+   801→
+   802→  return (
+   803→    <svg width="140" height="75" viewBox="0 0 140 75" className="overflow-visible">
+   804→      <defs>
+   805→        <linearGradient id="gaugeGrad" x1="0" y1="0" x2="1" y2="0">
+   806→          <stop offset="0%" stopColor="#ff4d4f" />
+   807→          <stop offset="35%" stopColor="#f5a623" />
+   808→          <stop offset="65%" stopColor="#f5a623" />
+   809→          <stop offset="100%" stopColor="#00c896" />
+   810→        </linearGradient>
+   811→      </defs>
+   812→      {/* Gauge arc */}
+   813→      <path
+   814→        d="M 15 70 A 55 55 0 0 1 125 70"
+   815→        fill="none"
+   816→        stroke="url(#gaugeGrad)"
+   817→        strokeWidth="6"
+   818→        strokeLinecap="round"
+   819→        opacity={0.4}
+   820→      />
+   821→      {/* Background arc */}
+   822→      <path
+   823→        d="M 15 70 A 55 55 0 0 1 125 70"
+   824→        fill="none"
+   825→        stroke="rgba(255,255,255,0.05)"
+   826→        strokeWidth="6"
+   827→        strokeLinecap="round"
+   828→      />
+   829→      {/* Needle */}
+   830→      <motion.g
+   831→        initial={{ rotate: -90 }}
+   832→        animate={{ rotate: needleAngle }}
+   833→        transition={{ duration: 1.2, ease: "easeOut" }}
+   834→        style={{ transformOrigin: "70px 70px" }}
+   835→      >
+   836→        <line x1="70" y1="70" x2="70" y2="22" stroke="#f5f5f4" strokeWidth="2" strokeLinecap="round" />
+   837→        <circle cx="70" cy="70" r="4" fill="#D4AF37" />
+   838→      </motion.g>
+   839→    </svg>
+   840→  );
+   841→}
+   842→
+   843→/** Mini area chart component for background decorations */
+   844→function MiniAreaChart({ data, width, height, color = "#D4AF37" }: { data: number[]; width: number; height: number; color?: string }) {
+   845→  if (data.length < 2) return null;
+   846→  const min = Math.min(...data);
+   847→  const max = Math.max(...data);
+   848→  const range = max - min || 1;
+   849→  const pad = 2;
+   850→  const w = width;
+   851→  const h = height;
+   852→
+   853→  const points = data.map((v, i) => ({
+   854→    x: pad + (i / (data.length - 1)) * (w - pad * 2),
+   855→    y: pad + (1 - (v - min) / range) * (h - pad * 2),
+   856→  }));
+   857→
+   858→  let path = `M ${points[0].x.toFixed(1)} ${points[0].y.toFixed(1)}`;
+   859→  for (let i = 1; i < points.length; i++) {
+   860→    const cp1x = (points[i - 1].x + points[i].x) / 2;
+   861→    const cp1y = points[i - 1].y;
+   862→    const cp2x = (points[i - 1].x + points[i].x) / 2;
+   863→    const cp2y = points[i].y;
+   864→    path += ` C ${cp1x.toFixed(1)} ${cp1y.toFixed(1)}, ${cp2x.toFixed(1)} ${cp2y.toFixed(1)}, ${points[i].x.toFixed(1)} ${points[i].y.toFixed(1)}`;
+   865→  }
+   866→
+   867→  const last = points[points.length - 1];
+   868→  const fillPath = `${path} L ${last.x.toFixed(1)} ${h} L ${points[0].x.toFixed(1)} ${h} Z`;
+   869→
+   870→  const gradId = `mini-${Math.random().toString(36).slice(2, 8)}`;
+   871→
+   872→  return (
+   873→    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" className="w-full">
+   874→      <defs>
+   875→        <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+   876→          <stop offset="0%" stopColor={color} stopOpacity={0.3} />
+   877→          <stop offset="100%" stopColor={color} stopOpacity={0} />
+   878→        </linearGradient>
+   879→      </defs>
+   880→      <path d={fillPath} fill={`url(#${gradId})`} />
+   881→      <path d={path} fill="none" stroke={color} strokeWidth={1.5} strokeLinecap="round" />
+   882→    </svg>
+   883→  );
+   884→}
+   885→
+   886→/** Generate deterministic mini chart data from a 24h change value */
+   887→function generateMiniChartData(change24h: number, points: number): number[] {
+   888→  const data: number[] = [];
+   889→  const base = 100;
+   890→  const trend = change24h / points;
+   891→  for (let i = 0; i < points; i++) {
+   892→    const noise = Math.sin(i * 2.5 + change24h) * 2 + Math.cos(i * 1.3) * 1.5;
+   893→    data.push(base + trend * i + noise);
+   894→  }
+   895→  return data;
+   896→}
+   897→
+   898→function sliceHistory(history: { date: string; nav: number }[], range: string) {
+   899→  if (history.length === 0) return [];
+   900→  const now = Date.now();
+   901→  const days: Record<string, number> = { "1M": 30, "3M": 90, "6M": 180, "1Y": 365, ALL: Infinity };
+   902→  const cutoff = now - (days[range] ?? 180) * 86400000;
+   903→  const filtered = history.filter((p) => new Date(p.date).getTime() >= cutoff);
+   904→  // downsample to ~120 points for perf
+   905→  if (filtered.length <= 120) return filtered;
+   906→  const step = Math.ceil(filtered.length / 120);
+   907→  return filtered.filter((_, i) => i % step === 0);
+   908→}
+   909→
+   910→function AnimatedMetric({
+   911→  label, value, decimals = 0, prefix = "$", icon, accent, sub, sparkline, extra,
+   912→}: {
+   913→  label: string; value: number; decimals?: number; prefix?: string;
+   914→  icon: React.ReactNode; accent?: "gold" | "profit" | "loss" | "neutral"; sub?: React.ReactNode;
+   915→  sparkline?: number[]; extra?: React.ReactNode;
+   916→}) {
+   917→  const animated = useCountUp(value, 1000);
+   918→  const display = prefix === "$"
+   919→    ? fmtUSD(animated, { decimals })
+   920→    : `${prefix}${fmtNum(animated, decimals)}`;
+   921→  return (
+   922→    <MetricTile label={label} value={display} icon={icon} accent={accent} sub={sub} sparkline={sparkline}>
+   923→      {extra}
+   924→    </MetricTile>
+   925→  );
+   926→}
+   927→
+   928→function DashboardSkeleton() {
+   929→  return (
+   930→    <div className="space-y-6">
+   931→      <div className="h-8 w-48 rounded bg-muted/40 shimmer" />
+   932→      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+   933→        {[0, 1, 2, 3].map((i) => <div key={i} className="h-28 rounded-xl glass shimmer" />)}
+   934→      </div>
+   935→      <div className="h-80 rounded-xl glass shimmer" />
+   936→      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+   937→        {[0, 1, 2, 3].map((i) => <div key={i} className="h-20 rounded-xl glass shimmer" />)}
+   938→      </div>
+   939→    </div>
+   940→  );
+   941→}
+   942→
+   943→/** Fund News & Updates section — fetches from /api/fund/updates */
+   944→function FundNewsSection() {
+   945→  const { data, isLoading } = useQuery<{ updates: Array<{
+   946→    id: string; title: string; body: string; category: string; priority: string;
+   947→    pinned: boolean; createdAt: string;
+   948→    author: { name: string } | null;
+   949→  }> }>({
+   950→    queryKey: ["fund-updates"],
+   951→    queryFn: () => api.get("/api/fund/updates?limit=5"),
+   952→    refetchInterval: 120000,
+   953→  });
+   954→
+   955→  const categoryConfig: Record<string, { icon: typeof TrendingUp; color: string; bg: string }> = {
+   956→    PERFORMANCE: { icon: TrendingUp, color: "text-profit", bg: "bg-profit/10" },
+   957→    STRATEGY: { icon: PieChart, color: "text-gold", bg: "bg-gold/10" },
+   958→    REGULATORY: { icon: Shield, color: "text-info", bg: "bg-info/10" },
+   959→    MARKET: { icon: BarChart3, color: "text-warning", bg: "bg-warning/10" },
+   960→    GENERAL: { icon: MessageSquare, color: "text-muted-foreground", bg: "bg-muted" },
+   961→  };
+   962→
+   963→  const updates = data?.updates ?? [];
+   964→
+   965→  if (isLoading) {
+   966→    return (
+   967→      <FadeIn delay={0.35}>
+   968→        <SectionTitle title="Fund News & Updates" subtitle="Latest announcements from the investment committee" />
+   969→        <div className="mt-4 space-y-3">
+   970→          {[0, 1, 2].map((i) => <div key={i} className="h-20 rounded-xl glass shimmer" />)}
+   971→        </div>
+   972→      </FadeIn>
+   973→    );
+   974→  }
+   975→
+   976→  if (updates.length === 0) return null;
+   977→
+   978→  return (
+   979→    <FadeIn delay={0.35}>
+   980→      <SectionTitle title="Fund News & Updates" subtitle="Latest announcements from the investment committee" />
+   981→      <div className="mt-4 space-y-3">
+   982→        {updates.map((u) => {
+   983→          const cfg = categoryConfig[u.category] ?? categoryConfig.GENERAL;
+   984→          const Icon = cfg.icon;
+   985→          return (
+   986→            <GlassCard key={u.id} hover className="p-4">
+   987→              <div className="flex items-start gap-4">
+   988→                <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${cfg.bg}`}>
+   989→                  <Icon className={`h-5 w-5 ${cfg.color}`} />
+   990→                </div>
+   991→                <div className="min-w-0 flex-1">
+   992→                  <div className="flex items-center gap-2">
+   993→                    <h4 className="truncate text-sm font-semibold text-foreground">{u.title}</h4>
+   994→                    {u.pinned && (
+   995→                      <span className="flex items-center gap-1 rounded-full bg-gold/10 px-2 py-0.5 text-[10px] font-medium text-gold">
+   996→                        <Zap className="h-2.5 w-2.5" /> Pinned
+   997→                      </span>
+   998→                    )}
+   999→                    {u.priority === "IMPORTANT" && (
+  1000→                      <span className="rounded-full bg-warning/10 px-2 py-0.5 text-[10px] font-medium text-warning">Important</span>
+  1001→                    )}
+  1002→                    {u.priority === "URGENT" && (
+  1003→                      <span className="rounded-full bg-loss/10 px-2 py-0.5 text-[10px] font-medium text-loss">Urgent</span>
+  1004→                    )}
+  1005→                  </div>
+  1006→                  <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{u.body}</p>
+  1007→                  <div className="mt-2 flex items-center gap-3 text-[11px] text-muted-foreground/70">
+  1008→                    <span className={`uppercase tracking-wider ${cfg.color}`}>{u.category}</span>
+  1009→                    <span>·</span>
+  1010→                    <span>{timeAgo(u.createdAt)}</span>
+  1011→                    {u.author && (
+  1012→                      <>
+  1013→                        <span>·</span>
+  1014→                        <span>{u.author.name}</span>
+  1015→                      </>
+  1016→                    )}
+  1017→                  </div>
+  1018→                </div>
+  1019→              </div>
+  1020→            </GlassCard>
+  1021→          );
+  1022→        })}
+  1023→      </div>
+  1024→    </FadeIn>
+  1025→  );
+  1026→}
+  1027→

@@ -3,6 +3,74 @@ import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import type { ReactNode } from "react";
 
+/* ------------------------------------------------------------------ */
+/*  Skeleton Components — Premium loading placeholders                 */
+/* ------------------------------------------------------------------ */
+
+export function SkeletonCard({ className }: { className?: string }) {
+  return <div className={cn("rounded-xl glass shimmer", className)} />;
+}
+
+export function SkeletonMetric({ className }: { className?: string }) {
+  return (
+    <div className={cn("rounded-xl glass p-5 space-y-3", className)}>
+      <div className="h-3 w-24 rounded bg-muted/40 shimmer" />
+      <div className="h-8 w-32 rounded bg-muted/40 shimmer" />
+      <div className="h-3 w-20 rounded bg-muted/30 shimmer" />
+    </div>
+  );
+}
+
+export function SkeletonTable({ rows = 5, cols = 4, className }: { rows?: number; cols?: number; className?: string }) {
+  return (
+    <div className={cn("space-y-3", className)}>
+      <div className="flex gap-4">
+        {Array.from({ length: cols }).map((_, i) => (
+          <div key={i} className="h-4 flex-1 rounded bg-muted/30 shimmer" />
+        ))}
+      </div>
+      {Array.from({ length: rows }).map((_, i) => (
+        <div key={i} className="flex gap-4" style={{ opacity: 1 - i * 0.12 }}>
+          {Array.from({ length: cols }).map((_, j) => (
+            <div key={j} className="h-4 flex-1 rounded bg-muted/20 shimmer" />
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Empty State Component — Reusable empty data display                */
+/* ------------------------------------------------------------------ */
+
+export function EmptyState({
+  icon,
+  title,
+  description,
+  action,
+  className,
+}: {
+  icon: ReactNode;
+  title: string;
+  description: string;
+  action?: ReactNode;
+  className?: string;
+}) {
+  return (
+    <FadeIn className={cn("flex flex-col items-center justify-center gap-4 py-16 text-center", className)}>
+      <div className="flex h-16 w-16 items-center justify-center rounded-full border border-gold/20 bg-gold/5">
+        <span className="text-gold/60">{icon}</span>
+      </div>
+      <div className="space-y-1">
+        <h3 className="text-lg font-semibold text-foreground">{title}</h3>
+        <p className="max-w-sm text-sm text-muted-foreground">{description}</p>
+      </div>
+      {action}
+    </FadeIn>
+  );
+}
+
 export function GlassCard({
   className,
   children,

@@ -2,7 +2,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { api } from "@/lib/api-client";
-import { GlassCard, MetricTile, SectionTitle, FadeIn } from "@/components/brand/primitives";
+import { GlassCard, MetricTile, SectionTitle, FadeIn, SkeletonCard, SkeletonMetric } from "@/components/brand/primitives";
 import { fmtNum, fmtPct, fmtDate } from "@/lib/format";
 import {
   TrendingUp, TrendingDown, Activity, Target, Gauge, Sigma,
@@ -109,15 +109,11 @@ export function AnalyticsPage() {
         </FadeIn>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {[0, 1, 2, 3].map((i) => (
-            <div key={i} className="relative h-32 overflow-hidden rounded-xl glass shimmer">
-              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-gold/30 to-transparent" />
-            </div>
+            <SkeletonMetric key={i} className="h-32" />
           ))}
         </div>
         {[0, 1, 2, 3].map((i) => (
-          <div key={i} className="relative h-80 overflow-hidden rounded-xl glass shimmer">
-            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-gold/30 to-transparent" />
-          </div>
+          <SkeletonCard key={i} className="h-80 chart-hover-glow" />
         ))}
       </div>
     );

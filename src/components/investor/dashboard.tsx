@@ -2,7 +2,7 @@
 import { useEffect, useState, useRef, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api-client";
-import { GlassCard, MetricTile, SectionTitle, StatusPill, TypePill, FadeIn } from "@/components/brand/primitives";
+import { GlassCard, MetricTile, SectionTitle, StatusPill, TypePill, FadeIn, SkeletonCard, SkeletonMetric, SkeletonTable } from "@/components/brand/primitives";
 import { fmtUSD, fmtPct, fmtNum, fmtDate, timeAgo } from "@/lib/format";
 import { useCountUp } from "@/hooks/use-count-up";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,7 @@ import {
   PieChart as RPie, Pie, Cell, BarChart, Bar, LineChart, Line, ComposedChart,
 } from "recharts";
 import { useApp } from "@/lib/store";
+import { usePriceStream } from "@/hooks/use-price-stream";
 
 interface PortfolioData {
   fund: { id: string; name: string; slug: string; minInvest: number; feeStructure: string };
@@ -53,6 +54,9 @@ export function InvestorDashboard() {
   const [showBtcBench, setShowBtcBench] = useState(false);
   const [tickerPaused, setTickerPaused] = useState(false);
 
+  // ── WebSocket real-time price stream ──
+  const { prices: streamPrices, fearGreed: streamFearGreed, connectionStatus } = usePriceStream();
+
   const { data: portfolio } = useQuery<PortfolioData>({
     queryKey: ["portfolio"],
     queryFn: () => api.get("/api/portfolio"),
@@ -75,6 +79,11 @@ export function InvestorDashboard() {
     queryKey: ["my-transactions"],
     queryFn: () => api.get("/api/transactions"),
   });
+
+  // ── Merge: prefer real-time stream, fall back to polled API data ──
+  const livePrices = streamPrices.length > 0 ? streamPrices : (market?.prices ?? []);
+  const liveSentiment = streamFearGreed ?? sentiment ?? null;
+  const isLive = connectionStatus === "connected" && streamPrices.length > 0;
 
   const navHistory = portfolio?.metrics.navHistory ?? [];
   const chartData = useMemo(() => sliceHistory(navHistory, range), [navHistory, range]);
@@ -113,8 +122,17 @@ export function InvestorDashboard() {
               {/* Left: Fund info + NAV */}
               <div className="flex-1">
                 <div className="flex items-center gap-2">
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-gold/10 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-gold">
-                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-gold" /> Live
+                  <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${
+                    isLive
+                      ? "bg-emerald-500/10 text-emerald-400"
+                      : connectionStatus === "connecting"
+                        ? "bg-amber-500/10 text-amber-400"
+                        : "bg-red-500/10 text-red-400"
+                  }`}>
+                    <span className={`h-1.5 w-1.5 animate-pulse rounded-full ${
+                      isLive ? "bg-emerald-400" : connectionStatus === "connecting" ? "bg-amber-400" : "bg-red-400"
+                    }`} />
+                    {isLive ? "LIVE" : connectionStatus === "connecting" ? "CONNECTING" : "OFFLINE"}
                   </span>
                   <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Institutional Fund</span>
                 </div>
@@ -464,12 +482,12 @@ export function InvestorDashboard() {
             onMouseLeave={() => setTickerPaused(false)}
           >
             {/* Fear & Greed badge — fixed left */}
-            {sentiment && (
+            {liveSentiment && (
               <div className="relative z-10 mr-4 flex shrink-0 items-center gap-1.5 rounded-full border border-border/60 bg-black/40 px-3 py-1">
                 <Gauge className="h-3 w-3 text-gold" />
                 <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">F&G</span>
-                <span className={`font-metric text-xs font-bold ${sentiment.fearGreed >= 50 ? "text-profit" : "text-loss"}`}>
-                  {sentiment.fearGreed}
+                <span className={`font-metric text-xs font-bold ${liveSentiment.fearGreed >= 50 ? "text-profit" : "text-loss"}`}>
+                  {liveSentiment.fearGreed}
                 </span>
               </div>
             )}
@@ -482,7 +500,7 @@ export function InvestorDashboard() {
                 style={{ animationPlayState: tickerPaused ? "paused" : "running" }}
               >
                 {/* Duplicate items for seamless loop */}
-                {[...(market?.prices ?? []), ...(market?.prices ?? [])].map((p, i) => (
+                {[...livePrices, ...livePrices].map((p, i) => (
                   <span key={`${p.symbol}-${i}`} className="mx-5 inline-flex items-center gap-2">
                     <span className="text-xs font-semibold text-foreground/80">{p.symbol}</span>
                     <span className="font-metric text-xs font-medium text-foreground">
@@ -498,7 +516,7 @@ export function InvestorDashboard() {
                     )}
                   </span>
                 ))}
-                {(market?.prices ?? []).length === 0 && (
+                {livePrices.length === 0 && (
                   <span className="mx-5 text-xs text-muted-foreground">Loading market data…</span>
                 )}
               </div>
@@ -565,12 +583,19 @@ export function InvestorDashboard() {
           <GlassCard className="p-5">
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Market Intelligence</h3>
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-profit/10 px-2 py-0.5 text-[10px] font-medium text-profit">
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-profit" /> Live
+              <span className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                isLive
+                  ? "bg-emerald-500/10 text-emerald-400"
+                  : "bg-amber-500/10 text-amber-400"
+              }`}>
+                <span className={`h-1.5 w-1.5 animate-pulse rounded-full ${
+                  isLive ? "bg-emerald-400" : "bg-amber-400"
+                }`} />
+                {isLive ? "LIVE" : "DELAYED"}
               </span>
             </div>
             <div className="mt-4 grid gap-3 sm:grid-cols-3">
-              {(market?.prices ?? []).map((p, idx) => (
+              {livePrices.map((p, idx) => (
                 <div key={p.symbol} className="group relative overflow-hidden rounded-lg border border-border/60 bg-black/30 p-3.5 transition-colors hover:border-gold/20">
                   {/* Mini chart background */}
                   <div className="pointer-events-none absolute inset-x-0 bottom-0 h-12 opacity-20">
@@ -611,24 +636,24 @@ export function InvestorDashboard() {
             <div className="mt-4">
               <div className="flex items-end justify-between">
                 <span className="text-xs text-muted-foreground">Fear &amp; Greed Index</span>
-                <span className={`text-xs font-semibold ${sentiment && sentiment.fearGreed >= 50 ? "text-profit" : "text-loss"}`}>
-                  {sentiment?.fearGreedLabel ?? "—"}
+                <span className={`text-xs font-semibold ${liveSentiment && liveSentiment.fearGreed >= 50 ? "text-profit" : "text-loss"}`}>
+                  {liveSentiment?.fearGreedLabel ?? "—"}
                 </span>
               </div>
               {/* Sentiment gauge */}
               <div className="mt-3 flex justify-center">
-                <SentimentGauge value={sentiment?.fearGreed ?? 50} />
+                <SentimentGauge value={liveSentiment?.fearGreed ?? 50} />
               </div>
               <div className="mt-1 font-metric text-center text-3xl font-bold text-gold-gradient">
-                {sentiment ? sentiment.fearGreed : "—"}
+                {liveSentiment ? liveSentiment.fearGreed : "—"}
               </div>
               <div className="mt-3 h-2 overflow-hidden rounded-full bg-gradient-to-r from-loss via-warning to-profit">
-                {sentiment && (
+                {liveSentiment && (
                   <div className="relative h-full">
                     <motion.div
                       className="absolute top-1/2 h-4 w-1 -translate-y-1/2 rounded-full bg-foreground shadow"
                       initial={{ left: 0 }}
-                      animate={{ left: `calc(${Math.min(100, Math.max(0, sentiment.fearGreed))}% - 2px)` }}
+                      animate={{ left: `calc(${Math.min(100, Math.max(0, liveSentiment.fearGreed))}% - 2px)` }}
                       transition={{ duration: 1, ease: "easeOut" }}
                     />
                   </div>
@@ -636,7 +661,7 @@ export function InvestorDashboard() {
               </div>
               <div className="mt-6 flex items-center justify-between border-t border-border/60 pt-4 text-sm">
                 <span className="text-muted-foreground">BTC Dominance</span>
-                <span className="font-metric font-semibold text-foreground">{sentiment ? `${sentiment.btcDominance.toFixed(1)}%` : "—"}</span>
+                <span className="font-metric font-semibold text-foreground">{liveSentiment ? `${liveSentiment.btcDominance.toFixed(1)}%` : "—"}</span>
               </div>
               <div className="mt-3 flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Fund AUM</span>
@@ -928,13 +953,13 @@ function AnimatedMetric({
 function DashboardSkeleton() {
   return (
     <div className="space-y-6">
-      <div className="h-8 w-48 rounded bg-muted/40 shimmer" />
+      <SkeletonMetric className="h-10 w-48 rounded" />
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {[0, 1, 2, 3].map((i) => <div key={i} className="h-28 rounded-xl glass shimmer" />)}
+        {[0, 1, 2, 3].map((i) => <SkeletonMetric key={i} className="h-28" />)}
       </div>
-      <div className="h-80 rounded-xl glass shimmer" />
+      <SkeletonCard className="h-80 chart-hover-glow" />
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {[0, 1, 2, 3].map((i) => <div key={i} className="h-20 rounded-xl glass shimmer" />)}
+        {[0, 1, 2, 3].map((i) => <SkeletonMetric key={i} className="h-20" />)}
       </div>
     </div>
   );
@@ -967,7 +992,7 @@ function FundNewsSection() {
       <FadeIn delay={0.35}>
         <SectionTitle title="Fund News & Updates" subtitle="Latest announcements from the investment committee" />
         <div className="mt-4 space-y-3">
-          {[0, 1, 2].map((i) => <div key={i} className="h-20 rounded-xl glass shimmer" />)}
+          {[0, 1, 2].map((i) => <SkeletonCard key={i} className="h-20 hover-lift" />)}
         </div>
       </FadeIn>
     );

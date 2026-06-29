@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api-client";
-import { GlassCard, SectionTitle, FadeIn } from "@/components/brand/primitives";
+import { GlassCard, SectionTitle, FadeIn, EmptyState } from "@/components/brand/primitives";
 import { Input } from "@/components/ui/input";
 import { fmtDateTime } from "@/lib/format";
 import { History, Search, Shield, User, TrendingUp, Database, ArrowLeftRight, LogIn, KeyRound, Settings, Link2, ShieldCheck, ShieldAlert } from "lucide-react";
@@ -157,10 +157,11 @@ export function AdminAudit() {
                 );
               })}
               {logs.length === 0 && (
-                <div className="flex flex-col items-center gap-2 py-12 text-center text-muted-foreground">
-                  <History className="h-8 w-8 text-gold/40" />
-                  <span>No audit logs found</span>
-                </div>
+                <EmptyState
+                  icon={<History className="h-8 w-8" />}
+                  title="No audit logs found"
+                  description="No system events match your current filter."
+                />
               )}
             </div>
           </div>

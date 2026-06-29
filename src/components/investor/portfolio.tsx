@@ -2,7 +2,7 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api-client";
-import { GlassCard, MetricTile, SectionTitle, FadeIn } from "@/components/brand/primitives";
+import { GlassCard, MetricTile, SectionTitle, FadeIn, SkeletonCard, SkeletonMetric } from "@/components/brand/primitives";
 import { fmtUSD, fmtNum, fmtPct, fmtDate } from "@/lib/format";
 import { useApp } from "@/lib/store";
 import {
@@ -820,19 +820,19 @@ function getNextNavUpdate(): string {
 function PortfolioSkeleton() {
   return (
     <div className="space-y-6">
-      <div className="h-20 rounded-xl glass shimmer" />
+      <SkeletonCard className="h-20 hover-lift" />
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {[...Array(4)].map((_, i) => (
-          <div key={i} className="h-28 rounded-xl glass shimmer" />
+          <SkeletonMetric key={i} className="h-28" />
         ))}
       </div>
-      <div className="h-80 rounded-xl glass shimmer" />
+      <SkeletonCard className="h-80 chart-hover-glow" />
       <div className="grid gap-4 lg:grid-cols-3">
-        <div className="h-80 rounded-xl glass shimmer lg:col-span-2" />
-        <div className="h-80 rounded-xl glass shimmer" />
+        <SkeletonCard className="h-80 lg:col-span-2 chart-hover-glow" />
+        <SkeletonCard className="h-80 hover-lift" />
       </div>
-      <div className="h-60 rounded-xl glass shimmer" />
-      <div className="h-40 rounded-xl glass shimmer" />
+      <SkeletonCard className="h-60 hover-lift" />
+      <SkeletonCard className="h-40 hover-lift" />
     </div>
   );
 }

@@ -155,7 +155,62 @@ export async function POST(req: NextRequest) {
       await db.fundUpdate.updateMany({ where: { pinned: true }, data: { createdAt: new Date() } });
     }
 
-    // 10. Audit bootstrap (using the hash-chained audit() helper)
+    // 10. Seed watchlist items for demo investor
+    const existingWatchlist = await db.watchlistItem.count({ where: { userId: demo.id } });
+    if (existingWatchlist === 0) {
+      const watchlistItems = [
+        { symbol: "bitcoin", name: "Bitcoin", alertPrice: 70000, alertDirection: "ABOVE", notes: "Breakout level — key resistance" },
+        { symbol: "ethereum", name: "Ethereum", alertPrice: 3200, alertDirection: "BELOW", notes: "Buy zone support" },
+        { symbol: "solana", name: "Solana", alertPrice: 200, alertDirection: "ABOVE", notes: "Momentum trigger" },
+      ];
+      for (const w of watchlistItems) {
+        await db.watchlistItem.create({
+          data: { userId: demo.id, ...w },
+        });
+      }
+    }
+
+    // 11. Admin messages seed
+    const adminUser = await db.user.findFirst({ where: { role: "ADMIN" } });
+    const investorUser = await db.user.findFirst({ where: { role: "USER" } });
+    if (adminUser) {
+      const existingMsgs = await db.adminMessage.count();
+      if (existingMsgs === 0) {
+        await db.adminMessage.createMany({
+          data: [
+            {
+              senderId: adminUser.id,
+              recipientId: investorUser?.id,
+              subject: "Welcome to Nightmare Alpha Crypto Fund",
+              body: "Dear Investor,\n\nWelcome to the Nightmare Invest portal. Your account has been set up and you now have access to your personal dashboard, portfolio analytics, and transaction management tools.\n\nPlease review your holdings and familiarize yourself with the platform. Our investor relations team is available at ir@nightmare.invest for any questions.\n\nBest regards,\nNightmare Invest Management",
+              priority: "IMPORTANT",
+              isBroadcast: false,
+              isRead: false,
+            },
+            {
+              senderId: adminUser.id,
+              recipientId: null,
+              subject: "Q3 2026 Investment Outlook",
+              body: "Dear Investors,\n\nAs we enter Q3 2026, the crypto market continues to show strong momentum with institutional adoption accelerating across multiple sectors.\n\nKey highlights:\n- Bitcoin ETF inflows reached new highs in June\n- Ethereum's Pectra upgrade has enhanced staking economics\n- Our fund's risk-adjusted returns remain top-quartile\n\nWe remain constructive on the market and will continue to actively manage positions to maximize alpha generation.\n\nNightmare Invest Investment Committee",
+              priority: "NORMAL",
+              isBroadcast: true,
+              isRead: false,
+            },
+            {
+              senderId: adminUser.id,
+              recipientId: null,
+              subject: "Scheduled Maintenance Window — July 5",
+              body: "Please be advised that our platform will undergo scheduled maintenance on July 5, 2026, from 02:00 UTC to 06:00 UTC.\n\nDuring this period, the portal may be temporarily unavailable. All pending transactions will be processed after the maintenance window.\n\nThank you for your patience.\n\nOperations Team",
+              priority: "URGENT",
+              isBroadcast: true,
+              isRead: false,
+            },
+          ],
+        });
+      }
+    }
+
+    // 12. Audit bootstrap (using the hash-chained audit() helper)
     const { audit } = await import("@/lib/audit");
     await audit({
       action: "SYSTEM_SEED",

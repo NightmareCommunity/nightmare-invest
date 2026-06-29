@@ -20,6 +20,11 @@ import { AdminKyc } from "@/components/admin/kyc";
 import { AdminLedger } from "@/components/admin/ledger";
 import { AdminAudit } from "@/components/admin/audit";
 import { AdminFundUpdates } from "@/components/admin/fund-updates";
+import { SystemHealth } from "@/components/admin/system-health";
+import { AdminCommunications } from "@/components/admin/communications";
+import { InvestorInbox } from "@/components/investor/inbox";
+import { WatchlistPage } from "@/components/investor/watchlist";
+import { CalculatorPage } from "@/components/investor/calculator";
 import { WelcomeModal } from "@/components/brand/welcome-modal";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
@@ -125,6 +130,9 @@ function renderInvestor(name: string) {
     case "transactions": return <TransactionsPage />;
     case "reports": return <ReportsPage />;
     case "settings": return <SettingsPage />;
+    case "watchlist": return <WatchlistPage />;
+    case "calculator": return <CalculatorPage />;
+    case "inbox": return <InvestorInbox />;
     default: return <InvestorDashboard />;
   }
 }
@@ -140,6 +148,8 @@ function renderAdmin(name: string) {
     case "admin-ledger": return <AdminLedger />;
     case "admin-audit": return <AdminAudit />;
     case "admin-fund-updates": return <AdminFundUpdates />;
+    case "admin-system-health": return <SystemHealth />;
+    case "admin-communications": return <AdminCommunications />;
     default: return <AdminDashboard />;
   }
 }

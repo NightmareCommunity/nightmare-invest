@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api-client";
-import { GlassCard, SectionTitle, FadeIn } from "@/components/brand/primitives";
+import { GlassCard, SectionTitle, FadeIn, SkeletonCard } from "@/components/brand/primitives";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -51,7 +51,22 @@ export function AdminFund() {
     }
   };
 
-  if (!data) return <div className="h-80 rounded-xl glass shimmer" />;
+  if (!data) return (
+    <div className="space-y-6">
+      <FadeIn>
+        <div>
+          <span className="text-xs font-medium uppercase tracking-[0.18em] text-gold">Admin Console</span>
+          <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">Fund Management</h1>
+          <p className="text-sm text-muted-foreground">Configure fund metadata and target allocation</p>
+        </div>
+      </FadeIn>
+      <div className="grid gap-4 lg:grid-cols-3">
+        <SkeletonCard className="lg:col-span-2 h-80 hover-lift" />
+        <SkeletonCard className="h-80 hover-lift" />
+      </div>
+      <SkeletonCard className="h-60 hover-lift" />
+    </div>
+  );
 
   return (
     <div className="space-y-6">

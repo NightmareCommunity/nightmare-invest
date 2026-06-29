@@ -2,7 +2,7 @@
 import { useState, useMemo } from "react";
 import { useApp } from "@/lib/store";
 import { api } from "@/lib/api-client";
-import { GlassCard, SectionTitle, FadeIn } from "@/components/brand/primitives";
+import { GlassCard, SectionTitle, FadeIn, SkeletonCard } from "@/components/brand/primitives";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -268,7 +268,7 @@ export function SettingsPage() {
 
       {/* ---- Account Completion Progress ---- */}
       <FadeIn delay={0.03}>
-        <GlassCard gold className="p-5">
+        <GlassCard gold className="p-5 hover-lift">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex-1">
               <div className="flex items-center gap-2">
@@ -310,7 +310,7 @@ export function SettingsPage() {
 
       {/* ---- KYC Progress Visualization ---- */}
       <FadeIn delay={0.05}>
-        <GlassCard className="p-5">
+        <GlassCard className="p-5 hover-lift">
           <div className="flex items-center justify-between gap-3 mb-4">
             <div>
               <h3 className="text-base font-semibold text-foreground">KYC Verification Progress</h3>
@@ -358,7 +358,7 @@ export function SettingsPage() {
         <FadeIn delay={0.07} className="lg:col-span-2 space-y-4">
 
           {/* ---- Profile Section (Enhanced) ---- */}
-          <GlassCard className="p-6">
+          <GlassCard className="p-6 hover-lift">
             <div className="flex items-start justify-between gap-4">
               <SectionTitle title="Profile" subtitle="Account information" />
               <Button
@@ -432,7 +432,7 @@ export function SettingsPage() {
           </GlassCard>
 
           {/* ---- Password Section (Enhanced) ---- */}
-          <GlassCard className="p-6">
+          <GlassCard className="p-6 hover-lift">
             <SectionTitle title="Password" subtitle="Update your password" />
             <div className="mt-4 space-y-4">
               <div className="space-y-1.5">
@@ -518,7 +518,7 @@ export function SettingsPage() {
           <KycSection />
 
           {/* ---- Notification Preferences ---- */}
-          <GlassCard className="p-6">
+          <GlassCard className="p-6 hover-lift">
             <SectionTitle title="Notification Preferences" subtitle="Control what updates you receive" />
             <div className="mt-5 space-y-4">
               {[
@@ -582,7 +582,7 @@ export function SettingsPage() {
           </GlassCard>
 
           {/* ---- Connected Sessions (Enhanced) ---- */}
-          <GlassCard className="p-6">
+          <GlassCard className="p-6 hover-lift">
             <SectionTitle title="Connected Sessions" subtitle="Authentication tokens" />
             <div className="mt-4 space-y-3">
               <div className="rounded-lg border border-profit/20 bg-profit/5 p-4">
@@ -620,7 +620,7 @@ export function SettingsPage() {
         <FadeIn delay={0.12}>
           <div className="space-y-4">
             {/* ---- Security Center (Enhanced) ---- */}
-            <GlassCard gold className="p-6">
+            <GlassCard gold className="p-6 hover-lift">
               <div className="flex flex-col items-center text-center">
                 <div className="flex items-center gap-2">
                   <Shield className="h-5 w-5 text-gold" />
@@ -686,7 +686,7 @@ export function SettingsPage() {
             </GlassCard>
 
             {/* ---- Quick Status Cards ---- */}
-            <GlassCard className="p-5">
+            <GlassCard className="p-5 hover-lift">
               <div className="flex items-center gap-3">
                 <div className={`flex h-9 w-9 items-center justify-center rounded-lg border ${
                   totpEnabled ? "border-profit/20 bg-profit/10" : "border-gold/20 bg-gold/5"
@@ -703,7 +703,7 @@ export function SettingsPage() {
               </div>
             </GlassCard>
 
-            <GlassCard className="p-5">
+            <GlassCard className="p-5 hover-lift">
               <div className="flex items-center gap-3">
                 <div className={`flex h-9 w-9 items-center justify-center rounded-lg border ${
                   kycStatus === "APPROVED"
@@ -747,7 +747,7 @@ export function SettingsPage() {
               </div>
             </GlassCard>
 
-            <GlassCard className="p-5">
+            <GlassCard className="p-5 hover-lift">
               <div className="flex items-center gap-3">
                 <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-gold/20 bg-gold/5">
                   <Bell className="h-4 w-4 text-gold" />

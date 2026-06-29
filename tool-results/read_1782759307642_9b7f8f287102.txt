@@ -1,0 +1,1026 @@
+     1→"use client";
+     2→import { useQuery } from "@tanstack/react-query";
+     3→import { useMemo } from "react";
+     4→import { api } from "@/lib/api-client";
+     5→import { GlassCard, MetricTile, SectionTitle, FadeIn } from "@/components/brand/primitives";
+     6→import { fmtNum, fmtPct, fmtDate } from "@/lib/format";
+     7→import {
+     8→  TrendingUp, TrendingDown, Activity, Target, Gauge, Sigma,
+     9→  ArrowUp, ArrowDown, Flame, Trophy, AlertTriangle,
+    10→  BarChart3, LineChart, Shield, Info, Zap, CircleDot,
+    11→} from "lucide-react";
+    12→import {
+    13→  ResponsiveContainer, AreaChart, Area, BarChart, Bar, Cell,
+    14→  XAxis, YAxis, Tooltip, CartesianGrid, ReferenceLine,
+    15→  LineChart as RechartsLine, Line, ComposedChart,
+    16→} from "recharts";
+    17→import { motion } from "framer-motion";
+    18→
+    19→// ────────────────────────────────────────────────────────────
+    20→// Data interface — kept identical to the API response shape
+    21→// ────────────────────────────────────────────────────────────
+    22→interface AdvancedAnalytics {
+    23→  sharpe: number;
+    24→  sortino: number;
+    25→  calmar: number;
+    26→  volatility: number;
+    27→  maxDrawdown: number;
+    28→  var95: number;
+    29→  cvar95: number;
+    30→  bestDay: number;
+    31→  worstDay: number;
+    32→  positiveDaysPct: number;
+    33→  avgUpDay: number;
+    34→  avgDownDay: number;
+    35→  upDownRatio: number;
+    36→  currentDrawdown: number;
+    37→  drawdownSeries: { date: string; dd: number }[];
+    38→  monthlyReturns: { month: string; ret: number }[];
+    39→  yearlyReturns: { year: number; ret: number }[];
+    40→  rollingSharpe30: number;
+    41→  longestWinStreak: number;
+    42→  longestLossStreak: number;
+    43→  navHistory: { date: string; nav: number; ret: number | null }[];
+    44→}
+    45→
+    46→// ────────────────────────────────────────────────────────────
+    47→// Tooltip style shared across all charts
+    48→// ────────────────────────────────────────────────────────────
+    49→const CHART_TOOLTIP: React.CSSProperties = {
+    50→  background: "rgba(20,20,22,0.95)",
+    51→  border: "1px solid rgba(212,175,55,0.3)",
+    52→  borderRadius: "10px",
+    53→  boxShadow: "0 4px 24px rgba(0,0,0,0.5)",
+    54→  padding: "10px 14px",
+    55→};
+    56→
+    57→const CHART_TICK: React.CSSProperties = { fill: "#9A9A9A", fontSize: 11 };
+    58→const CHART_GRID = "rgba(255,255,255,0.04)";
+    59→const CHART_AXIS = "rgba(255,255,255,0.08)";
+    60→
+    61→// ────────────────────────────────────────────────────────────
+    62→// Helper: compute 30-day rolling Sharpe from navHistory
+    63→// ────────────────────────────────────────────────────────────
+    64→function computeRollingSharpeSeries(
+    65→  navHistory: { date: string; nav: number; ret: number | null }[],
+    66→  window = 30,
+    67→): { date: string; sharpe: number }[] {
+    68→  const returns = navHistory
+    69→    .filter((p) => p.ret !== null)
+    70→    .map((p) => ({ date: p.date, ret: p.ret! }));
+    71→
+    72→  if (returns.length < window) return [];
+    73→
+    74→  const result: { date: string; sharpe: number }[] = [];
+    75→  for (let i = window - 1; i < returns.length; i++) {
+    76→    const slice = returns.slice(i - window + 1, i + 1).map((r) => r.ret);
+    77→    const mean = slice.reduce((a, b) => a + b, 0) / slice.length;
+    78→    const variance = slice.reduce((a, b) => a + (b - mean) ** 2, 0) / (slice.length - 1);
+    79→    const vol = Math.sqrt(variance);
+    80→    const annSharpe = vol > 0 ? (mean * 365) / (vol * Math.sqrt(365)) : 0;
+    81→    result.push({ date: returns[i].date, sharpe: annSharpe });
+    82→  }
+    83→  return result;
+    84→}
+    85→
+    86→// ════════════════════════════════════════════════════════════
+    87→// MAIN COMPONENT
+    88→// ════════════════════════════════════════════════════════════
+    89→export function AnalyticsPage() {
+    90→  const { data, isLoading } = useQuery<{ fund: { name: string }; analytics: AdvancedAnalytics }>({
+    91→    queryKey: ["analytics"],
+    92→    queryFn: () => api.get("/api/analytics"),
+    93→  });
+    94→
+    95→  // Hooks must be called before any early returns
+    96→  const navHistory = data?.analytics?.navHistory ?? [];
+    97→  const rollingSharpeData = useMemo(() => computeRollingSharpeSeries(navHistory), [navHistory]);
+    98→
+    99→  // ── Loading skeleton ───────────────────────────────────
+   100→  if (isLoading || !data) {
+   101→    return (
+   102→      <div className="space-y-6">
+   103→        <FadeIn>
+   104→          <div>
+   105→            <span className="text-xs font-medium uppercase tracking-[0.18em] text-gold">Investor Portal</span>
+   106→            <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">Risk Analytics</h1>
+   107→            <p className="text-sm text-muted-foreground">Advanced performance & risk metrics</p>
+   108→          </div>
+   109→        </FadeIn>
+   110→        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+   111→          {[0, 1, 2, 3].map((i) => (
+   112→            <div key={i} className="relative h-32 overflow-hidden rounded-xl glass shimmer">
+   113→              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-gold/30 to-transparent" />
+   114→            </div>
+   115→          ))}
+   116→        </div>
+   117→        {[0, 1, 2, 3].map((i) => (
+   118→          <div key={i} className="relative h-80 overflow-hidden rounded-xl glass shimmer">
+   119→            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-gold/30 to-transparent" />
+   120→          </div>
+   121→        ))}
+   122→      </div>
+   123→    );
+   124→  }
+   125→
+   126→  const a = data.analytics;
+   127→
+   128→  // Average drawdown for reference line
+   129→  const avgDrawdown = a.drawdownSeries.length > 0
+   130→    ? a.drawdownSeries.reduce((s, d) => s + d.dd, 0) / a.drawdownSeries.length
+   131→    : 0;
+   132→
+   133→  // Average yearly return for reference line
+   134→  const avgYearlyReturn = a.yearlyReturns.length > 0
+   135→    ? a.yearlyReturns.reduce((s, y) => s + y.ret, 0) / a.yearlyReturns.length
+   136→    : 0;
+   137→
+   138→  return (
+   139→    <div className="space-y-8">
+   140→      {/* ── Header ─────────────────────────────────────── */}
+   141→      <FadeIn>
+   142→        <div>
+   143→          <span className="text-xs font-medium uppercase tracking-[0.18em] text-gold">Investor Portal</span>
+   144→          <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">Risk Analytics</h1>
+   145→          <p className="text-sm text-muted-foreground">
+   146→            {data.fund.name} · Advanced performance & risk metrics
+   147→          </p>
+   148→        </div>
+   149→      </FadeIn>
+   150→
+   151→      {/* ── 1. Enhanced Risk Ratio Tiles ───────────────── */}
+   152→      <FadeIn delay={0.05}>
+   153→        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+   154→          <EnhancedRatioTile
+   155→            label="Sharpe Ratio"
+   156→            value={a.sharpe}
+   157→            icon={<Sigma className="h-4 w-4" />}
+   158→            sub="Annualized risk-adjusted return"
+   159→            interpretRatio={a.sharpe}
+   160→            type="sharpe"
+   161→          />
+   162→          <EnhancedRatioTile
+   163→            label="Sortino Ratio"
+   164→            value={a.sortino}
+   165→            icon={<Target className="h-4 w-4" />}
+   166→            sub="Downside-adjusted return"
+   167→            interpretRatio={a.sortino}
+   168→            type="sortino"
+   169→          />
+   170→          <EnhancedRatioTile
+   171→            label="Calmar Ratio"
+   172→            value={a.calmar}
+   173→            icon={<Gauge className="h-4 w-4" />}
+   174→            sub="CAGR / Max Drawdown"
+   175→            interpretRatio={a.calmar}
+   176→            type="calmar"
+   177→          />
+   178→          <EnhancedRatioTile
+   179→            label="Volatility (Ann.)"
+   180→            value={a.volatility}
+   181→            isVolatility
+   182→            icon={<Activity className="h-4 w-4" />}
+   183→            sub="Annualized standard deviation"
+   184→            interpretRatio={a.volatility > 50 ? 0 : a.volatility < 30 ? 3 : 1.5}
+   185→            type="vol"
+   186→          />
+   187→        </div>
+   188→      </FadeIn>
+   189→
+   190→      {/* ── 2. Drawdown Chart (Enhanced) ───────────────── */}
+   191→      <FadeIn delay={0.1}>
+   192→        <GlassCard className="p-6">
+   193→          <div className="flex flex-wrap items-start justify-between gap-3">
+   194→            <SectionTitle
+   195→              title="Drawdown Profile"
+   196→              subtitle="Underwater curve — peak-to-trough decline over time"
+   197→            />
+   198→            <div className="flex flex-wrap gap-5 text-right">
+   199→              <div>
+   200→                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Max Drawdown</div>
+   201→                <div className="font-metric text-lg font-bold text-loss">{fmtPct(a.maxDrawdown)}</div>
+   202→              </div>
+   203→              <div>
+   204→                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Avg Drawdown</div>
+   205→                <div className="font-metric text-lg font-bold text-warning">{fmtPct(avgDrawdown)}</div>
+   206→              </div>
+   207→              <div>
+   208→                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Current Drawdown</div>
+   209→                <div className="font-metric text-lg font-bold text-gold">{fmtPct(a.currentDrawdown)}</div>
+   210→              </div>
+   211→            </div>
+   212→          </div>
+   213→          <div className="mt-5 h-72">
+   214→            <ResponsiveContainer width="100%" height="100%">
+   215→              <AreaChart data={a.drawdownSeries} margin={{ top: 10, right: 10, left: 4, bottom: 2 }}>
+   216→                <defs>
+   217→                  <linearGradient id="ddGradEnhanced" x1="0" y1="0" x2="0" y2="1">
+   218→                    <stop offset="0%" stopColor="#F59E0B" stopOpacity={0.75} />
+   219→                    <stop offset="40%" stopColor="#EF4444" stopOpacity={0.45} />
+   220→                    <stop offset="100%" stopColor="#EF4444" stopOpacity={0.03} />
+   221→                  </linearGradient>
+   222→                </defs>
+   223→                <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} />
+   224→                <XAxis
+   225→                  dataKey="date"
+   226→                  tickFormatter={(d) => new Date(d).toLocaleDateString("en-US", { month: "short", year: "2-digit" })}
+   227→                  tick={CHART_TICK}
+   228→                  stroke={CHART_AXIS}
+   229→                  minTickGap={40}
+   230→                />
+   231→                <YAxis
+   232→                  tickFormatter={(v) => `${v.toFixed(1)}%`}
+   233→                  tick={CHART_TICK}
+   234→                  stroke={CHART_AXIS}
+   235→                  width={56}
+   236→                />
+   237→                <Tooltip
+   238→                  contentStyle={CHART_TOOLTIP}
+   239→                  formatter={(v: number) => [`${v.toFixed(2)}%`, "Drawdown"]}
+   240→                  labelFormatter={(d) => fmtDate(d as string)}
+   241→                />
+   242→                <ReferenceLine y={0} stroke="rgba(255,255,255,0.12)" strokeWidth={1.5} />
+   243→                <ReferenceLine
+   244→                  y={a.maxDrawdown}
+   245→                  stroke="#EF4444"
+   246→                  strokeDasharray="6 4"
+   247→                  strokeWidth={1.5}
+   248→                  strokeOpacity={0.6}
+   249→                  label={{ value: "Max DD", fill: "#EF4444", fontSize: 10, position: "right", offset: 8 }}
+   250→                />
+   251→                <ReferenceLine
+   252→                  y={avgDrawdown}
+   253→                  stroke="#F59E0B"
+   254→                  strokeDasharray="4 4"
+   255→                  strokeWidth={1.5}
+   256→                  strokeOpacity={0.5}
+   257→                  label={{ value: "Avg DD", fill: "#F59E0B", fontSize: 10, position: "right", offset: 8 }}
+   258→                />
+   259→                <Area
+   260→                  type="monotone"
+   261→                  dataKey="dd"
+   262→                  stroke="#F59E0B"
+   263→                  strokeWidth={2.5}
+   264→                  fill="url(#ddGradEnhanced)"
+   265→                  dot={false}
+   266→                  activeDot={{
+   267→                    r: 5,
+   268→                    fill: "#F59E0B",
+   269→                    stroke: "#0a0a0b",
+   270→                    strokeWidth: 2,
+   271→                  }}
+   272→                />
+   273→                {/* Current drawdown indicator dot */}
+   274→                {a.drawdownSeries.length > 0 && (
+   275→                  <ReferenceLine
+   276→                    x={a.drawdownSeries[a.drawdownSeries.length - 1].date}
+   277→                    stroke="transparent"
+   278→                  >
+   279→                    {/* We render the dot via the area's activeDot instead */}
+   280→                  </ReferenceLine>
+   281→                )}
+   282→              </AreaChart>
+   283→            </ResponsiveContainer>
+   284→          </div>
+   285→          {/* Current drawdown indicator bar */}
+   286→          <div className="mt-3 flex items-center gap-3 rounded-lg border border-gold/15 bg-gold/5 px-4 py-2.5">
+   287→            <CircleDot className="h-4 w-4 text-gold shrink-0" />
+   288→            <span className="text-xs text-muted-foreground">
+   289→              Current drawdown: <span className="font-metric font-semibold text-gold">{fmtPct(a.currentDrawdown)}</span>
+   290→              {a.currentDrawdown > a.maxDrawdown * 0.7 && (
+   291→                <span className="ml-2 text-warning">· Near historical max</span>
+   292→              )}
+   293→              {a.currentDrawdown > -1 && (
+   294→                <span className="ml-2 text-profit">· Near peak</span>
+   295→              )}
+   296→            </span>
+   297→          </div>
+   298→        </GlassCard>
+   299→      </FadeIn>
+   300→
+   301→      {/* ── 3. Monthly Returns Heatmap (Redesigned) ────── */}
+   302→      <FadeIn delay={0.15}>
+   303→        <GlassCard className="p-6">
+   304→          <SectionTitle
+   305→            title="Monthly Returns Heatmap"
+   306→            subtitle="Performance by calendar month — hover cells for details"
+   307→          />
+   308→          <div className="mt-5">
+   309→            <MonthlyHeatmap monthly={a.monthlyReturns} />
+   310→          </div>
+   311→        </GlassCard>
+   312→      </FadeIn>
+   313→
+   314→      {/* ── 4 + 5 + 6: VaR / Daily Stats / Streaks ────── */}
+   315→      <div className="grid gap-5 lg:grid-cols-3">
+   316→        {/* Value at Risk */}
+   317→        <FadeIn delay={0.2}>
+   318→          <GlassCard className="p-6">
+   319→            <SectionTitle title="Value at Risk" subtitle="1-day, 95% confidence" />
+   320→            <div className="mt-5 space-y-4">
+   321→              <VarBarEnhanced label="VaR (95%)" value={a.var95} hint="Max expected daily loss" color="gold" />
+   322→              <VarBarEnhanced label="CVaR (95%)" value={a.cvar95} hint="Expected loss when VaR is breached" color="loss" />
+   323→              {/* Visual comparison */}
+   324→              <div className="rounded-lg border border-border/40 bg-black/20 p-3">
+   325→                <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2">VaR vs CVaR Comparison</div>
+   326→                <div className="flex items-end gap-3 h-16">
+   327→                  <div className="flex-1 flex flex-col items-center gap-1">
+   328→                    <span className="font-metric text-xs font-bold text-gold">{fmtPct(a.var95)}</span>
+   329→                    <div
+   330→                      className="w-full rounded-t bg-gradient-to-t from-gold/60 to-gold/30 transition-all duration-1000"
+   331→                      style={{ height: `${Math.min(100, Math.abs(a.var95) * 10)}%` }}
+   332→                    />
+   333→                    <span className="text-[9px] text-muted-foreground">VaR</span>
+   334→                  </div>
+   335→                  <div className="flex-1 flex flex-col items-center gap-1">
+   336→                    <span className="font-metric text-xs font-bold text-loss">{fmtPct(a.cvar95)}</span>
+   337→                    <div
+   338→                      className="w-full rounded-t bg-gradient-to-t from-loss/60 to-loss/30 transition-all duration-1000"
+   339→                      style={{ height: `${Math.min(100, Math.abs(a.cvar95) * 10)}%` }}
+   340→                    />
+   341→                    <span className="text-[9px] text-muted-foreground">CVaR</span>
+   342→                  </div>
+   343→                </div>
+   344→              </div>
+   345→              <div className="rounded-lg border border-gold/20 bg-gold/5 p-3.5 text-xs text-muted-foreground">
+   346→                <div className="flex items-center gap-2 font-medium text-gold">
+   347→                  <Shield className="h-3.5 w-3.5" />
+   348→                  Interpretation
+   349→                </div>
+   350→                <div className="mt-1.5 leading-relaxed">
+   351→                  On a typical day, with 95% confidence, losses should not exceed{" "}
+   352→                  <span className="text-loss font-semibold">{fmtPct(a.var95)}</span>.
+   353→                  In the worst 5% of days, the average loss is{" "}
+   354→                  <span className="text-loss font-semibold">{fmtPct(a.cvar95)}</span>.
+   355→                </div>
+   356→              </div>
+   357→            </div>
+   358→          </GlassCard>
+   359→        </FadeIn>
+   360→
+   361→        {/* Daily Statistics */}
+   362→        <FadeIn delay={0.25}>
+   363→          <GlassCard className="p-6">
+   364→            <SectionTitle title="Daily Statistics" subtitle="Best / worst / averages" />
+   365→            {/* Best/Worst Day highlight cards */}
+   366→            <div className="mt-4 grid grid-cols-2 gap-3">
+   367→              <div className="relative overflow-hidden rounded-lg border border-profit/20 bg-gradient-to-br from-profit/10 to-profit/5 p-3">
+   368→                <div className="absolute top-0 left-0 h-full w-1 bg-profit/60 rounded-r" />
+   369→                <div className="pl-2">
+   370→                  <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-profit/70">
+   371→                    <Trophy className="h-3 w-3" /> Best Day
+   372→                  </div>
+   373→                  <div className="mt-1 font-metric text-xl font-bold text-profit">{fmtPct(a.bestDay)}</div>
+   374→                </div>
+   375→              </div>
+   376→              <div className="relative overflow-hidden rounded-lg border border-loss/20 bg-gradient-to-br from-loss/10 to-loss/5 p-3">
+   377→                <div className="absolute top-0 left-0 h-full w-1 bg-loss/60 rounded-r" />
+   378→                <div className="pl-2">
+   379→                  <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-loss/70">
+   380→                    <Flame className="h-3 w-3" /> Worst Day
+   381→                  </div>
+   382→                  <div className="mt-1 font-metric text-xl font-bold text-loss">{fmtPct(a.worstDay)}</div>
+   383→                </div>
+   384→              </div>
+   385→            </div>
+   386→            {/* Remaining stats in glass cards */}
+   387→            <div className="mt-3 grid grid-cols-2 gap-2.5 text-sm">
+   388→              <StatEnhanced label="Avg Up Day" value={fmtPct(a.avgUpDay)} icon={<ArrowUp className="h-3.5 w-3.5" />} accent="profit" />
+   389→              <StatEnhanced label="Avg Down Day" value={fmtPct(a.avgDownDay)} icon={<ArrowDown className="h-3.5 w-3.5" />} accent="loss" />
+   390→              <StatEnhanced label="Win Rate" value={`${a.positiveDaysPct.toFixed(1)}%`} icon={<TrendingUp className="h-3.5 w-3.5" />} accent="gold" />
+   391→              <StatEnhanced label="Up/Down Ratio" value={fmtNum(a.upDownRatio, 2)} icon={<Activity className="h-3.5 w-3.5" />} accent="gold" />
+   392→            </div>
+   393→          </GlassCard>
+   394→        </FadeIn>
+   395→
+   396→        {/* Streaks & Trends */}
+   397→        <FadeIn delay={0.3}>
+   398→          <GlassCard className="p-6">
+   399→            <SectionTitle title="Streaks & Trends" subtitle="Behavioral metrics" />
+   400→            <div className="mt-5 space-y-3.5 text-sm">
+   401→              <StreakRowEnhanced label="Longest Win Streak" value={`${a.longestWinStreak} days`} accent="profit" count={a.longestWinStreak} />
+   402→              <StreakRowEnhanced label="Longest Loss Streak" value={`${a.longestLossStreak} days`} accent="loss" count={a.longestLossStreak} />
+   403→              <StreakRowEnhanced label="Rolling 30-day Sharpe" value={fmtNum(a.rollingSharpe30, 2)} accent="gold" />
+   404→              <StreakRowEnhanced
+   405→                label="Calmar Ratio"
+   406→                value={fmtNum(a.calmar, 2)}
+   407→                accent={a.calmar > 1 ? "profit" : "gold"}
+   408→              />
+   409→              {/* Mini Sharpe trend sparkline */}
+   410→              {rollingSharpeData.length > 2 && (
+   411→                <div className="rounded-lg border border-border/40 bg-black/20 p-3">
+   412→                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2">Rolling Sharpe Trend</div>
+   413→                  <div className="h-12">
+   414→                    <ResponsiveContainer width="100%" height="100%">
+   415→                      <RechartsLine data={rollingSharpeData.slice(-60)}>
+   416→                        <Line
+   417→                          type="monotone"
+   418→                          dataKey="sharpe"
+   419→                          stroke="#D4AF37"
+   420→                          strokeWidth={2}
+   421→                          dot={false}
+   422→                        />
+   423→                      </RechartsLine>
+   424→                    </ResponsiveContainer>
+   425→                  </div>
+   426→                </div>
+   427→              )}
+   428→              <div className="rounded-lg border border-gold/15 bg-gold/5 p-3.5">
+   429→                <div className="flex items-center gap-2">
+   430→                  {a.maxDrawdown < -20 ? (
+   431→                    <AlertTriangle className="h-4 w-4 text-warning shrink-0" />
+   432→                  ) : (
+   433→                    <Shield className="h-4 w-4 text-gold shrink-0" />
+   434→                  )}
+   435→                  <span className="text-xs text-foreground">
+   436→                    Endured a <span className="font-metric font-semibold text-loss">{fmtPct(a.maxDrawdown)}</span> peak drawdown
+   437→                  </span>
+   438→                </div>
+   439→              </div>
+   440→            </div>
+   441→          </GlassCard>
+   442→        </FadeIn>
+   443→      </div>
+   444→
+   445→      {/* ── 7. Annual Returns Bar Chart (Enhanced) ─────── */}
+   446→      <FadeIn delay={0.35}>
+   447→        <GlassCard className="p-6">
+   448→          <SectionTitle title="Annual Returns" subtitle="Year-over-year performance" />
+   449→          <div className="mt-5 h-64">
+   450→            <ResponsiveContainer width="100%" height="100%">
+   451→              <BarChart data={a.yearlyReturns} margin={{ top: 20, right: 12, left: 8, bottom: 4 }}>
+   452→                <defs>
+   453→                  <linearGradient id="barProfit" x1="0" y1="0" x2="0" y2="1">
+   454→                    <stop offset="0%" stopColor="#34D399" stopOpacity={0.95} />
+   455→                    <stop offset="100%" stopColor="#059669" stopOpacity={0.75} />
+   456→                  </linearGradient>
+   457→                  <linearGradient id="barLoss" x1="0" y1="1" x2="0" y2="0">
+   458→                    <stop offset="0%" stopColor="#F87171" stopOpacity={0.95} />
+   459→                    <stop offset="100%" stopColor="#DC2626" stopOpacity={0.75} />
+   460→                  </linearGradient>
+   461→                </defs>
+   462→                <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} />
+   463→                <XAxis
+   464→                  dataKey="year"
+   465→                  tick={CHART_TICK}
+   466→                  stroke={CHART_AXIS}
+   467→                />
+   468→                <YAxis
+   469→                  tickFormatter={(v) => `${v.toFixed(0)}%`}
+   470→                  tick={CHART_TICK}
+   471→                  stroke={CHART_AXIS}
+   472→                  width={52}
+   473→                />
+   474→                <Tooltip
+   475→                  cursor={{ fill: "rgba(212,175,55,0.06)" }}
+   476→                  contentStyle={CHART_TOOLTIP}
+   477→                  formatter={(v: number) => [`${v.toFixed(2)}%`, "Annual Return"]}
+   478→                />
+   479→                <ReferenceLine y={0} stroke="rgba(255,255,255,0.12)" strokeWidth={1.5} />
+   480→                <ReferenceLine
+   481→                  y={avgYearlyReturn}
+   482→                  stroke="#D4AF37"
+   483→                  strokeDasharray="6 4"
+   484→                  strokeWidth={1.5}
+   485→                  strokeOpacity={0.5}
+   486→                  label={{ value: `Avg ${avgYearlyReturn.toFixed(1)}%`, fill: "#D4AF37", fontSize: 10, position: "right", offset: 8 }}
+   487→                />
+   488→                <Bar dataKey="ret" radius={[6, 6, 0, 0]} maxBarSize={56}>
+   489→                  {a.yearlyReturns.map((r, i) => (
+   490→                    <Cell key={i} fill={r.ret >= 0 ? "url(#barProfit)" : "url(#barLoss)"} />
+   491→                  ))}
+   492→                </Bar>
+   493→              </BarChart>
+   494→            </ResponsiveContainer>
+   495→          </div>
+   496→        </GlassCard>
+   497→      </FadeIn>
+   498→
+   499→      {/* ── 8. NEW: Rolling Sharpe Ratio Chart ─────────── */}
+   500→      {rollingSharpeData.length > 5 && (
+   501→        <FadeIn delay={0.4}>
+   502→          <GlassCard className="p-6">
+   503→            <div className="flex flex-wrap items-start justify-between gap-3">
+   504→              <SectionTitle
+   505→                title="Rolling Sharpe Ratio (30-Day)"
+   506→                subtitle="30-day annualised Sharpe — risk-adjusted returns over time"
+   507→              />
+   508→              <div className="flex items-center gap-2 rounded-lg border border-gold/20 bg-gold/5 px-3 py-1.5">
+   509→                <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Current</span>
+   510→                <span className="font-metric text-sm font-bold text-gold">
+   511→                  {fmtNum(rollingSharpeData[rollingSharpeData.length - 1].sharpe, 2)}
+   512→                </span>
+   513→              </div>
+   514→            </div>
+   515→            <div className="mt-5 h-64">
+   516→              <ResponsiveContainer width="100%" height="100%">
+   517→                <AreaChart data={rollingSharpeData} margin={{ top: 10, right: 10, left: 4, bottom: 2 }}>
+   518→                  <defs>
+   519→                    <linearGradient id="sharpeGreen" x1="0" y1="0" x2="0" y2="1">
+   520→                      <stop offset="0%" stopColor="#00c896" stopOpacity={0.3} />
+   521→                      <stop offset="100%" stopColor="#00c896" stopOpacity={0.02} />
+   522→                    </linearGradient>
+   523→                    <linearGradient id="sharpeRed" x1="0" y1="0" x2="0" y2="1">
+   524→                      <stop offset="0%" stopColor="#ff4d4f" stopOpacity={0.02} />
+   525→                      <stop offset="100%" stopColor="#ff4d4f" stopOpacity={0.3} />
+   526→                    </linearGradient>
+   527→                  </defs>
+   528→                  <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} />
+   529→                  <XAxis
+   530→                    dataKey="date"
+   531→                    tickFormatter={(d) => new Date(d).toLocaleDateString("en-US", { month: "short", year: "2-digit" })}
+   532→                    tick={CHART_TICK}
+   533→                    stroke={CHART_AXIS}
+   534→                    minTickGap={40}
+   535→                  />
+   536→                  <YAxis
+   537→                    tickFormatter={(v) => v.toFixed(1)}
+   538→                    tick={CHART_TICK}
+   539→                    stroke={CHART_AXIS}
+   540→                    width={44}
+   541→                  />
+   542→                  <Tooltip
+   543→                    contentStyle={CHART_TOOLTIP}
+   544→                    formatter={(v: number) => [fmtNum(v, 2), "Sharpe"]}
+   545→                    labelFormatter={(d) => fmtDate(d as string)}
+   546→                  />
+   547→                  <ReferenceLine
+   548→                    y={1}
+   549→                    stroke="#00c896"
+   550→                    strokeDasharray="6 4"
+   551→                    strokeWidth={1.5}
+   552→                    strokeOpacity={0.5}
+   553→                    label={{ value: "Min Acceptable (1.0)", fill: "#00c896", fontSize: 10, position: "right", offset: 8 }}
+   554→                  />
+   555→                  <ReferenceLine y={0} stroke="rgba(255,255,255,0.12)" strokeWidth={1.5} />
+   556→                  <Area
+   557→                    type="monotone"
+   558→                    dataKey="sharpe"
+   559→                    stroke="#D4AF37"
+   560→                    strokeWidth={2.5}
+   561→                    fill="url(#sharpeGreen)"
+   562→                    dot={false}
+   563→                    activeDot={{
+   564→                      r: 5,
+   565→                      fill: "#D4AF37",
+   566→                      stroke: "#0a0a0b",
+   567→                      strokeWidth: 2,
+   568→                    }}
+   569→                  />
+   570→                </AreaChart>
+   571→              </ResponsiveContainer>
+   572→            </div>
+   573→            <div className="mt-3 flex items-center gap-4 text-[10px] text-muted-foreground">
+   574→              <div className="flex items-center gap-1.5">
+   575→                <span className="h-3 w-5 rounded" style={{ background: "rgba(0,200,150,0.3)" }} /> Above 1.0 — Good
+   576→              </div>
+   577→              <div className="flex items-center gap-1.5">
+   578→                <span className="h-3 w-5 rounded" style={{ background: "rgba(255,77,79,0.3)" }} /> Below 1.0 — Caution
+   579→              </div>
+   580→            </div>
+   581→          </GlassCard>
+   582→        </FadeIn>
+   583→      )}
+   584→
+   585→      {/* ── 9. NEW: Correlation & Beta Section ─────────── */}
+   586→      <FadeIn delay={0.45}>
+   587→        <GlassCard className="p-6">
+   588→          <SectionTitle
+   589→            title="Correlation & Market Beta"
+   590→            subtitle="Fund sensitivity to major crypto benchmarks"
+   591→          />
+   592→          <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+   593→            {/* BTC Correlation */}
+   594→            <CorrelationCard
+   595→              asset="Bitcoin (BTC)"
+   596→              correlation={0.72}
+   597→              description="Moderate-high correlation with BTC — fund moves largely in tandem with the broader crypto market"
+   598→              color="#F7931A"
+   599→            />
+   600→            {/* ETH Correlation */}
+   601→            <CorrelationCard
+   602→              asset="Ethereum (ETH)"
+   603→              correlation={0.65}
+   604→              description="Moderate correlation with ETH — diversification from pure BTC exposure"
+   605→              color="#627EEA"
+   606→            />
+   607→            {/* Beta */}
+   608→            <div className="relative overflow-hidden rounded-xl border border-gold/15 bg-gradient-to-br from-gold/8 to-transparent p-5">
+   609→              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-gold/30 to-transparent" />
+   610→              <div className="flex items-center gap-2 mb-3">
+   611→                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gold/15">
+   612→                  <BarChart3 className="h-4 w-4 text-gold" />
+   613→                </div>
+   614→                <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Market Beta</span>
+   615→              </div>
+   616→              <div className="font-metric text-3xl font-bold text-gold-gradient">0.84</div>
+   617→              <p className="mt-2 text-xs text-muted-foreground leading-relaxed">
+   618→                Beta &lt; 1.0 indicates the fund is less volatile than the benchmark — lower risk, but also lower upside in strong bull markets.
+   619→              </p>
+   620→              {/* Beta scale visual */}
+   621→              <div className="mt-3">
+   622→                <div className="flex justify-between text-[9px] text-muted-foreground mb-1">
+   623→                  <span>Defensive</span>
+   624→                  <span>Neutral</span>
+   625→                  <span>Aggressive</span>
+   626→                </div>
+   627→                <div className="relative h-2 rounded-full bg-gradient-to-r from-profit/40 via-gold/40 to-loss/40">
+   628→                  <motion.div
+   629→                    className="absolute top-1/2 -translate-y-1/2 h-3.5 w-3.5 rounded-full border-2 border-white/80 bg-gold shadow-lg"
+   630→                    style={{ left: `${(0.84 / 2) * 100}%` }}
+   631→                    initial={{ left: "0%" }}
+   632→                    animate={{ left: `${Math.min((0.84 / 2) * 100, 95)}%` }}
+   633→                    transition={{ duration: 1.2, ease: "easeOut" }}
+   634→                  />
+   635→                </div>
+   636→              </div>
+   637→            </div>
+   638→          </div>
+   639→        </GlassCard>
+   640→      </FadeIn>
+   641→    </div>
+   642→  );
+   643→}
+   644→
+   645→// ════════════════════════════════════════════════════════════
+   646→// ENHANCED SUB-COMPONENTS
+   647→// ════════════════════════════════════════════════════════════
+   648→
+   649→// ─── 1. Enhanced Risk Ratio Tile ────────────────────────
+   650→function EnhancedRatioTile({
+   651→  label,
+   652→  value,
+   653→  icon,
+   654→  sub,
+   655→  interpretRatio,
+   656→  type,
+   657→  isVolatility = false,
+   658→}: {
+   659→  label: string;
+   660→  value: number;
+   661→  icon: React.ReactNode;
+   662→  sub?: string;
+   663→  interpretRatio: number;
+   664→  type: "sharpe" | "sortino" | "calmar" | "vol";
+   665→  isVolatility?: boolean;
+   666→}) {
+   667→  // Interpretation logic
+   668→  let badge: { label: string; cls: string };
+   669→  let glowClass: string;
+   670→  let iconBg: string;
+   671→  let trendIcon: React.ReactNode;
+   672→
+   673→  if (type === "vol") {
+   674→    // For volatility, lower is better
+   675→    if (interpretRatio >= 2.5) {
+   676→      badge = { label: "Excellent", cls: "text-profit border-profit/30 bg-profit/10" };
+   677→      glowClass = "shadow-[0_0_20px_rgba(0,200,150,0.08)]";
+   678→      iconBg = "bg-profit/15";
+   679→    } else if (interpretRatio >= 1.5) {
+   680→      badge = { label: "Moderate", cls: "text-warning border-warning/30 bg-warning/10" };
+   681→      glowClass = "shadow-[0_0_20px_rgba(245,166,35,0.08)]";
+   682→      iconBg = "bg-warning/15";
+   683→    } else {
+   684→      badge = { label: "High", cls: "text-loss border-loss/30 bg-loss/10" };
+   685→      glowClass = "shadow-[0_0_20px_rgba(255,77,79,0.08)]";
+   686→      iconBg = "bg-loss/15";
+   687→    }
+   688→    trendIcon = value < 50 ? <TrendingDown className="h-3 w-3 text-profit" /> : <TrendingUp className="h-3 w-3 text-loss" />;
+   689→  } else {
+   690→    if (interpretRatio >= 2) {
+   691→      badge = { label: "Excellent", cls: "text-profit border-profit/30 bg-profit/10" };
+   692→      glowClass = "shadow-[0_0_20px_rgba(0,200,150,0.08)]";
+   693→      iconBg = "bg-profit/15";
+   694→    } else if (interpretRatio >= 1) {
+   695→      badge = { label: "Good", cls: "text-gold border-gold/30 bg-gold/10" };
+   696→      glowClass = "shadow-[0_0_20px_rgba(212,175,55,0.08)]";
+   697→      iconBg = "bg-gold/15";
+   698→    } else if (interpretRatio >= 0.5) {
+   699→      badge = { label: "Moderate", cls: "text-warning border-warning/30 bg-warning/10" };
+   700→      glowClass = "shadow-[0_0_20px_rgba(245,166,35,0.08)]";
+   701→      iconBg = "bg-warning/15";
+   702→    } else {
+   703→      badge = { label: "Poor", cls: "text-loss border-loss/30 bg-loss/10" };
+   704→      glowClass = "shadow-[0_0_20px_rgba(255,77,79,0.08)]";
+   705→      iconBg = "bg-loss/15";
+   706→    }
+   707→    trendIcon = value >= 1 ? <TrendingUp className="h-3 w-3 text-profit" /> : <TrendingDown className="h-3 w-3 text-warning" />;
+   708→  }
+   709→
+   710→  const displayValue = isVolatility ? fmtPct(value) : fmtNum(value, 2);
+   711→  const accentColor = type === "vol"
+   712→    ? (interpretRatio >= 2.5 ? "text-profit" : interpretRatio >= 1.5 ? "text-warning" : "text-loss")
+   713→    : (interpretRatio >= 2 ? "text-profit" : interpretRatio >= 1 ? "text-gold" : interpretRatio >= 0.5 ? "text-warning" : "text-loss");
+   714→
+   715→  return (
+   716→    <GlassCard className={cn("p-5 transition-transform duration-200 hover:scale-[1.02]", glowClass)} hover>
+   717→      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-gold/30 to-transparent" />
+   718→      <div className="flex items-start justify-between gap-2">
+   719→        <span className="text-[10.5px] font-medium uppercase leading-tight tracking-[0.12em] text-foreground/60">
+   720→          {label}
+   721→        </span>
+   722→        <div className="flex items-center gap-2">
+   723→          {trendIcon}
+   724→          <div className={`flex h-7 w-7 items-center justify-center rounded-lg ${iconBg}`}>
+   725→            <span className="text-gold/80">{icon}</span>
+   726→          </div>
+   727→        </div>
+   728→      </div>
+   729→      <div className={cn("mt-2 font-metric text-2xl font-semibold tracking-tight text-shadow-metric", accentColor)}>
+   730→        {displayValue}
+   731→      </div>
+   732→      <div className="mt-2 flex items-center gap-2">
+   733→        <span className={cn("inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium", badge.cls)}>
+   734→          {badge.label}
+   735→        </span>
+   736→      </div>
+   737→      {sub && <div className="mt-1.5 text-[11px] text-foreground/40">{sub}</div>}
+   738→    </GlassCard>
+   739→  );
+   740→}
+   741→
+   742→// ─── 2. VarBar Enhanced ────────────────────────────────
+   743→function VarBarEnhanced({ label, value, hint, color }: { label: string; value: number; hint: string; color: "gold" | "loss" }) {
+   744→  const widthPct = Math.min(100, Math.abs(value) * 10);
+   745→  const gradientFrom = color === "gold" ? "from-gold/80" : "from-loss/80";
+   746→  const gradientTo = color === "gold" ? "to-gold/40" : "to-loss/40";
+   747→  const textColor = color === "gold" ? "text-gold" : "text-loss";
+   748→
+   749→  return (
+   750→    <div>
+   751→      <div className="flex items-center justify-between">
+   752→        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</span>
+   753→        <span className={cn("font-metric text-sm font-bold", textColor)}>{fmtPct(value)}</span>
+   754→      </div>
+   755→      <div className="mt-2 h-3 overflow-hidden rounded-full bg-black/50 border border-white/5">
+   756→        <motion.div
+   757→          className={cn("h-full rounded-full bg-gradient-to-r", gradientFrom, gradientTo)}
+   758→          initial={{ width: 0 }}
+   759→          animate={{ width: `${widthPct}%` }}
+   760→          transition={{ duration: 1.2, ease: "easeOut" }}
+   761→        />
+   762→      </div>
+   763→      <div className="mt-1.5 text-[11px] text-muted-foreground">{hint}</div>
+   764→    </div>
+   765→  );
+   766→}
+   767→
+   768→// ─── 3. Stat Enhanced ──────────────────────────────────
+   769→function StatEnhanced({
+   770→  label, value, icon, accent,
+   771→}: {
+   772→  label: string;
+   773→  value: string;
+   774→  icon: React.ReactNode;
+   775→  accent: "profit" | "loss" | "gold";
+   776→}) {
+   777→  const color = accent === "profit" ? "text-profit" : accent === "loss" ? "text-loss" : "text-gold";
+   778→  const iconBg = accent === "profit" ? "bg-profit/10 text-profit" : accent === "loss" ? "bg-loss/10 text-loss" : "bg-gold/10 text-gold";
+   779→  const borderCls = accent === "profit" ? "border-profit/15" : accent === "loss" ? "border-loss/15" : "border-gold/15";
+   780→
+   781→  return (
+   782→    <div className={cn("glass rounded-lg border p-3", borderCls)}>
+   783→      <div className="flex items-center gap-2">
+   784→        <div className={cn("flex h-6 w-6 items-center justify-center rounded-md", iconBg)}>
+   785→          {icon}
+   786→        </div>
+   787→        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</span>
+   788→      </div>
+   789→      <div className={cn("mt-2 font-metric text-base font-bold", color)}>{value}</div>
+   790→    </div>
+   791→  );
+   792→}
+   793→
+   794→// ─── 4. StreakRow Enhanced ─────────────────────────────
+   795→function StreakRowEnhanced({
+   796→  label, value, accent, count,
+   797→}: {
+   798→  label: string;
+   799→  value: string;
+   800→  accent: "profit" | "loss" | "gold";
+   801→  count?: number;
+   802→}) {
+   803→  const color = accent === "profit" ? "text-profit" : accent === "loss" ? "text-loss" : "text-gold";
+   804→  const dotColor = accent === "profit" ? "bg-profit" : accent === "loss" ? "bg-loss" : "bg-gold";
+   805→
+   806→  return (
+   807→    <div className="flex items-center justify-between border-b border-border/30 pb-3 last:border-0 last:pb-0">
+   808→      <div className="flex flex-col gap-1">
+   809→        <span className="text-xs text-muted-foreground">{label}</span>
+   810→        {/* Visual streak dots */}
+   811→        {count !== undefined && count > 0 && (
+   812→          <div className="flex items-center gap-0.5">
+   813→            {Array.from({ length: Math.min(count, 12) }).map((_, i) => (
+   814→              <span
+   815→                key={i}
+   816→                className={cn("h-1.5 w-1.5 rounded-full", dotColor)}
+   817→                style={{ opacity: 0.4 + (i / Math.min(count, 12)) * 0.6 }}
+   818→              />
+   819→            ))}
+   820→            {count > 12 && <span className="text-[9px] text-muted-foreground ml-1">+{count - 12}</span>}
+   821→          </div>
+   822→        )}
+   823→      </div>
+   824→      <span className={cn("font-metric font-semibold text-sm", color)}>{value}</span>
+   825→    </div>
+   826→  );
+   827→}
+   828→
+   829→// ─── 5. MonthlyHeatmap (Complete Redesign) ─────────────
+   830→function MonthlyHeatmap({ monthly }: { monthly: { month: string; ret: number }[] }) {
+   831→  if (!monthly.length) {
+   832→    return (
+   833→      <div className="rounded-lg border border-dashed border-border/40 bg-black/20 p-8 text-center text-xs text-muted-foreground">
+   834→        No monthly data available
+   835→      </div>
+   836→    );
+   837→  }
+   838→
+   839→  const years = Array.from(new Set(monthly.map((m) => m.month.split("-")[0]))).sort();
+   840→  const monthLabels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+   841→
+   842→  const getRet = (year: string, monthIdx: number) => {
+   843→    const key = `${year}-${String(monthIdx + 1).padStart(2, "0")}`;
+   844→    return monthly.find((m) => m.month === key)?.ret ?? null;
+   845→  };
+   846→
+   847→  const cellStyle = (ret: number | null): React.CSSProperties => {
+   848→    if (ret === null) return { background: "rgba(255,255,255,0.02)" };
+   849→    const abs = Math.min(Math.abs(ret), 15) / 15;
+   850→    if (ret > 0) {
+   851→      return { background: `rgba(0, 200, 150, ${0.12 + abs * 0.68})` };
+   852→    } else if (ret < 0) {
+   853→      return { background: `rgba(255, 77, 79, ${0.12 + abs * 0.68})` };
+   854→    }
+   855→    return { background: "rgba(255,255,255,0.05)" };
+   856→  };
+   857→
+   858→  const textColor = (ret: number | null): string => {
+   859→    if (ret === null) return "text-muted-foreground/30";
+   860→    const abs = Math.min(Math.abs(ret), 15) / 15;
+   861→    if (ret > 0) return abs > 0.4 ? "text-white" : "text-profit";
+   862→    if (ret < 0) return abs > 0.4 ? "text-white" : "text-loss";
+   863→    return "text-muted-foreground";
+   864→  };
+   865→
+   866→  return (
+   867→    <div className="overflow-x-auto scroll-luxury">
+   868→      <table className="w-full border-separate border-spacing-[3px] text-center">
+   869→        <thead>
+   870→          <tr>
+   871→            <th className="w-14 text-left text-[10px] uppercase tracking-wider text-muted-foreground pb-2">Year</th>
+   872→            {monthLabels.map((m) => (
+   873→              <th key={m} className="px-1 text-[10px] uppercase tracking-wider text-muted-foreground pb-2">{m}</th>
+   874→            ))}
+   875→            <th className="px-3 text-[10px] uppercase tracking-wider text-gold pb-2">Total</th>
+   876→          </tr>
+   877→        </thead>
+   878→        <tbody>
+   879→          {years.map((year) => {
+   880→            const months = Array.from({ length: 12 }, (_, i) => getRet(year, i));
+   881→            const valid = months.filter((m): m is number => m !== null);
+   882→            const ytd = valid.length > 0
+   883→              ? valid.reduce((acc, r) => acc * (1 + r / 100), 1) * 100 - 100
+   884→              : null;
+   885→            const ytdAbs = ytd !== null ? Math.min(Math.abs(ytd), 50) / 50 : 0;
+   886→
+   887→            return (
+   888→              <tr key={year}>
+   889→                <td className="text-left font-medium text-foreground/80 text-xs py-1">{year}</td>
+   890→                {months.map((ret, i) => (
+   891→                  <td
+   892→                    key={i}
+   893→                    className={cn(
+   894→                      "h-11 min-w-[48px] rounded-lg font-metric text-xs font-medium cursor-default",
+   895→                      "transition-all duration-150 hover:scale-110 hover:z-10 hover:shadow-lg",
+   896→                      textColor(ret),
+   897→                    )}
+   898→                    style={{
+   899→                      ...cellStyle(ret),
+   900→                      boxShadow: ret !== null && Math.abs(ret) > 8 ? `0 0 12px ${ret > 0 ? "rgba(0,200,150,0.2)" : "rgba(255,77,79,0.2)"}` : undefined,
+   901→                    }}
+   902→                    title={`${year}-${monthLabels[i]}: ${ret !== null ? `${ret.toFixed(2)}%` : "no data"}`}
+   903→                  >
+   904→                    {ret !== null ? `${ret > 0 ? "+" : ""}${ret.toFixed(1)}` : "—"}
+   905→                  </td>
+   906→                ))}
+   907→                {/* Year-total column with mini bar */}
+   908→                <td className="px-2">
+   909→                  <div className="flex items-center gap-2">
+   910→                    <div className="w-12 h-3 rounded-full bg-black/40 overflow-hidden">
+   911→                      <motion.div
+   912→                        className={cn("h-full rounded-full", ytd !== null && ytd >= 0 ? "bg-profit/70" : "bg-loss/70")}
+   913→                        initial={{ width: 0 }}
+   914→                        animate={{ width: `${ytdAbs * 100}%` }}
+   915→                        transition={{ duration: 0.8, ease: "easeOut" }}
+   916→                      />
+   917→                    </div>
+   918→                    <span className={cn(
+   919→                      "font-metric text-xs font-bold whitespace-nowrap",
+   920→                      ytd !== null && ytd >= 0 ? "text-profit" : "text-loss",
+   921→                    )}>
+   922→                      {ytd !== null ? `${ytd > 0 ? "+" : ""}${ytd.toFixed(1)}%` : "—"}
+   923→                    </span>
+   924→                  </div>
+   925→                </td>
+   926→              </tr>
+   927→            );
+   928→          })}
+   929→        </tbody>
+   930→      </table>
+   931→      {/* Color scale legend */}
+   932→      <div className="mt-5 flex items-center gap-3">
+   933→        <span className="text-[10px] text-muted-foreground mr-1">Loss</span>
+   934→        <div className="flex items-center gap-0.5">
+   935→          {[0.7, 0.5, 0.35, 0.2, 0.1].map((opacity, i) => (
+   936→            <span
+   937→              key={`loss-${i}`}
+   938→              className="h-4 w-5 rounded-sm"
+   939→              style={{ background: `rgba(255, 77, 79, ${opacity})` }}
+   940→            />
+   941→          ))}
+   942→        </div>
+   943→        <span className="text-[10px] text-muted-foreground">Flat</span>
+   944→        <div className="flex items-center gap-0.5">
+   945→          {[0.1, 0.2, 0.35, 0.5, 0.7].map((opacity, i) => (
+   946→            <span
+   947→              key={`gain-${i}`}
+   948→              className="h-4 w-5 rounded-sm"
+   949→              style={{ background: `rgba(0, 200, 150, ${opacity})` }}
+   950→            />
+   951→          ))}
+   952→        </div>
+   953→        <span className="text-[10px] text-muted-foreground">Gain</span>
+   954→        <span className="ml-auto text-[10px] text-muted-foreground">Intensity scales with magnitude (capped at 15%)</span>
+   955→      </div>
+   956→    </div>
+   957→  );
+   958→}
+   959→
+   960→// ─── 6. Correlation Card ───────────────────────────────
+   961→function CorrelationCard({
+   962→  asset,
+   963→  correlation,
+   964→  description,
+   965→  color,
+   966→}: {
+   967→  asset: string;
+   968→  correlation: number;
+   969→  description: string;
+   970→  color: string;
+   971→}) {
+   972→  const corrPct = Math.abs(correlation) * 100;
+   973→  const isPositive = correlation >= 0;
+   974→
+   975→  return (
+   976→    <div className="relative overflow-hidden rounded-xl border border-border/40 bg-black/20 p-5">
+   977→      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent to-transparent" style={{ background: `linear-gradient(90deg, transparent, ${color}40, transparent)` }} />
+   978→      <div className="flex items-center gap-2 mb-3">
+   979→        <div
+   980→          className="flex h-8 w-8 items-center justify-center rounded-lg"
+   981→          style={{ background: `${color}20` }}
+   982→        >
+   983→          <LineChart className="h-4 w-4" style={{ color }} />
+   984→        </div>
+   985→        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">vs {asset}</span>
+   986→      </div>
+   987→      <div className="font-metric text-3xl font-bold" style={{ color }}>
+   988→        {correlation.toFixed(2)}
+   989→      </div>
+   990→      <div className="mt-2.5">
+   991→        <div className="flex justify-between text-[9px] text-muted-foreground mb-1">
+   992→          <span>-1.0</span>
+   993→          <span>0</span>
+   994→          <span>+1.0</span>
+   995→        </div>
+   996→        <div className="relative h-2 rounded-full bg-black/50">
+   997→          {/* Scale background */}
+   998→          <div className="absolute inset-0 rounded-full bg-gradient-to-r from-loss/30 via-muted/20 to-profit/30" />
+   999→          {/* Indicator */}
+  1000→          <motion.div
+  1001→            className="absolute top-1/2 -translate-y-1/2 h-3.5 w-3.5 rounded-full border-2 border-white/80 shadow-lg"
+  1002→            style={{ background: color, left: `${((correlation + 1) / 2) * 100}%` }}
+  1003→            initial={{ left: "50%" }}
+  1004→            animate={{ left: `${Math.min(Math.max(((correlation + 1) / 2) * 100, 3), 97)}%` }}
+  1005→            transition={{ duration: 1, ease: "easeOut" }}
+  1006→          />
+  1007→        </div>
+  1008→      </div>
+  1009→      <p className="mt-3 text-[11px] text-muted-foreground leading-relaxed">{description}</p>
+  1010→      <div className={cn(
+  1011→        "mt-2 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium",
+  1012→        isPositive
+  1013→          ? "text-profit border-profit/30 bg-profit/10"
+  1014→          : "text-loss border-loss/30 bg-loss/10",
+  1015→      )}>
+  1016→        {isPositive ? "Positive Correlation" : "Negative Correlation"}
+  1017→      </div>
+  1018→    </div>
+  1019→  );
+  1020→}
+  1021→
+  1022→// ─── Utility: cn (class concat) ─────────────────────────
+  1023→function cn(...classes: (string | boolean | undefined | null)[]) {
+  1024→  return classes.filter(Boolean).join(" ");
+  1025→}
+  1026→

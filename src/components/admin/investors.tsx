@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api-client";
-import { GlassCard, SectionTitle, FadeIn } from "@/components/brand/primitives";
+import { GlassCard, SectionTitle, FadeIn, SkeletonTable, SkeletonMetric, EmptyState } from "@/components/brand/primitives";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -18,7 +18,7 @@ export function AdminInvestors() {
   const [q, setQ] = useState("");
   const [editing, setEditing] = useState<any | null>(null);
 
-  const { data } = useQuery<any>({
+  const { data, isLoading } = useQuery<any>({
     queryKey: ["admin-users", q],
     queryFn: () => api.get(`/api/admin/users${q ? `?q=${encodeURIComponent(q)}` : ""}`),
   });
@@ -40,6 +40,33 @@ export function AdminInvestors() {
       toast.error(e instanceof Error ? e.message : "Failed");
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <FadeIn>
+          <div>
+            <span className="text-xs font-medium uppercase tracking-[0.18em] text-gold">Admin Console</span>
+            <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">Investors</h1>
+            <p className="text-sm text-muted-foreground">Manage investor accounts and access</p>
+          </div>
+        </FadeIn>
+        <FadeIn delay={0.05}>
+          <div className="grid gap-4 sm:grid-cols-3">
+            {[0, 1, 2].map((i) => <SkeletonMetric key={i} className="h-24" />)}
+          </div>
+        </FadeIn>
+        <FadeIn delay={0.1}>
+          <GlassCard className="p-5">
+            <SectionTitle title="Investor Directory" />
+            <div className="mt-4">
+              <SkeletonTable rows={5} cols={8} />
+            </div>
+          </GlassCard>
+        </FadeIn>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -64,15 +91,15 @@ export function AdminInvestors() {
 
       <FadeIn delay={0.05}>
         <div className="grid gap-4 sm:grid-cols-3">
-          <GlassCard className="p-4">
+          <GlassCard className="p-4 hover-lift">
             <div className="flex items-center gap-2 text-muted-foreground"><Users className="h-4 w-4" /><span className="text-[11px] uppercase tracking-wider">Total Accounts</span></div>
             <div className="mt-1 font-metric text-2xl font-bold text-foreground">{users.length}</div>
           </GlassCard>
-          <GlassCard className="p-4">
+          <GlassCard className="p-4 hover-lift">
             <div className="flex items-center gap-2 text-muted-foreground"><ShieldCheck className="h-4 w-4 text-gold" /><span className="text-[11px] uppercase tracking-wider">Administrators</span></div>
             <div className="mt-1 font-metric text-2xl font-bold text-gold">{users.filter((u: any) => u.role === "ADMIN").length}</div>
           </GlassCard>
-          <GlassCard className="p-4">
+          <GlassCard className="p-4 hover-lift">
             <div className="flex items-center gap-2 text-muted-foreground"><UserX className="h-4 w-4 text-loss" /><span className="text-[11px] uppercase tracking-wider">Suspended</span></div>
             <div className="mt-1 font-metric text-2xl font-bold text-loss">{users.filter((u: any) => !u.isActive).length}</div>
           </GlassCard>
@@ -97,8 +124,8 @@ export function AdminInvestors() {
                 </tr>
               </thead>
               <tbody>
-                {users.map((u: any) => (
-                  <tr key={u.id} className="border-b border-border/40 last:border-0 hover:bg-gold/5">
+                {users.map((u: any, idx: number) => (
+                  <tr key={u.id} className="border-b border-border/40 last:border-0 hover:bg-gold/5 row-enter" style={{ animationDelay: `${idx * 40}ms` }}>
                     <td className="py-3 pr-4">
                       <div className="flex items-center gap-2.5">
                         <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gold-gradient text-xs font-bold text-black">
@@ -127,14 +154,20 @@ export function AdminInvestors() {
                     <td className="py-3 pr-4 text-muted-foreground">{timeAgo(u.lastLogin)}</td>
                     <td className="py-3 pr-4 text-muted-foreground">{fmtDate(u.createdAt)}</td>
                     <td className="py-3 text-right">
-                      <Button size="sm" variant="ghost" onClick={() => setEditing(u)} className="text-gold hover:bg-gold/10">
+                      <Button size="sm" variant="ghost" onClick={() => setEditing(u)} className="text-gold hover:bg-gold/10 press-scale">
                         <UserCog className="h-4 w-4" />
                       </Button>
                     </td>
                   </tr>
                 ))}
                 {users.length === 0 && (
-                  <tr><td colSpan={8} className="py-10 text-center text-sm text-muted-foreground">No investors found</td></tr>
+                  <tr><td colSpan={8}>
+                    <EmptyState
+                      icon={<Users className="h-7 w-7" />}
+                      title="No investors found"
+                      description="No investor accounts match your search criteria."
+                    />
+                  </td></tr>
                 )}
               </tbody>
             </table>
@@ -173,7 +206,7 @@ export function AdminInvestors() {
           )}
           <DialogFooter>
             <Button variant="ghost" onClick={() => setEditing(null)}>Cancel</Button>
-            <Button onClick={save} className="bg-gold-gradient text-black hover:opacity-90">Save Changes</Button>
+            <Button onClick={save} className="bg-gold-gradient text-black hover:opacity-90 press-scale">Save Changes</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
