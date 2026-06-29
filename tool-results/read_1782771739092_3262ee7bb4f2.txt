@@ -1,0 +1,839 @@
+     1→     1→"use client";
+     2→     2→import { useState, useMemo } from "react";
+     3→     3→import { useQuery } from "@tanstack/react-query";
+     4→     4→import { api } from "@/lib/api-client";
+     5→     5→import { GlassCard, MetricTile, SectionTitle, FadeIn, SkeletonCard, SkeletonMetric } from "@/components/brand/primitives";
+     6→     6→import { fmtUSD, fmtNum, fmtPct, fmtDate } from "@/lib/format";
+     7→     7→import { useApp } from "@/lib/store";
+     8→     8→import {
+     9→     9→  Wallet,
+    10→    10→  Layers,
+    11→    11→  TrendingUp,
+    12→    12→  TrendingDown,
+    13→    13→  Activity,
+    14→    14→  ArrowUpRight,
+    15→    15→  ArrowDownRight,
+    16→    16→  Clock,
+    17→    17→  BarChart3,
+    18→    18→  Zap,
+    19→    19→  Target,
+    20→    20→  ChevronRight,
+    21→    21→  RefreshCw,
+    22→    22→  CircleDollarSign,
+    23→    23→  Scale,
+    24→    24→} from "lucide-react";
+    25→    25→import {
+    26→    26→  ResponsiveContainer,
+    27→    27→  BarChart,
+    28→    28→  Bar,
+    29→    29→  XAxis,
+    30→    30→  YAxis,
+    31→    31→  Tooltip,
+    32→    32→  CartesianGrid,
+    33→    33→  Cell,
+    34→    34→  AreaChart,
+    35→    35→  Area,
+    36→    36→  ReferenceLine,
+    37→    37→} from "recharts";
+    38→    38→import { motion } from "framer-motion";
+    39→    39→
+    40→    40→/* ------------------------------------------------------------------ */
+    41→    41→/*  Main Page Component                                                */
+    42→    42→/* ------------------------------------------------------------------ */
+    43→    43→export function PortfolioPage() {
+    44→    44→  const { setRoute } = useApp();
+    45→    45→  const [navRange, setNavRange] = useState<"1M" | "3M" | "6M" | "1Y" | "ALL">("1Y");
+    46→    46→
+    47→    47→  const { data, isLoading } = useQuery<any>({
+    48→    48→    queryKey: ["portfolio"],
+    49→    49→    queryFn: () => api.get("/api/portfolio"),
+    50→    50→  });
+    51→    51→
+    52→    52→  const { data: navHistory } = useQuery<any[]>({
+    53→    53→    queryKey: ["nav-history", data?.fund?.id, navRange],
+    54→    54→    queryFn: () => api.get(`/api/fund/nav-history?fundId=${data.fund.id}&range=${navRange}`),
+    55→    55→    enabled: !!data?.fund?.id,
+    56→    56→  });
+    57→    57→
+    58→    58→  const { data: txnData } = useQuery<any>({
+    59→    59→    queryKey: ["portfolio-transactions"],
+    60→    60→    queryFn: () => api.get("/api/transactions"),
+    61→    61→    enabled: !!data,
+    62→    62→  });
+    63→    63→
+    64→    64→  // NAV chart data (hook must be before any early return)
+    65→    65→  const navChartData = useMemo(() => {
+    66→    66→    if (!navHistory || navHistory.length === 0) return [];
+    67→    67→    return navHistory.map((p: any) => ({
+    68→    68→      date: new Date(p.date).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+    69→    69→      nav: p.nav,
+    70→    70→      aum: p.aum,
+    71→    71→    }));
+    72→    72→  }, [navHistory]);
+    73→    73→
+    74→    74→  if (isLoading || !data) return <PortfolioSkeleton />;
+    75→    75→
+    76→    76→  const { summary: s, metrics: m, allocations, fund, holding } = data;
+    77→    77→  const exposureData = allocations.map((a: any) => ({
+    78→    78→    name: a.asset.split(" ")[0],
+    79→    79→    value: (a.weight / 100) * s.currentValue,
+    80→    80→    color: a.color,
+    81→    81→    weight: a.weight,
+    82→    82→  }));
+    83→    83→
+    84→    84→  // Compute derived values
+    85→    85→  const daysInvested = holding?.updatedAt
+    86→    86→    ? Math.max(1, Math.floor((Date.now() - new Date(holding.updatedAt).getTime()) / 86400000))
+    87→    87→    : 0;
+    88→    88→  const nextNavUpdate = getNextNavUpdate();
+    89→    89→
+    90→    90→  // Transaction summary
+    91→    91→  const txns = txnData?.transactions ?? [];
+    92→    92→  const deposits = txns.filter((t: any) => t.type === "DEPOSIT" && t.status === "APPROVED");
+    93→    93→  const withdrawals = txns.filter((t: any) => t.type === "WITHDRAWAL" && t.status === "APPROVED");
+    94→    94→  const totalDeposited = deposits.reduce((a: number, t: any) => a + t.amount, 0);
+    95→    95→  const totalWithdrawn = withdrawals.reduce((a: number, t: any) => a + t.amount, 0);
+    96→    96→  const recentTxns = txns.slice(0, 5);
+    97→    97→
+    98→    98→  // Sparkline data for metric tiles (derived from metrics)
+    99→    99→  const valueSparkline = m?.navHistory?.slice(-14).map((p: any) => p.nav * s.units) ?? [];
+   100→   100→  const pnlSparkline = m?.navHistory?.slice(-14).map((p: any) => (p.nav - s.avgPrice) * s.units) ?? [];
+   101→   101→
+   102→   102→  // Risk metrics from portfolio data
+   103→   103→  const riskMetrics = [
+   104→   104→    { label: "Volatility", value: fmtPct(m?.volatility ?? 0), icon: <Zap className="h-4 w-4" />, pct: Math.min(Math.abs(m?.volatility ?? 0) / 100, 1), color: "#D4AF37" },
+   105→   105→    { label: "Max Drawdown", value: fmtPct(m?.maxDrawdown ?? 0), icon: <TrendingDown className="h-4 w-4" />, pct: Math.min(Math.abs(m?.maxDrawdown ?? 0) / 50, 1), color: "#ff4d4f" },
+   106→   106→    { label: "Sharpe Ratio", value: fmtNum(m?.sharpe ?? 0, 2), icon: <Scale className="h-4 w-4" />, pct: Math.min(Math.max(m?.sharpe ?? 0, 0) / 3, 1), color: "#00c896" },
+   107→   107→    { label: "CAGR", value: fmtPct(m?.cagr ?? 0), icon: <TrendingUp className="h-4 w-4" />, pct: Math.min(Math.abs(m?.cagr ?? 0) / 50, 1), color: "#4a90e2" },
+   108→   108→  ];
+   109→   109→
+   110→   110→  // Delta from last month
+   111→   111→  const monthlyDelta = m?.monthlyReturn
+   112→   112→    ? (s.currentValue * m.monthlyReturn) / 100
+   113→   113→    : 0;
+   114→   114→
+   115→   115→  return (
+   116→   116→    <div className="space-y-6">
+   117→   117→      {/* ─── 1. Page Header ─── */}
+   118→   118→      <FadeIn>
+   119→   119→        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+   120→   120→          <div>
+   121→   121→            <span className="text-xs font-medium uppercase tracking-[0.18em] text-gold">
+   122→   122→              Investor Portal
+   123→   123→            </span>
+   124→   124→            <div className="mt-1 flex items-center gap-3">
+   125→   125→              <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Portfolio</h1>
+   126→   126→              <span className="shimmer-badge inline-flex items-center gap-1.5 rounded-full border border-profit/30 bg-profit/10 px-2.5 py-0.5 text-[11px] font-medium text-profit">
+   127→   127→                <span className="h-1.5 w-1.5 rounded-full bg-profit animate-pulse" />
+   128→   128→                Active
+   129→   129→              </span>
+   130→   130→            </div>
+   131→   131→            <div className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
+   132→   132→              <span>{fund.name}</span>
+   133→   133→              <span className="text-foreground/20">•</span>
+   134→   134→              <Clock className="h-3.5 w-3.5" />
+   135→   135→              <span>Updated {fmtDate(holding?.updatedAt ?? new Date().toISOString())}</span>
+   136→   136→            </div>
+   137→   137→          </div>
+   138→   138→          <div className="flex gap-3">
+   139→   139→            <button
+   140→   140→              onClick={() => setRoute({ name: "transactions" })}
+   141→   141→              className="inline-flex items-center gap-2 rounded-lg bg-gold-gradient px-4 py-2 text-sm font-semibold text-primary-foreground shadow-lg shadow-gold/20 transition-all duration-200 hover:shadow-gold/30 hover:brightness-110 active:scale-[0.97]"
+   142→   142→            >
+   143→   143→              <CircleDollarSign className="h-4 w-4" />
+   144→   144→              Deposit
+   145→   145→            </button>
+   146→   146→            <button
+   147→   147→              onClick={() => setRoute({ name: "transactions" })}
+   148→   148→              className="inline-flex items-center gap-2 rounded-lg border border-border/60 bg-white/[0.04] px-4 py-2 text-sm font-medium text-foreground/80 backdrop-blur-sm transition-all duration-200 hover:bg-white/[0.08] hover:text-foreground active:scale-[0.97]"
+   149→   149→            >
+   150→   150→              <BarChart3 className="h-4 w-4" />
+   151→   151→              View Transactions
+   152→   152→            </button>
+   153→   153→          </div>
+   154→   154→        </div>
+   155→   155→      </FadeIn>
+   156→   156→
+   157→   157→      {/* ─── 2. Summary Metrics ─── */}
+   158→   158→      <FadeIn delay={0.05}>
+   159→   159→        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+   160→   160→          <MetricTile
+   161→   161→            label="Current Value"
+   162→   162→            value={fmtUSD(s.currentValue)}
+   163→   163→            accent="gold"
+   164→   164→            icon={
+   165→   165→              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gold/10">
+   166→   166→                <Wallet className="h-4 w-4 text-gold" />
+   167→   167→              </span>
+   168→   168→            }
+   169→   169→            sparkline={valueSparkline}
+   170→   170→            sub={
+   171→   171→              monthlyDelta !== 0 ? (
+   172→   172→                <span className={monthlyDelta >= 0 ? "text-profit" : "text-loss"}>
+   173→   173→                  {monthlyDelta >= 0 ? "+" : ""}
+   174→   174→                  {fmtUSD(monthlyDelta)} since last month
+   175→   175→                </span>
+   176→   176→              ) : undefined
+   177→   177→            }
+   178→   178→          />
+   179→   179→          <MetricTile
+   180→   180→            label="Invested Capital"
+   181→   181→            value={fmtUSD(s.investedCapital)}
+   182→   182→            icon={
+   183→   183→              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-info/10">
+   184→   184→                <Activity className="h-4 w-4 text-info" />
+   185→   185→              </span>
+   186→   186→            }
+   187→   187→            sub={fmtNum(s.units, 4) + " units"}
+   188→   188→          />
+   189→   189→          <MetricTile
+   190→   190→            label="Unrealized P&L"
+   191→   191→            value={fmtUSD(s.unrealizedPnl)}
+   192→   192→            accent={s.unrealizedPnl >= 0 ? "profit" : "loss"}
+   193→   193→            icon={
+   194→   194→              <span
+   195→   195→                className={`flex h-8 w-8 items-center justify-center rounded-lg ${
+   196→   196→                  s.unrealizedPnl >= 0 ? "bg-profit/10" : "bg-loss/10"
+   197→   197→                }`}
+   198→   198→              >
+   199→   199→                {s.unrealizedPnl >= 0 ? (
+   200→   200→                  <TrendingUp className="h-4 w-4 text-profit" />
+   201→   201→                ) : (
+   202→   202→                  <TrendingDown className="h-4 w-4 text-loss" />
+   203→   203→                )}
+   204→   204→              </span>
+   205→   205→            }
+   206→   206→            sparkline={pnlSparkline}
+   207→   207→            sub={`${fmtPct(s.roi)} ROI`}
+   208→   208→          />
+   209→   209→          <MetricTile
+   210→   210→            label="Units Held"
+   211→   211→            value={fmtNum(s.units, 4)}
+   212→   212→            accent="gold"
+   213→   213→            icon={
+   214→   214→              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gold/10">
+   215→   215→                <Layers className="h-4 w-4 text-gold" />
+   216→   216→              </span>
+   217→   217→            }
+   218→   218→            sub={`Avg ${fmtUSD(s.avgPrice, { decimals: 4 })}`}
+   219→   219→          />
+   220→   220→        </div>
+   221→   221→      </FadeIn>
+   222→   222→
+   223→   223→      {/* ─── 3. NAV Performance Chart ─── */}
+   224→   224→      <FadeIn delay={0.1}>
+   225→   225→        <GlassCard className="p-5" glow>
+   226→   226→          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+   227→   227→            <SectionTitle
+   228→   228→              title="NAV Performance"
+   229→   229→              subtitle="Net Asset Value over time"
+   230→   230→              className="mb-0"
+   231→   231→            />
+   232→   232→            <div className="flex gap-1 rounded-lg bg-white/[0.04] p-1">
+   233→   233→              {(["1M", "3M", "6M", "1Y", "ALL"] as const).map((r) => (
+   234→   234→                <button
+   235→   235→                  key={r}
+   236→   236→                  onClick={() => setNavRange(r)}
+   237→   237→                  className={`rounded-md px-3 py-1 text-xs font-medium transition-all duration-200 ${
+   238→   238→                    navRange === r
+   239→   239→                      ? "bg-gold/20 text-gold shadow-sm"
+   240→   240→                      : "text-muted-foreground hover:text-foreground/80"
+   241→   241→                  }`}
+   242→   242→                >
+   243→   243→                  {r}
+   244→   244→                </button>
+   245→   245→              ))}
+   246→   246→            </div>
+   247→   247→          </div>
+   248→   248→          <div className="mt-4 h-72">
+   249→   249→            {navChartData.length > 1 ? (
+   250→   250→              <ResponsiveContainer width="100%" height="100%">
+   251→   251→                <AreaChart data={navChartData} margin={{ top: 6, right: 6, left: 6, bottom: 0 }}>
+   252→   252→                  <defs>
+   253→   253→                    <linearGradient id="navGradient" x1="0" y1="0" x2="0" y2="1">
+   254→   254→                      <stop offset="0%" stopColor="#D4AF37" stopOpacity={0.35} />
+   255→   255→                      <stop offset="60%" stopColor="#D4AF37" stopOpacity={0.08} />
+   256→   256→                      <stop offset="100%" stopColor="#D4AF37" stopOpacity={0} />
+   257→   257→                    </linearGradient>
+   258→   258→                    <linearGradient id="navStroke" x1="0" y1="0" x2="1" y2="0">
+   259→   259→                      <stop offset="0%" stopColor="#b8860b" />
+   260→   260→                      <stop offset="50%" stopColor="#D4AF37" />
+   261→   261→                      <stop offset="100%" stopColor="#ffd700" />
+   262→   262→                    </linearGradient>
+   263→   263→                  </defs>
+   264→   264→                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+   265→   265→                  <XAxis
+   266→   266→                    dataKey="date"
+   267→   267→                    tick={{ fill: "#7A7A7A", fontSize: 11 }}
+   268→   268→                    stroke="rgba(255,255,255,0.08)"
+   269→   269→                    interval="preserveStartEnd"
+   270→   270→                  />
+   271→   271→                  <YAxis
+   272→   272→                    tickFormatter={(v) => `$${v.toFixed(2)}`}
+   273→   273→                    tick={{ fill: "#7A7A7A", fontSize: 11 }}
+   274→   274→                    stroke="rgba(255,255,255,0.08)"
+   275→   275→                    width={64}
+   276→   276→                    domain={["auto", "auto"]}
+   277→   277→                  />
+   278→   278→                  <Tooltip
+   279→   279→                    cursor={{ stroke: "rgba(212,175,55,0.3)", strokeDasharray: "4 4" }}
+   280→   280→                    contentStyle={{
+   281→   281→                      background: "rgba(20,20,22,0.95)",
+   282→   282→                      border: "1px solid rgba(212,175,55,0.25)",
+   283→   283→                      borderRadius: "10px",
+   284→   284→                      boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
+   285→   285→                    }}
+   286→   286→                    formatter={(v: number, name: string) => [
+   287→   287→                      name === "nav" ? fmtUSD(v, { decimals: 4 }) : fmtUSD(v),
+   288→   288→                      name === "nav" ? "NAV" : "AUM",
+   289→   289→                    ]}
+   290→   290→                    labelStyle={{ color: "#9a9a9a", fontSize: 12 }}
+   291→   291→                  />
+   292→   292→                  {fund.inceptionNav && (
+   293→   293→                    <ReferenceLine
+   294→   294→                      y={fund.inceptionNav}
+   295→   295→                      stroke="rgba(212,175,55,0.25)"
+   296→   296→                      strokeDasharray="6 4"
+   297→   297→                      label={{
+   298→   298→                        value: "Inception",
+   299→   299→                        position: "right",
+   300→   300→                        fill: "rgba(212,175,55,0.5)",
+   301→   301→                        fontSize: 10,
+   302→   302→                      }}
+   303→   303→                    />
+   304→   304→                  )}
+   305→   305→                  <Area
+   306→   306→                    type="monotone"
+   307→   307→                    dataKey="nav"
+   308→   308→                    stroke="url(#navStroke)"
+   309→   309→                    strokeWidth={2.5}
+   310→   310→                    fill="url(#navGradient)"
+   311→   311→                    dot={false}
+   312→   312→                    activeDot={{
+   313→   313→                      r: 5,
+   314→   314→                      fill: "#D4AF37",
+   315→   315→                      stroke: "#0a0a0b",
+   316→   316→                      strokeWidth: 2,
+   317→   317→                    }}
+   318→   318→                  />
+   319→   319→                </AreaChart>
+   320→   320→              </ResponsiveContainer>
+   321→   321→            ) : (
+   322→   322→              <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+   323→   323→                <div className="flex flex-col items-center gap-2">
+   324→   324→                  <BarChart3 className="h-8 w-8 text-gold/30" />
+   325→   325→                  <span>NAV history will appear as the fund reports values</span>
+   326→   326→                </div>
+   327→   327→              </div>
+   328→   328→            )}
+   329→   329→          </div>
+   330→   330→          {/* Quick stats below chart */}
+   331→   331→          {m && (
+   332→   332→            <div className="mt-4 grid grid-cols-2 gap-3 border-t border-border/40 pt-4 sm:grid-cols-4">
+   333→   333→              <div>
+   334→   334→                <span className="text-[10.5px] font-medium uppercase tracking-[0.12em] text-foreground/50">
+   335→   335→                  Daily
+   336→   336→                </span>
+   337→   337→                <div className={`mt-0.5 font-metric text-sm font-semibold ${m.dailyReturn >= 0 ? "text-profit" : "text-loss"}`}>
+   338→   338→                  {fmtPct(m.dailyReturn)}
+   339→   339→                </div>
+   340→   340→              </div>
+   341→   341→              <div>
+   342→   342→                <span className="text-[10.5px] font-medium uppercase tracking-[0.12em] text-foreground/50">
+   343→   343→                  Weekly
+   344→   344→                </span>
+   345→   345→                <div className={`mt-0.5 font-metric text-sm font-semibold ${m.weeklyReturn >= 0 ? "text-profit" : "text-loss"}`}>
+   346→   346→                  {fmtPct(m.weeklyReturn)}
+   347→   347→                </div>
+   348→   348→              </div>
+   349→   349→              <div>
+   350→   350→                <span className="text-[10.5px] font-medium uppercase tracking-[0.12em] text-foreground/50">
+   351→   351→                  Monthly
+   352→   352→                </span>
+   353→   353→                <div className={`mt-0.5 font-metric text-sm font-semibold ${m.monthlyReturn >= 0 ? "text-profit" : "text-loss"}`}>
+   354→   354→                  {fmtPct(m.monthlyReturn)}
+   355→   355→                </div>
+   356→   356→              </div>
+   357→   357→              <div>
+   358→   358→                <span className="text-[10.5px] font-medium uppercase tracking-[0.12em] text-foreground/50">
+   359→   359→                  Annual
+   360→   360→                </span>
+   361→   361→                <div className={`mt-0.5 font-metric text-sm font-semibold ${m.annualReturn >= 0 ? "text-profit" : "text-loss"}`}>
+   362→   362→                  {fmtPct(m.annualReturn)}
+   363→   363→                </div>
+   364→   364→              </div>
+   365→   365→            </div>
+   366→   366→          )}
+   367→   367→        </GlassCard>
+   368→   368→      </FadeIn>
+   369→   369→
+   370→   370→      {/* ─── 4. Asset Exposure + Position Detail ─── */}
+   371→   371→      <div className="grid gap-4 lg:grid-cols-3">
+   372→   372→        <FadeIn delay={0.15} className="lg:col-span-2">
+   373→   373→          <GlassCard className="p-5">
+   374→   374→            <div className="flex items-end justify-between">
+   375→   375→              <SectionTitle title="Asset Exposure" subtitle="USD value across fund allocations" className="mb-0" />
+   376→   376→              <div className="text-right">
+   377→   377→                <span className="text-[10.5px] font-medium uppercase tracking-[0.12em] text-foreground/50">
+   378→   378→                  Total Exposure
+   379→   379→                </span>
+   380→   380→                <div className="font-metric text-base font-semibold text-gold">
+   381→   381→                  {fmtUSD(s.currentValue)}
+   382→   382→                </div>
+   383→   383→              </div>
+   384→   384→            </div>
+   385→   385→            <div className="mt-4 h-72">
+   386→   386→              <ResponsiveContainer width="100%" height="100%">
+   387→   387→                <BarChart data={exposureData} margin={{ top: 6, right: 6, left: 6, bottom: 0 }} barSize={48}>
+   388→   388→                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+   389→   389→                  <XAxis dataKey="name" tick={{ fill: "#7A7A7A", fontSize: 11 }} stroke="rgba(255,255,255,0.08)" />
+   390→   390→                  <YAxis
+   391→   391→                    tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`}
+   392→   392→                    tick={{ fill: "#7A7A7A", fontSize: 11 }}
+   393→   393→                    stroke="rgba(255,255,255,0.08)"
+   394→   394→                    width={56}
+   395→   395→                  />
+   396→   396→                  <Tooltip
+   397→   397→                    cursor={{ fill: "rgba(212,175,55,0.06)" }}
+   398→   398→                    contentStyle={{
+   399→   399→                      background: "rgba(20,20,22,0.95)",
+   400→   400→                      border: "1px solid rgba(212,175,55,0.25)",
+   401→   401→                      borderRadius: "10px",
+   402→   402→                      boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
+   403→   403→                    }}
+   404→   404→                    formatter={(v: number, _name: string, props: any) => [
+   405→   405→                      <span key="val">
+   406→   406→                        <span className="font-metric">{fmtUSD(v)}</span>
+   407→   407→                        <span className="ml-2 text-muted-foreground">
+   408→   408→                          ({props.payload.weight}%)
+   409→   409→                        </span>
+   410→   410→                      </span>,
+   411→   411→                      "Exposure",
+   412→   412→                    ]}
+   413→   413→                  />
+   414→   414→                  <Bar dataKey="value" radius={[8, 8, 0, 0]} minPointSize={4}>
+   415→   415→                    {exposureData.map((e: any, i: number) => (
+   416→   416→                      <Cell
+   417→   417→                        key={i}
+   418→   418→                        fill={e.color}
+   419→   419→                        fillOpacity={0.85}
+   420→   420→                        style={{ transition: "fill-opacity 0.2s ease" }}
+   421→   421→                      />
+   422→   422→                    ))}
+   423→   423→                  </Bar>
+   424→   424→                </BarChart>
+   425→   425→              </ResponsiveContainer>
+   426→   426→            </div>
+   427→   427→            {/* Weight summary below bars */}
+   428→   428→            <div className="mt-3 flex flex-wrap gap-2">
+   429→   429→              {exposureData.map((e: any) => (
+   430→   430→                <span
+   431→   431→                  key={e.name}
+   432→   432→                  className="inline-flex items-center gap-1.5 rounded-md border border-border/40 bg-white/[0.03] px-2 py-1 text-xs"
+   433→   433→                >
+   434→   434→                  <span className="h-2 w-2 rounded-sm" style={{ background: e.color }} />
+   435→   435→                  <span className="text-foreground/70">{e.name}</span>
+   436→   436→                  <span className="font-metric font-semibold text-foreground/90">{e.weight}%</span>
+   437→   437→                </span>
+   438→   438→              ))}
+   439→   439→            </div>
+   440→   440→          </GlassCard>
+   441→   441→        </FadeIn>
+   442→   442→
+   443→   443→        {/* ─── 5. Position Detail Card ─── */}
+   444→   444→        <FadeIn delay={0.2}>
+   445→   445→          <GlassCard gold className="h-full p-5" glow>
+   446→   446→            {/* ROI Gauge */}
+   447→   447→            <div className="mb-4 flex flex-col items-center">
+   448→   448→              <div className="relative h-28 w-28">
+   449→   449→                <svg viewBox="0 0 100 100" className="h-full w-full -rotate-90">
+   450→   450→                  <circle
+   451→   451→                    cx="50"
+   452→   452→                    cy="50"
+   453→   453→                    r="42"
+   454→   454→                    fill="none"
+   455→   455→                    stroke="rgba(255,255,255,0.06)"
+   456→   456→                    strokeWidth="8"
+   457→   457→                  />
+   458→   458→                  <circle
+   459→   459→                    cx="50"
+   460→   460→                    cy="50"
+   461→   461→                    r="42"
+   462→   462→                    fill="none"
+   463→   463→                    stroke={s.roi >= 0 ? "#00c896" : "#ff4d4f"}
+   464→   464→                    strokeWidth="8"
+   465→   465→                    strokeLinecap="round"
+   466→   466→                    strokeDasharray={`${Math.min(Math.abs(s.roi), 100) * 2.64} 264`}
+   467→   467→                    className="transition-all duration-1000 ease-out"
+   468→   468→                    style={{ filter: `drop-shadow(0 0 6px ${s.roi >= 0 ? "rgba(0,200,150,0.4)" : "rgba(255,77,79,0.4)"})` }}
+   469→   469→                  />
+   470→   470→                </svg>
+   471→   471→                <div className="absolute inset-0 flex flex-col items-center justify-center">
+   472→   472→                  <span
+   473→   473→                    className={`font-metric text-lg font-bold ${
+   474→   474→                      s.roi >= 0 ? "text-profit" : "text-loss"
+   475→   475→                    }`}
+   476→   476→                  >
+   477→   477→                    {fmtPct(s.roi)}
+   478→   478→                  </span>
+   479→   479→                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+   480→   480→                    ROI
+   481→   481→                  </span>
+   482→   482→                </div>
+   483→   483→              </div>
+   484→   484→            </div>
+   485→   485→
+   486→   486→            <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+   487→   487→              Position Detail
+   488→   488→            </h3>
+   489→   489→            <dl className="mt-4 space-y-3 text-sm">
+   490→   490→              <Row label="Fund" value={fund.name} />
+   491→   491→              <Row label="Minimum Investment" value={fmtUSD(fund.minInvest)} />
+   492→   492→              <Row label="Fee Structure" value={fund.feeStructure} small />
+   493→   493→              <div className="border-t border-border/40 pt-3" />
+   494→   494→              <Row label="Units" value={fmtNum(s.units, 4)} />
+   495→   495→              <Row label="Average Cost / Unit" value={fmtUSD(s.avgPrice, { decimals: 4 })} />
+   496→   496→              <Row label="Current NAV" value={fmtUSD(s.currentNav, { decimals: 4 })} />
+   497→   497→              <div className="border-t border-border/40 pt-3" />
+   498→   498→              <Row label="Position Opened" value={holding ? fmtDate(holding.updatedAt) : "—"} />
+   499→   499→              <Row label="Days Invested" value={daysInvested > 0 ? `${daysInvested} days` : "—"} />
+   500→   500→              <Row
+   501→   501→                label="Next NAV Update"
+   502→   502→                value={nextNavUpdate}
+   503→   503→                icon={<RefreshCw className="h-3 w-3 text-gold/60" />}
+   504→   504→              />
+   505→   505→              <div className="border-t border-gold/20 pt-3">
+   506→   506→                <Row
+   507→   507→                  label="Total Return"
+   508→   508→                  value={fmtPct(s.roi)}
+   509→   509→                  highlight={s.roi >= 0 ? "profit" : "loss"}
+   510→   510→                />
+   511→   511→              </div>
+   512→   512→            </dl>
+   513→   513→          </GlassCard>
+   514→   514→        </FadeIn>
+   515→   515→      </div>
+   516→   516→
+   517→   517→      {/* ─── 6. Allocation Breakdown ─── */}
+   518→   518→      <FadeIn delay={0.25}>
+   519→   519→        <GlassCard className="p-5">
+   520→   520→          <div className="flex items-end justify-between">
+   521→   521→            <SectionTitle
+   522→   522→              title="Allocation Breakdown"
+   523→   523→              subtitle="Target weights set by the investment committee"
+   524→   524→              className="mb-0"
+   525→   525→            />
+   526→   526→            <div className="text-right">
+   527→   527→              <span className="text-[10.5px] font-medium uppercase tracking-[0.12em] text-foreground/50">
+   528→   528→                Total Allocation
+   529→   529→              </span>
+   530→   530→              <div className="font-metric text-base font-semibold text-foreground">
+   531→   531→                {allocations.reduce((a: number, b: any) => a + b.weight, 0).toFixed(1)}%
+   532→   532→              </div>
+   533→   533→            </div>
+   534→   534→          </div>
+   535→   535→          <div className="mt-5 space-y-4">
+   536→   536→            {allocations.map((a: any) => {
+   537→   537→              const usdValue = (a.weight / 100) * s.currentValue;
+   538→   538→              const targetWeight = a.targetWeight ?? a.weight;
+   539→   539→              const drift = a.weight - targetWeight;
+   540→   540→              return (
+   541→   541→                <div key={a.id}>
+   542→   542→                  <div className="flex items-center justify-between">
+   543→   543→                    <span className="flex items-center gap-2.5 text-foreground/90">
+   544→   544→                      <span
+   545→   545→                        className="h-3.5 w-3.5 rounded-sm shadow-sm"
+   546→   546→                        style={{ background: a.color, boxShadow: `0 0 8px ${a.color}33` }}
+   547→   547→                      />
+   548→   548→                      <span className="font-medium">{a.asset}</span>
+   549→   549→                      {drift !== 0 && (
+   550→   550→                        <span
+   551→   551→                          className={`text-[10px] font-metric ${
+   552→   552→                            drift > 0 ? "text-profit" : "text-loss"
+   553→   553→                          }`}
+   554→   554→                        >
+   555→   555→                          {drift > 0 ? "+" : ""}
+   556→   556→                          {drift.toFixed(1)}pp drift
+   557→   557→                        </span>
+   558→   558→                      )}
+   559→   559→                    </span>
+   560→   560→                    <div className="flex items-center gap-3">
+   561→   561→                      <span className="text-xs text-muted-foreground font-metric">
+   562→   562→                        {fmtUSD(usdValue)}
+   563→   563→                      </span>
+   564→   564→                      <span className="font-metric font-semibold text-foreground">
+   565→   565→                        {a.weight}%
+   566→   566→                      </span>
+   567→   567→                    </div>
+   568→   568→                  </div>
+   569→   569→                  <div className="relative mt-2 h-3 overflow-hidden rounded-full bg-black/40">
+   570→   570→                    <motion.div
+   571→   571→                      className="h-full rounded-full"
+   572→   572→                      style={{ background: a.color }}
+   573→   573→                      initial={{ width: 0 }}
+   574→   574→                      animate={{ width: `${a.weight}%` }}
+   575→   575→                      transition={{ duration: 0.8, ease: "easeOut", delay: 0.1 }}
+   576→   576→                    />
+   577→   577→                    <div
+   578→   578→                      className="absolute top-0 h-full rounded-full border-r border-dashed border-foreground/30"
+   579→   579→                      style={{ left: `${targetWeight}%`, width: 0 }}
+   580→   580→                    />
+   581→   581→                  </div>
+   582→   582→                </div>
+   583→   583→              );
+   584→   584→            })}
+   585→   585→          </div>
+   586→   586→        </GlassCard>
+   587→   587→      </FadeIn>
+   588→   588→
+   589→   589→      {/* ─── 7. Risk Exposure Summary ─── */}
+   590→   590→      <FadeIn delay={0.3}>
+   591→   591→        <GlassCard className="p-5">
+   592→   592→          <SectionTitle
+   593→   593→            title="Risk Exposure"
+   594→   594→            subtitle="Key risk metrics for your portfolio"
+   595→   595→            action={
+   596→   596→              <button
+   597→   597→                onClick={() => setRoute({ name: "analytics" })}
+   598→   598→                className="inline-flex items-center gap-1 text-xs text-gold/70 transition-colors hover:text-gold"
+   599→   599→              >
+   600→   600→                View Full Analytics <ChevronRight className="h-3 w-3" />
+   601→   601→              </button>
+   602→   602→            }
+   603→   603→          />
+   604→   604→          <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+   605→   605→            {riskMetrics.map((rm) => (
+   606→   606→              <div
+   607→   607→                key={rm.label}
+   608→   608→                className="rounded-xl border border-border/40 bg-white/[0.02] p-4 transition-all duration-200 hover:border-border/60 hover:bg-white/[0.04]"
+   609→   609→              >
+   610→   610→                <div className="flex items-center gap-2">
+   611→   611→                  <span className="text-muted-foreground">{rm.icon}</span>
+   612→   612→                  <span className="text-[10.5px] font-medium uppercase tracking-[0.12em] text-foreground/50">
+   613→   613→                    {rm.label}
+   614→   614→                  </span>
+   615→   615→                </div>
+   616→   616→                <div className="mt-2 font-metric text-xl font-semibold text-foreground">
+   617→   617→                  {rm.value}
+   618→   618→                </div>
+   619→   619→                {/* Mini progress bar */}
+   620→   620→                <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
+   621→   621→                  <motion.div
+   622→   622→                    className="h-full rounded-full"
+   623→   623→                    style={{ background: rm.color }}
+   624→   624→                    initial={{ width: 0 }}
+   625→   625→                    animate={{ width: `${rm.pct * 100}%` }}
+   626→   626→                    transition={{ duration: 1, ease: "easeOut" }}
+   627→   627→                  />
+   628→   628→                </div>
+   629→   629→              </div>
+   630→   630→            ))}
+   631→   631→          </div>
+   632→   632→        </GlassCard>
+   633→   633→      </FadeIn>
+   634→   634→
+   635→   635→      {/* ─── 8. Transaction Summary ─── */}
+   636→   636→      <FadeIn delay={0.35}>
+   637→   637→        <GlassCard className="p-5">
+   638→   638→          <div className="flex items-end justify-between">
+   639→   639→            <SectionTitle
+   640→   640→              title="Transaction Summary"
+   641→   641→              subtitle="Recent deposit and withdrawal activity"
+   642→   642→              className="mb-0"
+   643→   643→            />
+   644→   644→            <button
+   645→   645→              onClick={() => setRoute({ name: "transactions" })}
+   646→   646→              className="inline-flex items-center gap-1 text-xs text-gold/70 transition-colors hover:text-gold"
+   647→   647→            >
+   648→   648→              View All <ChevronRight className="h-3 w-3" />
+   649→   649→            </button>
+   650→   650→          </div>
+   651→   651→
+   652→   652→          {/* Quick stats */}
+   653→   653→          <div className="mt-5 grid gap-3 sm:grid-cols-3">
+   654→   654→            <div className="rounded-xl border border-profit/20 bg-profit/[0.04] p-4">
+   655→   655→              <div className="flex items-center gap-2">
+   656→   656→                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-profit/10">
+   657→   657→                  <ArrowUpRight className="h-3.5 w-3.5 text-profit" />
+   658→   658→                </span>
+   659→   659→                <span className="text-[10.5px] font-medium uppercase tracking-[0.12em] text-foreground/50">
+   660→   660→                  Total Deposited
+   661→   661→                </span>
+   662→   662→              </div>
+   663→   663→              <div className="mt-2 font-metric text-lg font-semibold text-profit">
+   664→   664→                {fmtUSD(totalDeposited)}
+   665→   665→              </div>
+   666→   666→            </div>
+   667→   667→            <div className="rounded-xl border border-info/20 bg-info/[0.04] p-4">
+   668→   668→              <div className="flex items-center gap-2">
+   669→   669→                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-info/10">
+   670→   670→                  <ArrowDownRight className="h-3.5 w-3.5 text-info" />
+   671→   671→                </span>
+   672→   672→                <span className="text-[10.5px] font-medium uppercase tracking-[0.12em] text-foreground/50">
+   673→   673→                  Total Withdrawn
+   674→   674→                </span>
+   675→   675→              </div>
+   676→   676→              <div className="mt-2 font-metric text-lg font-semibold text-info">
+   677→   677→                {fmtUSD(totalWithdrawn)}
+   678→   678→              </div>
+   679→   679→            </div>
+   680→   680→            <div className="rounded-xl border border-gold/20 bg-gold/[0.04] p-4">
+   681→   681→              <div className="flex items-center gap-2">
+   682→   682→                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-gold/10">
+   683→   683→                  <Target className="h-3.5 w-3.5 text-gold" />
+   684→   684→                </span>
+   685→   685→                <span className="text-[10.5px] font-medium uppercase tracking-[0.12em] text-foreground/50">
+   686→   686→                  Net Position
+   687→   687→                </span>
+   688→   688→              </div>
+   689→   689→              <div className="mt-2 font-metric text-lg font-semibold text-gold">
+   690→   690→                {fmtUSD(totalDeposited - totalWithdrawn)}
+   691→   691→              </div>
+   692→   692→            </div>
+   693→   693→          </div>
+   694→   694→
+   695→   695→          {/* Recent transactions list */}
+   696→   696→          {recentTxns.length > 0 && (
+   697→   697→            <div className="mt-5">
+   698→   698→              <h4 className="text-xs font-medium uppercase tracking-[0.12em] text-foreground/50">
+   699→   699→                Recent Activity
+   700→   700→              </h4>
+   701→   701→              <div className="mt-3 space-y-2">
+   702→   702→                {recentTxns.map((txn: any) => (
+   703→   703→                  <div
+   704→   704→                    key={txn.id}
+   705→   705→                    className="flex items-center justify-between rounded-lg border border-border/30 bg-white/[0.02] px-4 py-3 transition-colors hover:bg-white/[0.04]"
+   706→   706→                  >
+   707→   707→                    <div className="flex items-center gap-3">
+   708→   708→                      <span
+   709→   709→                        className={`flex h-8 w-8 items-center justify-center rounded-lg ${
+   710→   710→                          txn.type === "DEPOSIT" ? "bg-profit/10" : "bg-info/10"
+   711→   711→                        }`}
+   712→   712→                      >
+   713→   713→                        {txn.type === "DEPOSIT" ? (
+   714→   714→                          <ArrowUpRight className="h-4 w-4 text-profit" />
+   715→   715→                        ) : (
+   716→   716→                          <ArrowDownRight className="h-4 w-4 text-info" />
+   717→   717→                        )}
+   718→   718→                      </span>
+   719→   719→                      <div>
+   720→   720→                        <div className="text-sm font-medium text-foreground">
+   721→   721→                          {txn.type === "DEPOSIT" ? "Deposit" : "Withdrawal"}
+   722→   722→                        </div>
+   723→   723→                        <div className="text-xs text-muted-foreground">
+   724→   724→                          {fmtDate(txn.createdAt)}
+   725→   725→                        </div>
+   726→   726→                      </div>
+   727→   727→                    </div>
+   728→   728→                    <div className="text-right">
+   729→   729→                      <div
+   730→   730→                        className={`font-metric text-sm font-semibold ${
+   731→   731→                          txn.type === "DEPOSIT" ? "text-profit" : "text-info"
+   732→   732→                        }`}
+   733→   733→                      >
+   734→   734→                        {txn.type === "DEPOSIT" ? "+" : "-"}
+   735→   735→                        {fmtUSD(txn.amount)}
+   736→   736→                      </div>
+   737→   737→                      <span
+   738→   738→                        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${
+   739→   739→                          txn.status === "APPROVED"
+   740→   740→                            ? "bg-profit/10 text-profit"
+   741→   741→                            : txn.status === "PENDING"
+   742→   742→                            ? "bg-warning/10 text-warning"
+   743→   743→                            : "bg-loss/10 text-loss"
+   744→   744→                        }`}
+   745→   745→                      >
+   746→   746→                        <span
+   747→   747→                          className={`h-1 w-1 rounded-full ${
+   748→   748→                            txn.status === "APPROVED"
+   749→   749→                              ? "bg-profit"
+   750→   750→                              : txn.status === "PENDING"
+   751→   751→                              ? "bg-warning"
+   752→   752→                              : "bg-loss"
+   753→   753→                          }`}
+   754→   754→                        />
+   755→   755→                        {txn.status}
+   756→   756→                      </span>
+   757→   757→                    </div>
+   758→   758→                  </div>
+   759→   759→                ))}
+   760→   760→              </div>
+   761→   761→            </div>
+   762→   762→          )}
+   763→   763→
+   764→   764→          {recentTxns.length === 0 && (
+   765→   765→            <div className="mt-5 flex flex-col items-center justify-center rounded-xl border border-dashed border-border/40 py-8 text-sm text-muted-foreground">
+   766→   766→              <CircleDollarSign className="mb-2 h-8 w-8 text-gold/20" />
+   767→   767→              No transactions yet
+   768→   768→            </div>
+   769→   769→          )}
+   770→   770→        </GlassCard>
+   771→   771→      </FadeIn>
+   772→   772→    </div>
+   773→   773→  );
+   774→   774→}
+   775→   775→
+   776→   776→/* ------------------------------------------------------------------ */
+   777→   777→/*  Row helper                                                         */
+   778→   778→/* ------------------------------------------------------------------ */
+   779→   779→function Row({
+   780→   780→  label,
+   781→   781→  value,
+   782→   782→  small,
+   783→   783→  highlight,
+   784→   784→  icon,
+   785→   785→}: {
+   786→   786→  label: string;
+   787→   787→  value: string;
+   788→   788→  small?: boolean;
+   789→   789→  highlight?: "profit" | "loss";
+   790→   790→  icon?: React.ReactNode;
+   791→   791→}) {
+   792→   792→  const color =
+   793→   793→    highlight === "profit" ? "text-profit" : highlight === "loss" ? "text-loss" : "text-foreground";
+   794→   794→  return (
+   795→   795→    <div className="flex items-start justify-between gap-3">
+   796→   796→      <dt className="flex items-center gap-1.5 text-muted-foreground">
+   797→   797→        {icon}
+   798→   798→        {label}
+   799→   799→      </dt>
+   800→   800→      <dd className={`text-right font-medium ${color} ${small ? "text-xs" : ""}`}>{value}</dd>
+   801→   801→    </div>
+   802→   802→  );
+   803→   803→}
+   804→   804→
+   805→   805→/* ------------------------------------------------------------------ */
+   806→   806→/*  Helpers                                                            */
+   807→   807→/* ------------------------------------------------------------------ */
+   808→   808→function getNextNavUpdate(): string {
+   809→   809→  const now = new Date();
+   810→   810→  const tomorrow = new Date(now);
+   811→   811→  tomorrow.setDate(tomorrow.getDate() + 1);
+   812→   812→  tomorrow.setHours(0, 0, 0, 0);
+   813→   813→  const hours = Math.ceil((tomorrow.getTime() - now.getTime()) / 3600000);
+   814→   814→  return hours <= 1 ? "< 1 hour" : `~${hours}h`;
+   815→   815→}
+   816→   816→
+   817→   817→/* ------------------------------------------------------------------ */
+   818→   818→/*  Loading Skeleton                                                   */
+   819→   819→/* ------------------------------------------------------------------ */
+   820→   820→function PortfolioSkeleton() {
+   821→   821→  return (
+   822→   822→    <div className="space-y-6">
+   823→   823→      <SkeletonCard className="h-20 hover-lift" />
+   824→   824→      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+   825→   825→        {[...Array(4)].map((_, i) => (
+   826→   826→          <SkeletonMetric key={i} className="h-28" />
+   827→   827→        ))}
+   828→   828→      </div>
+   829→   829→      <SkeletonCard className="h-80 chart-hover-glow" />
+   830→   830→      <div className="grid gap-4 lg:grid-cols-3">
+   831→   831→        <SkeletonCard className="h-80 lg:col-span-2 chart-hover-glow" />
+   832→   832→        <SkeletonCard className="h-80 hover-lift" />
+   833→   833→      </div>
+   834→   834→      <SkeletonCard className="h-60 hover-lift" />
+   835→   835→      <SkeletonCard className="h-40 hover-lift" />
+   836→   836→    </div>
+   837→   837→  );
+   838→   838→}
+   839→   839→

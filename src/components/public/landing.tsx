@@ -137,14 +137,14 @@ const trustBadges = [
 /* As-featured-in text-based press row */
 const pressLogos = ["BLOOMBERG", "COINDESK", "FORBES", "REUTERS", "THE BLOCK", "FINANCIAL TIMES", "WALL STREET JOURNAL"];
 
-/* Backed-by institutional logos */
+/* Backed-by institutional logos — large monospace placeholder style */
 const backedByLogos = [
-  { name: "Sequoia Capital", icon: Landmark },
-  { name: "Paradigm", icon: Hexagon },
-  { name: "a16z Crypto", icon: Globe },
-  { name: "Founders Fund", icon: Building2 },
-  { name: "Dragonfly", icon: Zap },
-  { name: "Server Farm", icon: Server },
+  { name: "BLACKROCK", sub: "Asset Management" },
+  { name: "FIDELITY", sub: "Investments" },
+  { name: "GOLDMAN SACHS", sub: "Securities" },
+  { name: "SEQUOIA", sub: "Capital" },
+  { name: "PARADIGM", sub: "Ventures" },
+  { name: "a16z", sub: "Crypto" },
 ];
 
 /* ------------------------------------------------------------------ */
@@ -426,8 +426,8 @@ export function Landing() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
           >
-            {/* Badge */}
-            <div className="premium-chip mx-auto mb-8 shimmer-badge">
+            {/* Badge — enhanced with better padding, rounded corners, subtle shadow */}
+            <div className="premium-chip mx-auto mb-8 shimmer-badge rounded-full shadow-[0_0_16px_rgba(212,175,55,0.15),0_2px_8px_rgba(0,0,0,0.3)] px-5 py-2">
               <span className="relative flex h-2 w-2">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-gold opacity-60" />
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-gold-bright shadow-[0_0_8px_rgba(212,175,55,0.8)]" />
@@ -521,28 +521,30 @@ export function Landing() {
             })}
           </motion.div>
 
-          {/* "Backed by" institutional logos row */}
+          {/* "Backed by" institutional logos row — large, prominent */}
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.5 }}
-            className="mt-14 flex flex-col items-center gap-4"
+            className="mt-16 flex flex-col items-center gap-5"
           >
-            <span className="text-[10px] font-medium uppercase tracking-[0.28em] text-muted-foreground/50">
-              Backed by leading institutions
+            <span className="text-[11px] font-semibold uppercase tracking-[0.32em] text-gold/60">
+              Backed by Leading Institutions
             </span>
-            <div className="flex flex-wrap items-center justify-center gap-3">
-              {backedByLogos.map((b) => {
-                const BIcon = b.icon;
-                return (
-                  <div key={b.name} className="backed-by-logo">
-                    <BIcon className="h-4 w-4 text-muted-foreground/50" />
-                    <span className="text-[11px] font-semibold tracking-wider text-muted-foreground/60 uppercase">
-                      {b.name}
-                    </span>
-                  </div>
-                );
-              })}
+            <div className="flex flex-wrap items-center justify-center gap-4">
+              {backedByLogos.map((b) => (
+                <div
+                  key={b.name}
+                  className="group flex flex-col items-center justify-center rounded-xl border border-white/[0.06] bg-white/[0.02] px-6 py-4 transition-all duration-300 hover:border-gold/25 hover:bg-gold/[0.04] hover:shadow-[0_0_20px_rgba(212,175,55,0.08)] min-w-[140px]"
+                >
+                  <span className="font-mono text-base font-bold tracking-[0.16em] text-foreground/40 transition-colors duration-300 group-hover:text-foreground/70">
+                    {b.name}
+                  </span>
+                  <span className="mt-1 text-[9px] font-medium uppercase tracking-[0.2em] text-muted-foreground/35 transition-colors duration-300 group-hover:text-gold/60">
+                    {b.sub}
+                  </span>
+                </div>
+              ))}
             </div>
           </motion.div>
 

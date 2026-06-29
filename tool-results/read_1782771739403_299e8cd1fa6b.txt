@@ -1,0 +1,1358 @@
+     1→     1→@import "tailwindcss";
+     2→     2→@import "tw-animate-css";
+     3→     3→
+     4→     4→@custom-variant dark (&:is(.dark *));
+     5→     5→
+     6→     6→@theme inline {
+     7→     7→  --color-background: var(--background);
+     8→     8→  --color-foreground: var(--foreground);
+     9→     9→  --font-sans: var(--font-inter);
+    10→    10→  --font-mono: var(--font-jetbrains);
+    11→    11→  --color-sidebar-ring: var(--sidebar-ring);
+    12→    12→  --color-sidebar-border: var(--sidebar-border);
+    13→    13→  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+    14→    14→  --color-sidebar-accent: var(--sidebar-accent);
+    15→    15→  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+    16→    16→  --color-sidebar-primary: var(--sidebar-primary);
+    17→    17→  --color-sidebar-foreground: var(--sidebar-foreground);
+    18→    18→  --color-sidebar: var(--sidebar);
+    19→    19→  --color-chart-5: var(--chart-5);
+    20→    20→  --color-chart-4: var(--chart-4);
+    21→    21→  --color-chart-3: var(--chart-3);
+    22→    22→  --color-chart-2: var(--chart-2);
+    23→    23→  --color-chart-1: var(--chart-1);
+    24→    24→  --color-ring: var(--ring);
+    25→    25→  --color-input: var(--input);
+    26→    26→  --color-border: var(--border);
+    27→    27→  --color-destructive: var(--destructive);
+    28→    28→  --color-accent-foreground: var(--accent-foreground);
+    29→    29→  --color-accent: var(--accent);
+    30→    30→  --color-muted-foreground: var(--muted-foreground);
+    31→    31→  --color-muted: var(--muted);
+    32→    32→  --color-secondary-foreground: var(--secondary-foreground);
+    33→    33→  --color-secondary: var(--secondary);
+    34→    34→  --color-primary-foreground: var(--primary-foreground);
+    35→    35→  --color-primary: var(--primary);
+    36→    36→  --color-popover-foreground: var(--popover-foreground);
+    37→    37→  --color-popover: var(--popover);
+    38→    38→  --color-card-foreground: var(--card-foreground);
+    39→    39→  --color-card: var(--card);
+    40→    40→  --color-gold: var(--gold);
+    41→    41→  --color-gold-soft: var(--gold-soft);
+    42→    42→  --color-gold-bright: var(--gold-bright);
+    43→    43→  --color-profit: var(--profit);
+    44→    44→  --color-loss: var(--loss);
+    45→    45→  --color-warning: var(--warning);
+    46→    46→  --color-info: var(--info);
+    47→    47→  --radius-sm: calc(var(--radius) - 4px);
+    48→    48→  --radius-md: calc(var(--radius) - 2px);
+    49→    49→  --radius-lg: var(--radius);
+    50→    50→  --radius-xl: calc(var(--radius) + 4px);
+    51→    51→}
+    52→    52→
+    53→    53→/* NIGHTMARE INVEST — Dark Luxury Institutional theme (default dark) */
+    54→    54→:root {
+    55→    55→  --radius: 0.75rem;
+    56→    56→
+    57→    57→  /* Surfaces */
+    58→    58→  --background: #0a0a0b;
+    59→    59→  --foreground: #f5f5f4;
+    60→    60→  --card: #141416;
+    61→    61→  --card-foreground: #f5f5f4;
+    62→    62→  --popover: #141416;
+    63→    63→  --popover-foreground: #f5f5f4;
+    64→    64→
+    65→    65→  /* Brand gold */
+    66→    66→  --primary: #d4af37;
+    67→    67→  --primary-foreground: #0a0a0b;
+    68→    68→  --gold: #d4af37;
+    69→    69→  --gold-soft: #f1d27a;
+    70→    70→  --gold-bright: #ffd700;
+    71→    71→
+    72→    72→  /* Secondary / muted */
+    73→    73→  --secondary: #1c1c1f;
+    74→    74→  --secondary-foreground: #e7e5e4;
+    75→    75→  --muted: #1c1c1f;
+    76→    76→  --muted-foreground: #9a9a9a;
+    77→    77→  --accent: #26262a;
+    78→    78→  --accent-foreground: #f5f5f4;
+    79→    79→
+    80→    80→  /* Status */
+    81→    81→  --destructive: #ff4d4f;
+    82→    82→  --profit: #00c896;
+    83→    83→  --loss: #ff4d4f;
+    84→    84→  --warning: #f5a623;
+    85→    85→  --info: #4a90e2;
+    86→    86→
+    87→    87→  /* Borders / inputs */
+    88→    88→  --border: rgba(255, 255, 255, 0.08);
+    89→    89→  --input: rgba(255, 255, 255, 0.1);
+    90→    90→  --ring: #d4af37;
+    91→    91→
+    92→    92→  /* Charts */
+    93→    93→  --chart-1: #d4af37;
+    94→    94→  --chart-2: #00c896;
+    95→    95→  --chart-3: #4a90e2;
+    96→    96→  --chart-4: #f5a623;
+    97→    97→  --chart-5: #b08d57;
+    98→    98→
+    99→    99→  /* Sidebar */
+   100→   100→  --sidebar: #0d0d0f;
+   101→   101→  --sidebar-foreground: #e7e5e4;
+   102→   102→  --sidebar-primary: #d4af37;
+   103→   103→  --sidebar-primary-foreground: #0a0a0b;
+   104→   104→  --sidebar-accent: #1c1c1f;
+   105→   105→  --sidebar-accent-foreground: #f5f5f4;
+   106→   106→  --sidebar-border: rgba(255, 255, 255, 0.06);
+   107→   107→  --sidebar-ring: #d4af37;
+   108→   108→}
+   109→   109→
+   110→   110→@layer base {
+   111→   111→  * {
+   112→   112→    @apply border-border outline-ring/50;
+   113→   113→  }
+   114→   114→  html {
+   115→   115→    color-scheme: dark;
+   116→   116→  }
+   117→   117→  body {
+   118→   118→    @apply bg-background text-foreground;
+   119→   119→    font-feature-settings: "rlig" 1, "calt" 1, "ss01" 1;
+   120→   120→    background-color: var(--background);
+   121→   121→    background-image:
+   122→   122→      radial-gradient(ellipse 80% 50% at 50% -10%, rgba(212, 175, 55, 0.08), transparent),
+   123→   123→      radial-gradient(ellipse 60% 40% at 100% 100%, rgba(212, 175, 55, 0.04), transparent);
+   124→   124→    background-attachment: fixed;
+   125→   125→  }
+   126→   126→  /* Monospace numerals for metrics */
+   127→   127→  .font-metric {
+   128→   128→    font-family: var(--font-jetbrains), ui-monospace, monospace;
+   129→   129→    font-variant-numeric: tabular-nums;
+   130→   130→    letter-spacing: -0.01em;
+   131→   131→  }
+   132→   132→}
+   133→   133→
+   134→   134→/* ----------------------- Premium utilities ----------------------- */
+   135→   135→@layer utilities {
+   136→   136→  /* Glass frost card */
+   137→   137→  .glass {
+   138→   138→    background: rgba(255, 255, 255, 0.04);
+   139→   139→    backdrop-filter: blur(16px) saturate(140%);
+   140→   140→    -webkit-backdrop-filter: blur(16px) saturate(140%);
+   141→   141→    border: 1px solid rgba(255, 255, 255, 0.08);
+   142→   142→  }
+   143→   143→  .glass-strong {
+   144→   144→    background: rgba(20, 20, 22, 0.72);
+   145→   145→    backdrop-filter: blur(20px) saturate(160%);
+   146→   146→    -webkit-backdrop-filter: blur(20px) saturate(160%);
+   147→   147→    border: 1px solid rgba(255, 255, 255, 0.08);
+   148→   148→  }
+   149→   149→  .glass-gold {
+   150→   150→    background: linear-gradient(135deg, rgba(212, 175, 55, 0.08), rgba(212, 175, 55, 0.02));
+   151→   151→    backdrop-filter: blur(16px);
+   152→   152→    -webkit-backdrop-filter: blur(16px);
+   153→   153→    border: 1px solid rgba(212, 175, 55, 0.2);
+   154→   154→  }
+   155→   155→  /* Gold gradient text */
+   156→   156→  .text-gold-gradient {
+   157→   157→    background: linear-gradient(135deg, #ffd700 0%, #d4af37 50%, #b8860b 100%);
+   158→   158→    -webkit-background-clip: text;
+   159→   159→    background-clip: text;
+   160→   160→    -webkit-text-fill-color: transparent;
+   161→   161→    color: transparent;
+   162→   162→  }
+   163→   163→  .bg-gold-gradient {
+   164→   164→    background: linear-gradient(135deg, #ffd700 0%, #d4af37 50%, #b8860b 100%);
+   165→   165→  }
+   166→   166→  .bg-gold-gradient-soft {
+   167→   167→    background: linear-gradient(135deg, rgba(255, 215, 0, 0.15), rgba(184, 134, 11, 0.05));
+   168→   168→  }
+   169→   169→  /* Gold glow */
+   170→   170→  .glow-gold {
+   171→   171→    box-shadow: 0 0 24px rgba(212, 175, 55, 0.15), 0 0 1px rgba(212, 175, 55, 0.4);
+   172→   172→  }
+   173→   173→  .glow-gold-strong {
+   174→   174→    box-shadow: 0 0 32px rgba(212, 175, 55, 0.35), 0 0 1px rgba(212, 175, 55, 0.6);
+   175→   175→  }
+   176→   176→  .glow-profit {
+   177→   177→    box-shadow: 0 0 20px rgba(0, 200, 150, 0.2);
+   178→   178→  }
+   179→   179→  .text-glow-gold {
+   180→   180→    text-shadow: 0 0 18px rgba(212, 175, 55, 0.45);
+   181→   181→  }
+   182→   182→  /* Hairline gold border */
+   183→   183→  .border-gold {
+   184→   184→    border-color: rgba(212, 175, 55, 0.3);
+   185→   185→  }
+   186→   186→  .border-gold-soft {
+   187→   187→    border-color: rgba(212, 175, 55, 0.15);
+   188→   188→  }
+   189→   189→  /* Subtle grid background */
+   190→   190→  .bg-grid {
+   191→   191→    background-image:
+   192→   192→      linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+   193→   193→      linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+   194→   194→    background-size: 48px 48px;
+   195→   195→  }
+   196→   196→  .bg-grid-fade {
+   197→   197→    -webkit-mask-image: radial-gradient(ellipse 60% 60% at 50% 40%, #000 30%, transparent 80%);
+   198→   198→    mask-image: radial-gradient(ellipse 60% 60% at 50% 40%, #000 30%, transparent 80%);
+   199→   199→  }
+   200→   200→  /* Premium scrollbar */
+   201→   201→  .scroll-luxury::-webkit-scrollbar {
+   202→   202→    width: 8px;
+   203→   203→    height: 8px;
+   204→   204→  }
+   205→   205→  .scroll-luxury::-webkit-scrollbar-track {
+   206→   206→    background: rgba(255, 255, 255, 0.02);
+   207→   207→  }
+   208→   208→  .scroll-luxury::-webkit-scrollbar-thumb {
+   209→   209→    background: rgba(212, 175, 55, 0.25);
+   210→   210→    border-radius: 4px;
+   211→   211→  }
+   212→   212→  .scroll-luxury::-webkit-scrollbar-thumb:hover {
+   213→   213→    background: rgba(212, 175, 55, 0.45);
+   214→   214→  }
+   215→   215→  .shimmer {
+   216→   216→    background: linear-gradient(110deg, rgba(212, 175, 55, 0) 30%, rgba(212, 175, 55, 0.25) 50%, rgba(212, 175, 55, 0) 70%);
+   217→   217→    background-size: 200% 100%;
+   218→   218→    animation: shimmer 2.4s linear infinite;
+   219→   219→  }
+   220→   220→}
+   221→   221→
+   222→   222→@keyframes shimmer {
+   223→   223→  0% { background-position: 200% 0; }
+   224→   224→  100% { background-position: -200% 0; }
+   225→   225→}
+   226→   226→
+   227→   227→@keyframes pulse-gold {
+   228→   228→  0%, 100% { box-shadow: 0 0 0 0 rgba(212, 175, 55, 0.4); }
+   229→   229→  50% { box-shadow: 0 0 0 8px rgba(212, 175, 55, 0); }
+   230→   230→}
+   231→   231→.animate-pulse-gold { animation: pulse-gold 2s ease-in-out infinite; }
+   232→   232→
+   233→   233→@keyframes float-up {
+   234→   234→  from { opacity: 0; transform: translateY(12px); }
+   235→   235→  to { opacity: 1; transform: translateY(0); }
+   236→   236→}
+   237→   237→.animate-float-up { animation: float-up 0.5s ease-out both; }
+   238→   238→
+   239→   239→/* Badge shimmer overlay */
+   240→   240→.shimmer-badge {
+   241→   241→  position: relative;
+   242→   242→  overflow: hidden;
+   243→   243→}
+   244→   244→.shimmer-badge::after {
+   245→   245→  content: '';
+   246→   246→  position: absolute;
+   247→   247→  inset: 0;
+   248→   248→  background: linear-gradient(110deg, transparent 30%, rgba(212, 175, 55, 0.18) 50%, transparent 70%);
+   249→   249→  background-size: 200% 100%;
+   250→   250→  animation: shimmer 3s linear infinite;
+   251→   251→  pointer-events: none;
+   252→   252→}
+   253→   253→
+   254→   254→/* Headline glow underline */
+   255→   255→.glow-underline {
+   256→   256→  position: relative;
+   257→   257→}
+   258→   258→.glow-underline::after {
+   259→   259→  content: '';
+   260→   260→  position: absolute;
+   261→   261→  bottom: -12px;
+   262→   262→  left: 50%;
+   263→   263→  transform: translateX(-50%) scaleX(0.7);
+   264→   264→  width: 200px;
+   265→   265→  height: 2px;
+   266→   266→  background: linear-gradient(90deg, transparent, #D4AF37, transparent);
+   267→   267→  opacity: 0.3;
+   268→   268→  animation: glow-pulse 3s ease-in-out infinite;
+   269→   269→}
+   270→   270→
+   271→   271→@keyframes glow-pulse {
+   272→   272→  0%, 100% { opacity: 0.3; transform: translateX(-50%) scaleX(0.7); }
+   273→   273→  50% { opacity: 0.7; transform: translateX(-50%) scaleX(1); }
+   274→   274→}
+   275→   275→
+   276→   276→/* Stat card gold top border */
+   277→   277→.stat-card-gold {
+   278→   278→  border-top: 2px solid rgba(212, 175, 55, 0.4);
+   279→   279→  transition: box-shadow 0.3s ease;
+   280→   280→}
+   281→   281→.stat-card-gold:hover {
+   282→   282→  box-shadow: 0 0 24px rgba(212, 175, 55, 0.15), 0 0 1px rgba(212, 175, 55, 0.3);
+   283→   283→}
+   284→   284→
+   285→   285→/* Animated gradient background for portal content */
+   286→   286→@keyframes gradient-shift {
+   287→   287→  0% { background-position: 0% 50%; }
+   288→   288→  50% { background-position: 100% 50%; }
+   289→   289→  100% { background-position: 0% 50%; }
+   290→   290→}
+   291→   291→.bg-gradient-animated {
+   292→   292→  background: linear-gradient(135deg, rgba(212, 175, 55, 0.02) 0%, transparent 25%, rgba(212, 175, 55, 0.015) 50%, transparent 75%, rgba(212, 175, 55, 0.02) 100%);
+   293→   293→  background-size: 400% 400%;
+   294→   294→  animation: gradient-shift 20s ease infinite;
+   295→   295→}
+   296→   296→
+   297→   297→/* Gold hairline pulse animation */
+   298→   298→@keyframes hairline-pulse {
+   299→   299→  0%, 100% { opacity: 0.4; }
+   300→   300→  50% { opacity: 0.8; }
+   301→   301→}
+   302→   302→.gold-hairline-pulse {
+   303→   303→  animation: hairline-pulse 3s ease-in-out infinite;
+   304→   304→}
+   305→   305→
+   306→   306→/* Metric tile bottom border gradient */
+   307→   307→.metric-bottom-border {
+   308→   308→  position: relative;
+   309→   309→}
+   310→   310→.metric-bottom-border::after {
+   311→   311→  content: '';
+   312→   312→  position: absolute;
+   313→   313→  bottom: 0;
+   314→   314→  left: 0;
+   315→   315→  right: 0;
+   316→   316→  height: 2px;
+   317→   317→  background: linear-gradient(90deg, rgba(212, 175, 55, 0.2), transparent);
+   318→   318→  border-radius: 0 0 0.75rem 0.75rem;
+   319→   319→}
+   320→   320→
+   321→   321→/* Metric value text shadow for depth */
+   322→   322→.text-shadow-metric {
+   323→   323→  text-shadow: 0 0 20px rgba(212, 175, 55, 0.15), 0 1px 2px rgba(0, 0, 0, 0.5);
+   324→   324→}
+   325→   325→
+   326→   326→/* Topbar gold glow line */
+   327→   327→.topbar-glow-line {
+   328→   328→  position: relative;
+   329→   329→}
+   330→   330→.topbar-glow-line::after {
+   331→   331→  content: '';
+   332→   332→  position: absolute;
+   333→   333→  bottom: -1px;
+   334→   334→  left: 0;
+   335→   335→  right: 0;
+   336→   336→  height: 1px;
+   337→   337→  background: linear-gradient(90deg, transparent 5%, rgba(212, 175, 55, 0.3) 30%, rgba(212, 175, 55, 0.5) 50%, rgba(212, 175, 55, 0.3) 70%, transparent 95%);
+   338→   338→  pointer-events: none;
+   339→   339→}
+   340→   340→
+   341→   341→/* Sidebar gold accent line */
+   342→   342→.sidebar-gold-accent {
+   343→   343→  position: relative;
+   344→   344→}
+   345→   345→.sidebar-gold-accent::before {
+   346→   346→  content: '';
+   347→   347→  position: absolute;
+   348→   348→  top: 0;
+   349→   349→  left: 0;
+   350→   350→  right: 0;
+   351→   351→  height: 2px;
+   352→   352→  background: linear-gradient(90deg, rgba(212, 175, 55, 0.1), rgba(212, 175, 55, 0.5), rgba(212, 175, 55, 0.1));
+   353→   353→  z-index: 1;
+   354→   354→}
+   355→   355→
+   356→   356→/* Active nav left border indicator */
+   357→   357→.nav-active-indicator {
+   358→   358→  position: relative;
+   359→   359→  border-left: 3px solid rgba(212, 175, 55, 0.8);
+   360→   360→  border-radius: 0 0.5rem 0.5rem 0;
+   361→   361→}
+   362→   362→
+   363→   363→/* Nav hover glow */
+   364→   364→.nav-item-hover {
+   365→   365→  transition: all 0.2s ease;
+   366→   366→}
+   367→   367→.nav-item-hover:hover {
+   368→   368→  text-indent: 2px;
+   369→   369→  box-shadow: inset 3px 0 8px -3px rgba(212, 175, 55, 0.15);
+   370→   370→}
+   371→   371→
+   372→   372→/* ----------------------- Ticker tape (live prices marquee) ----------------------- */
+   373→   373→@keyframes ticker-tape {
+   374→   374→  0% { transform: translateX(0); }
+   375→   375→  100% { transform: translateX(-50%); }
+   376→   376→}
+   377→   377→.ticker-tape-track {
+   378→   378→  display: inline-flex;
+   379→   379→  white-space: nowrap;
+   380→   380→  animation: ticker-tape 40s linear infinite;
+   381→   381→  will-change: transform;
+   382→   382→}
+   383→   383→.ticker-tape-container:hover .ticker-tape-track {
+   384→   384→  animation-play-state: paused;
+   385→   385→}
+   386→   386→
+   387→   387→/* Enhanced ticker bar with gold gradient background */
+   388→   388→.ticker-bar-enhanced {
+   389→   389→  background: linear-gradient(90deg, rgba(212,175,55,0.04) 0%, rgba(212,175,55,0.08) 50%, rgba(212,175,55,0.04) 100%);
+   390→   390→  border-top: 1px solid rgba(212,175,55,0.08);
+   391→   391→  border-bottom: 1px solid rgba(212,175,55,0.08);
+   392→   392→}
+   393→   393→
+   394→   394→@media (prefers-reduced-motion: reduce) {
+   395→   395→  .ticker-tape-track {
+   396→   396→    animation: none;
+   397→   397→  }
+   398→   398→}
+   399→   399→
+   400→   400→@media (prefers-reduced-motion: reduce) {
+   401→   401→  *, *::before, *::after {
+   402→   402→    animation-duration: 0.001ms !important;
+   403→   403→    transition-duration: 0.001ms !important;
+   404→   404→  }
+   405→   405→}
+   406→   406→
+   407→   407→/* ----------------------- Hero dot grid background ----------------------- */
+   408→   408→.hero-dot-grid {
+   409→   409→  background-image: radial-gradient(circle, rgba(212, 175, 55, 0.15) 1px, transparent 1px);
+   410→   410→  background-size: 32px 32px;
+   411→   411→  -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, #000 20%, transparent 75%);
+   412→   412→  mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, #000 20%, transparent 75%);
+   413→   413→}
+   414→   414→
+   415→   415→/* ----------------------- Hero gold scanning line ----------------------- */
+   416→   416→@keyframes scan-line {
+   417→   417→  0% { top: -2px; opacity: 0; }
+   418→   418→  5% { opacity: 1; }
+   419→   419→  95% { opacity: 1; }
+   420→   420→  100% { top: calc(100% + 2px); opacity: 0; }
+   421→   421→}
+   422→   422→.hero-scan-line {
+   423→   423→  animation: scan-line 8s ease-in-out infinite;
+   424→   424→  pointer-events: none;
+   425→   425→}
+   426→   426→
+   427→   427→/* ----------------------- Hero particle glow pulse ----------------------- */
+   428→   428→@keyframes particle-pulse {
+   429→   429→  0%, 100% { opacity: 0.3; }
+   430→   430→  50% { opacity: 0.7; }
+   431→   431→}
+   432→   432→
+   433→   433→/* ----------------------- Dashboard: Fund overview banner ----------------------- */
+   434→   434→@keyframes banner-gradient {
+   435→   435→  0%, 100% { background-position: 0% 50%; }
+   436→   436→  50% { background-position: 100% 50%; }
+   437→   437→}
+   438→   438→
+   439→   439→.fund-banner-bg {
+   440→   440→  background: linear-gradient(135deg, rgba(212,175,55,0.06) 0%, transparent 40%, rgba(212,175,55,0.03) 70%, transparent 100%);
+   441→   441→  background-size: 200% 200%;
+   442→   442→  animation: banner-gradient 12s ease infinite;
+   443→   443→}
+   444→   444→
+   445→   445→/* ----------------------- Dashboard: Metric tile accent borders ----------------------- */
+   446→   446→.metric-tile-gold {
+   447→   447→  position: relative;
+   448→   448→}
+   449→   449→.metric-tile-gold::before {
+   450→   450→  content: '';
+   451→   451→  position: absolute;
+   452→   452→  top: 0;
+   453→   453→  left: 0;
+   454→   454→  right: 0;
+   455→   455→  height: 2px;
+   456→   456→  background: linear-gradient(90deg, transparent, #D4AF37, transparent);
+   457→   457→  opacity: 0.5;
+   458→   458→}
+   459→   459→
+   460→   460→.metric-tile-profit {
+   461→   461→  position: relative;
+   462→   462→}
+   463→   463→.metric-tile-profit::before {
+   464→   464→  content: '';
+   465→   465→  position: absolute;
+   466→   466→  top: 0;
+   467→   467→  left: 0;
+   468→   468→  right: 0;
+   469→   469→  height: 2px;
+   470→   470→  background: linear-gradient(90deg, transparent, #00c896, transparent);
+   471→   471→  opacity: 0.5;
+   472→   472→}
+   473→   473→
+   474→   474→.metric-tile-loss {
+   475→   475→  position: relative;
+   476→   476→}
+   477→   477→.metric-tile-loss::before {
+   478→   478→  content: '';
+   479→   479→  top: 0;
+   480→   480→  left: 0;
+   481→   481→  right: 0;
+   482→   482→  height: 2px;
+   483→   483→  background: linear-gradient(90deg, transparent, #ff4d4f, transparent);
+   484→   484→  opacity: 0.5;
+   485→   485→}
+   486→   486→
+   487→   487→/* ----------------------- Dashboard: Timeline activity feed ----------------------- */
+   488→   488→.timeline-dot-pulse {
+   489→   489→  animation: pulse-gold 2s ease-in-out infinite;
+   490→   490→}
+   491→   491→
+   492→   492→/* ----------------------- Dashboard: Quick action card hover glow ----------------------- */
+   493→   493→.quick-action-glow {
+   494→   494→  transition: box-shadow 0.3s ease, transform 0.3s ease;
+   495→   495→}
+   496→   496→.quick-action-glow:hover {
+   497→   497→  box-shadow: 0 0 24px rgba(212,175,55,0.12), 0 0 1px rgba(212,175,55,0.3);
+   498→   498→}
+   499→   499→
+   500→   500→/* ----------------------- Dashboard: Sentiment gauge needle ----------------------- */
+   501→   501→@keyframes gauge-needle-settle {
+   502→   502→  0% { transform: rotate(-90deg); }
+   503→   503→  60% { transform: rotate(var(--gauge-angle, 0deg)); }
+   504→   504→  80% { transform: rotate(calc(var(--gauge-angle, 0deg) - 5deg)); }
+   505→   505→  100% { transform: rotate(var(--gauge-angle, 0deg)); }
+   506→   506→}
+   507→   507→
+   508→   508→/* ----------------------- Dashboard: Market intel card shimmer ----------------------- */
+   509→   509→.market-card-shimmer {
+   510→   510→  position: relative;
+   511→   511→  overflow: hidden;
+   512→   512→}
+   513→   513→.market-card-shimmer::before {
+   514→   514→  content: '';
+   515→   515→  position: absolute;
+   516→   516→  inset: 0;
+   517→   517→  background: linear-gradient(110deg, transparent 30%, rgba(212,175,55,0.05) 50%, transparent 70%);
+   518→   518→  background-size: 200% 100%;
+   519→   519→  animation: shimmer 4s linear infinite;
+   520→   520→  pointer-events: none;
+   521→   521→  opacity: 0;
+   522→   522→  transition: opacity 0.3s ease;
+   523→   523→}
+   524→   524→.market-card-shimmer:hover::before {
+   525→   525→  opacity: 1;
+   526→   526→}
+   527→   527→
+   528→   528→/* ----------------------- Micro-animations ----------------------- */
+   529→   529→/* Hover lift effect for cards */
+   530→   530→.hover-lift {
+   531→   531→  transition: transform 0.25s ease, box-shadow 0.25s ease;
+   532→   532→}
+   533→   533→.hover-lift:hover {
+   534→   534→  transform: translateY(-2px);
+   535→   535→  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3), 0 0 1px rgba(212, 175, 55, 0.2);
+   536→   536→}
+   537→   537→
+   538→   538→/* Click press effect */
+   539→   539→.press-scale {
+   540→   540→  transition: transform 0.1s ease;
+   541→   541→}
+   542→   542→.press-scale:active {
+   543→   543→  transform: scale(0.97);
+   544→   544→}
+   545→   545→
+   546→   546→/* Number counter flash on value change */
+   547→   547→@keyframes value-flash {
+   548→   548→  0% { color: var(--gold); text-shadow: 0 0 12px rgba(212, 175, 55, 0.5); }
+   549→   549→  100% { color: inherit; text-shadow: none; }
+   550→   550→}
+   551→   551→.value-flash {
+   552→   552→  animation: value-flash 0.8s ease-out;
+   553→   553→}
+   554→   554→
+   555→   555→/* Row enter animation */
+   556→   556→@keyframes row-enter {
+   557→   557→  from { opacity: 0; transform: translateX(-8px); }
+   558→   558→  to { opacity: 1; transform: translateX(0); }
+   559→   559→}
+   560→   560→.row-enter {
+   561→   561→  animation: row-enter 0.3s ease-out both;
+   562→   562→}
+   563→   563→
+   564→   564→/* Chart container hover glow */
+   565→   565→.chart-hover-glow {
+   566→   566→  transition: box-shadow 0.3s ease;
+   567→   567→}
+   568→   568→.chart-hover-glow:hover {
+   569→   569→  box-shadow: 0 0 32px rgba(212, 175, 55, 0.08);
+   570→   570→}
+   571→   571→
+   572→   572→/* Tooltip gold style */
+   573→   573→.tooltip-gold {
+   574→   574→  background: rgba(20, 20, 22, 0.95) !important;
+   575→   575→  border: 1px solid rgba(212, 175, 55, 0.3) !important;
+   576→   576→  box-shadow: 0 0 16px rgba(212, 175, 55, 0.1) !important;
+   577→   577→}
+   578→   578→
+   579→   579→/* ----------------------- Premium toast styling ----------------------- */
+   580→   580→[data-sonner-toaster] [data-sonner-toast] {
+   581→   581→  background: rgba(20, 20, 22, 0.95) !important;
+   582→   582→  border: 1px solid rgba(212, 175, 55, 0.2) !important;
+   583→   583→  color: #f5f5f4 !important;
+   584→   584→  backdrop-filter: blur(20px) !important;
+   585→   585→  box-shadow: 0 0 24px rgba(0, 0, 0, 0.4), 0 0 1px rgba(212, 175, 55, 0.2) !important;
+   586→   586→}
+   587→   587→[data-sonner-toaster] [data-sonner-toast] [data-title] {
+   588→   588→  color: #f5f5f4 !important;
+   589→   589→  font-weight: 600 !important;
+   590→   590→}
+   591→   591→[data-sonner-toaster] [data-sonner-toast] [data-description] {
+   592→   592→  color: #9a9a9a !important;
+   593→   593→}
+   594→   594→
+   595→   595→/* ============================================================ */
+   596→   596→/*  ROUND 8-B — Premium UI Polish utilities                     */
+   597→   597→/* ============================================================ */
+   598→   598→
+   599→   599→/* L-shaped gold corner accents on cards (top-left + bottom-right) */
+   600→   600→.gold-corner-accent {
+   601→   601→  position: relative;
+   602→   602→}
+   603→   603→.gold-corner-accent::before,
+   604→   604→.gold-corner-accent::after {
+   605→   605→  content: '';
+   606→   606→  position: absolute;
+   607→   607→  width: 14px;
+   608→   608→  height: 14px;
+   609→   609→  pointer-events: none;
+   610→   610→  opacity: 0.55;
+   611→   611→  transition: opacity 0.3s ease, width 0.3s ease, height 0.3s ease;
+   612→   612→}
+   613→   613→.gold-corner-accent::before {
+   614→   614→  top: 8px;
+   615→   615→  left: 8px;
+   616→   616→  border-top: 1.5px solid rgba(212, 175, 55, 0.7);
+   617→   617→  border-left: 1.5px solid rgba(212, 175, 55, 0.7);
+   618→   618→  border-top-left-radius: 4px;
+   619→   619→}
+   620→   620→.gold-corner-accent::after {
+   621→   621→  bottom: 8px;
+   622→   622→  right: 8px;
+   623→   623→  border-bottom: 1.5px solid rgba(212, 175, 55, 0.7);
+   624→   624→  border-right: 1.5px solid rgba(212, 175, 55, 0.7);
+   625→   625→  border-bottom-right-radius: 4px;
+   626→   626→}
+   627→   627→.gold-corner-accent:hover::before,
+   628→   628→.gold-corner-accent:hover::after {
+   629→   629→  opacity: 1;
+   630→   630→  width: 18px;
+   631→   631→  height: 18px;
+   632→   632→}
+   633→   633→
+   634→   634→/* Thin horizontal gold gradient divider — fades in from the edges */
+   635→   635→.gold-divider {
+   636→   636→  position: relative;
+   637→   637→  height: 1px;
+   638→   638→  width: 100%;
+   639→   639→  background: linear-gradient(
+   640→   640→    90deg,
+   641→   641→    transparent 0%,
+   642→   642→    rgba(212, 175, 55, 0.05) 12%,
+   643→   643→    rgba(212, 175, 55, 0.35) 50%,
+   644→   644→    rgba(212, 175, 55, 0.05) 88%,
+   645→   645→    transparent 100%
+   646→   646→  );
+   647→   647→}
+   648→   648→
+   649→   649→/* Enhanced glass card with hover state — slight scale + gold border glow */
+   650→   650→.glass-card-hover {
+   651→   651→  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+   652→   652→              box-shadow 0.3s ease,
+   653→   653→              border-color 0.3s ease;
+   654→   654→  border: 1px solid rgba(255, 255, 255, 0.08);
+   655→   655→}
+   656→   656→.glass-card-hover:hover {
+   657→   657→  transform: translateY(-3px) scale(1.01);
+   658→   658→  border-color: rgba(212, 175, 55, 0.35);
+   659→   659→  box-shadow:
+   660→   660→    0 8px 28px rgba(0, 0, 0, 0.35),
+   661→   661→    0 0 24px rgba(212, 175, 55, 0.12),
+   662→   662→    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+   663→   663→}
+   664→   664→
+   665→   665→/* Small circular gold-bordered number badge */
+   666→   666→.number-badge {
+   667→   667→  display: inline-flex;
+   668→   668→  align-items: center;
+   669→   669→  justify-content: center;
+   670→   670→  width: 28px;
+   671→   671→  height: 28px;
+   672→   672→  border-radius: 9999px;
+   673→   673→  border: 1px solid rgba(212, 175, 55, 0.45);
+   674→   674→  background: linear-gradient(135deg, rgba(212, 175, 55, 0.12), rgba(212, 175, 55, 0.02));
+   675→   675→  color: #f1d27a;
+   676→   676→  font-family: var(--font-jetbrains), ui-monospace, monospace;
+   677→   677→  font-size: 11px;
+   678→   678→  font-weight: 700;
+   679→   679→  letter-spacing: 0.02em;
+   680→   680→  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 0 12px rgba(212, 175, 55, 0.08);
+   681→   681→}
+   682→   682→
+   683→   683→/* Animated bouncing chevron at bottom of viewport sections */
+   684→   684→.scroll-indicator {
+   685→   685→  display: inline-flex;
+   686→   686→  align-items: center;
+   687→   687→  justify-content: center;
+   688→   688→  color: rgba(212, 175, 55, 0.55);
+   689→   689→  animation: scroll-bounce 2s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+   690→   690→  transition: color 0.3s ease;
+   691→   691→}
+   692→   692→.scroll-indicator:hover {
+   693→   693→  color: rgba(212, 175, 55, 0.9);
+   694→   694→}
+   695→   695→@keyframes scroll-bounce {
+   696→   696→  0%, 100% { transform: translateY(0); opacity: 0.55; }
+   697→   697→  50% { transform: translateY(6px); opacity: 1; }
+   698→   698→}
+   699→   699→
+   700→   700→/* Refined chip/badge with gold gradient border */
+   701→   701→.premium-chip {
+   702→   702→  position: relative;
+   703→   703→  display: inline-flex;
+   704→   704→  align-items: center;
+   705→   705→  gap: 0.5rem;
+   706→   706→  padding: 0.4rem 0.9rem;
+   707→   707→  border-radius: 9999px;
+   708→   708→  background: linear-gradient(135deg, rgba(212, 175, 55, 0.1), rgba(212, 175, 55, 0.02));
+   709→   709→  color: #f1d27a;
+   710→   710→  font-size: 11px;
+   711→   711→  font-weight: 600;
+   712→   712→  letter-spacing: 0.04em;
+   713→   713→  border: 1px solid transparent;
+   714→   714→  background-clip: padding-box;
+   715→   715→}
+   716→   716→.premium-chip::before {
+   717→   717→  content: '';
+   718→   718→  position: absolute;
+   719→   719→  inset: 0;
+   720→   720→  border-radius: 9999px;
+   721→   721→  padding: 1px;
+   722→   722→  background: linear-gradient(135deg, rgba(255, 215, 0, 0.55), rgba(184, 134, 11, 0.18) 55%, rgba(212, 175, 55, 0.05));
+   723→   723→  -webkit-mask:
+   724→   724→    linear-gradient(#fff 0 0) content-box,
+   725→   725→    linear-gradient(#fff 0 0);
+   726→   726→  -webkit-mask-composite: xor;
+   727→   727→  mask-composite: exclude;
+   728→   728→  pointer-events: none;
+   729→   729→}
+   730→   730→
+   731→   731→/* Thin animated gold underline that grows on hover */
+   732→   732→.gold-underline-accent {
+   733→   733→  position: relative;
+   734→   734→  display: inline-block;
+   735→   735→}
+   736→   736→.gold-underline-accent::after {
+   737→   737→  content: '';
+   738→   738→  position: absolute;
+   739→   739→  left: 50%;
+   740→   740→  bottom: -8px;
+   741→   741→  width: 0;
+   742→   742→  height: 1.5px;
+   743→   743→  background: linear-gradient(90deg, transparent, #D4AF37 50%, transparent);
+   744→   744→  transform: translateX(-50%);
+   745→   745→  transition: width 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+   746→   746→  box-shadow: 0 0 8px rgba(212, 175, 55, 0.4);
+   747→   747→}
+   748→   748→.gold-underline-accent:hover::after {
+   749→   749→  width: 70%;
+   750→   750→}
+   751→   751→
+   752→   752→/* Rotating conic-gradient ring around avatars */
+   753→   753→.avatar-gold-ring {
+   754→   754→  position: relative;
+   755→   755→}
+   756→   756→.avatar-gold-ring::before {
+   757→   757→  content: '';
+   758→   758→  position: absolute;
+   759→   759→  inset: -4px;
+   760→   760→  border-radius: 9999px;
+   761→   761→  background: conic-gradient(
+   762→   762→    from 0deg,
+   763→   763→    rgba(212, 175, 55, 0) 0deg,
+   764→   764→    rgba(212, 175, 55, 0.85) 90deg,
+   765→   765→    rgba(255, 215, 0, 0.35) 180deg,
+   766→   766→    rgba(212, 175, 55, 0.85) 270deg,
+   767→   767→    rgba(212, 175, 55, 0) 360deg
+   768→   768→  );
+   769→   769→  -webkit-mask:
+   770→   770→    radial-gradient(circle, transparent 58%, #000 60%, #000 100%);
+   771→   771→  mask:
+   772→   772→    radial-gradient(circle, transparent 58%, #000 60%, #000 100%);
+   773→   773→  animation: avatar-ring-spin 8s linear infinite;
+   774→   774→  pointer-events: none;
+   775→   775→}
+   776→   776→@keyframes avatar-ring-spin {
+   777→   777→  from { transform: rotate(0deg); }
+   778→   778→  to { transform: rotate(360deg); }
+   779→   779→}
+   780→   780→
+   781→   781→/* Large faded number in the background of section headers */
+   782→   782→.section-number {
+   783→   783→  position: absolute;
+   784→   784→  top: -28px;
+   785→   785→  right: -8px;
+   786→   786→  font-family: var(--font-jetbrains), ui-monospace, monospace;
+   787→   787→  font-size: 72px;
+   788→   788→  font-weight: 800;
+   789→   789→  line-height: 1;
+   790→   790→  color: rgba(212, 175, 55, 0.05);
+   791→   791→  letter-spacing: -0.04em;
+   792→   792→  user-select: none;
+   793→   793→  pointer-events: none;
+   794→   794→  z-index: 0;
+   795→   795→}
+   796→   796→
+   797→   797→/* Gold accent line above section headers */
+   798→   798→.section-accent-line {
+   799→   799→  position: relative;
+   800→   800→  padding-left: 1rem;
+   801→   801→}
+   802→   802→.section-accent-line::before {
+   803→   803→  content: '';
+   804→   804→  position: absolute;
+   805→   805→  left: 0;
+   806→   806→  top: 4px;
+   807→   807→  bottom: 4px;
+   808→   808→  width: 2px;
+   809→   809→  border-radius: 2px;
+   810→   810→  background: linear-gradient(180deg, rgba(212, 175, 55, 0.7), rgba(212, 175, 55, 0.15));
+   811→   811→}
+   812→   812→
+   813→   813→/* Enhanced switch on-state gold glow */
+   814→   814→.switch-gold-glow[data-state="checked"] {
+   815→   815→  box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.12), 0 0 16px rgba(212, 175, 55, 0.35);
+   816→   816→}
+   817→   817→
+   818→   818→/* Pulsing status pill — gold/amber dot with animated glow halo.
+   819→   819→   Used for PENDING state badges and unread NEW indicators. */
+   820→   820→.status-pill-pulse {
+   821→   821→  position: relative;
+   822→   822→  isolation: isolate;
+   823→   823→}
+   824→   824→.status-pill-pulse::after {
+   825→   825→  content: '';
+   826→   826→  position: absolute;
+   827→   827→  inset: -2px;
+   828→   828→  border-radius: inherit;
+   829→   829→  background: radial-gradient(
+   830→   830→    ellipse at center,
+   831→   831→    rgba(245, 166, 35, 0.18) 0%,
+   832→   832→    rgba(245, 166, 35, 0) 70%
+   833→   833→  );
+   834→   834→  opacity: 0;
+   835→   835→  z-index: -1;
+   836→   836→  pointer-events: none;
+   837→   837→  animation: status-pill-pulse-glow 2.4s ease-in-out infinite;
+   838→   838→}
+   839→   839→@keyframes status-pill-pulse-glow {
+   840→   840→  0%, 100% { opacity: 0.25; transform: scale(0.98); }
+   841→   841→  50% { opacity: 0.85; transform: scale(1.05); }
+   842→   842→}
+   843→   843→
+   844→   844→/* Drag-and-drop upload area — dashed gold border with hover/drag feedback.
+   845→   845→   Combine with min-height utilities for sizing. */
+   846→   846→.upload-dropzone {
+   847→   847→  position: relative;
+   848→   848→  transition: border-color 0.25s ease, background-color 0.25s ease,
+   849→   849→              box-shadow 0.25s ease, transform 0.25s ease;
+   850→   850→}
+   851→   851→.upload-dropzone:hover {
+   852→   852→  transform: translateY(-1px);
+   853→   853→}
+   854→   854→.upload-dropzone::before {
+   855→   855→  content: '';
+   856→   856→  position: absolute;
+   857→   857→  inset: 0;
+   858→   858→  border-radius: inherit;
+   859→   859→  background: linear-gradient(
+   860→   860→    135deg,
+   861→   861→    rgba(212, 175, 55, 0.04) 0%,
+   862→   862→    rgba(212, 175, 55, 0) 60%
+   863→   863→  );
+   864→   864→  pointer-events: none;
+   865→   865→  opacity: 0;
+   866→   866→  transition: opacity 0.25s ease;
+   867→   867→}
+   868→   868→.upload-dropzone:hover::before {
+   869→   869→  opacity: 1;
+   870→   870→}
+   871→   871→
+   872→   872→/* Reduced motion safety for new animations */
+   873→   873→@media (prefers-reduced-motion: reduce) {
+   874→   874→  .scroll-indicator,
+   875→   875→  .avatar-gold-ring::before,
+   876→   876→  .gold-underline-accent::after,
+   877→   877→  .status-pill-pulse::after {
+   878→   878→    animation: none !important;
+   879→   879→    transition: none !important;
+   880→   880→  }
+   881→   881→}
+   882→   882→
+   883→   883→/* ============================================================ */
+   884→   884→/*  ROUND 9-A — Premium Landing Page Enhancement utilities      */
+   885→   885→/* ============================================================ */
+   886→   886→
+   887→   887→/* Animated gold gradient border that sweeps around the element */
+   888→   888→@keyframes border-sweep {
+   889→   889→  0% { background-position: 0% 50%; }
+   890→   890→  50% { background-position: 100% 50%; }
+   891→   891→  100% { background-position: 0% 50%; }
+   892→   892→}
+   893→   893→.gold-border-sweep {
+   894→   894→  position: relative;
+   895→   895→  border: 1px solid transparent;
+   896→   896→  background-clip: padding-box;
+   897→   897→}
+   898→   898→.gold-border-sweep::before {
+   899→   899→  content: '';
+   900→   900→  position: absolute;
+   901→   901→  inset: -1px;
+   902→   902→  border-radius: inherit;
+   903→   903→  padding: 1px;
+   904→   904→  background: linear-gradient(
+   905→   905→    90deg,
+   906→   906→    rgba(212, 175, 55, 0.1),
+   907→   907→    rgba(212, 175, 55, 0.6),
+   908→   908→    rgba(255, 215, 0, 0.8),
+   909→   909→    rgba(212, 175, 55, 0.6),
+   910→   910→    rgba(212, 175, 55, 0.1)
+   911→   911→  );
+   912→   912→  background-size: 300% 100%;
+   913→   913→  animation: border-sweep 4s ease-in-out infinite;
+   914→   914→  -webkit-mask:
+   915→   915→    linear-gradient(#fff 0 0) content-box,
+   916→   916→    linear-gradient(#fff 0 0);
+   917→   917→  -webkit-mask-composite: xor;
+   918→   918→  mask-composite: exclude;
+   919→   919→  pointer-events: none;
+   920→   920→}
+   921→   921→
+   922→   922→/* Text with animated gold shimmer effect */
+   923→   923→@keyframes gold-shimmer {
+   924→   924→  0% { background-position: -200% center; }
+   925→   925→  100% { background-position: 200% center; }
+   926→   926→}
+   927→   927→.text-gold-shimmer {
+   928→   928→  background: linear-gradient(
+   929→   929→    90deg,
+   930→   930→    #d4af37 0%,
+   931→   931→    #ffd700 20%,
+   932→   932→    #f1d27a 40%,
+   933→   933→    #d4af37 60%,
+   934→   934→    #b8860b 80%,
+   935→   935→    #d4af37 100%
+   936→   936→  );
+   937→   937→  background-size: 200% auto;
+   938→   938→  -webkit-background-clip: text;
+   939→   939→  background-clip: text;
+   940→   940→  -webkit-text-fill-color: transparent;
+   941→   941→  color: transparent;
+   942→   942→  animation: gold-shimmer 3s linear infinite;
+   943→   943→}
+   944→   944→
+   945→   945→/* Infinite horizontal scroll for press logos */
+   946→   946→@keyframes press-marquee {
+   947→   947→  0% { transform: translateX(0); }
+   948→   948→  100% { transform: translateX(-50%); }
+   949→   949→}
+   950→   950→.press-logo-marquee {
+   951→   951→  display: inline-flex;
+   952→   952→  white-space: nowrap;
+   953→   953→  animation: press-marquee 30s linear infinite;
+   954→   954→  will-change: transform;
+   955→   955→}
+   956→   956→.press-logo-marquee-container:hover .press-logo-marquee {
+   957→   957→  animation-play-state: paused;
+   958→   958→}
+   959→   959→
+   960→   960→/* Styling for particle canvas */
+   961→   961→.hero-particle-canvas {
+   962→   962→  position: absolute;
+   963→   963→  inset: 0;
+   964→   964→  z-index: 0;
+   965→   965→  pointer-events: none;
+   966→   966→}
+   967→   967→
+   968→   968→/* Pulsing gold border glow for hero container */
+   969→   969→@keyframes hero-glow-pulse {
+   970→   970→  0%, 100% { box-shadow: 0 0 30px rgba(212, 175, 55, 0.08), inset 0 0 30px rgba(212, 175, 55, 0.02); }
+   971→   971→  50% { box-shadow: 0 0 50px rgba(212, 175, 55, 0.15), inset 0 0 50px rgba(212, 175, 55, 0.04); }
+   972→   972→}
+   973→   973→.hero-glow-pulse {
+   974→   974→  animation: hero-glow-pulse 4s ease-in-out infinite;
+   975→   975→}
+   976→   976→
+   977→   977→/* Gold gradient sweep on CTA buttons */
+   978→   978→@keyframes cta-sweep {
+   979→   979→  0% { background-position: -200% center; }
+   980→   980→  100% { background-position: 200% center; }
+   981→   981→}
+   982→   982→.cta-gold-sweep {
+   983→   983→  position: relative;
+   984→   984→  overflow: hidden;
+   985→   985→}
+   986→   986→.cta-gold-sweep::after {
+   987→   987→  content: '';
+   988→   988→  position: absolute;
+   989→   989→  inset: 0;
+   990→   990→  background: linear-gradient(
+   991→   991→    120deg,
+   992→   992→    transparent 30%,
+   993→   993→    rgba(255, 215, 0, 0.25) 50%,
+   994→   994→    transparent 70%
+   995→   995→  );
+   996→   996→  background-size: 200% 100%;
+   997→   997→  animation: cta-sweep 3s ease-in-out infinite;
+   998→   998→  pointer-events: none;
+   999→   999→}
+  1000→  1000→
+  1001→  1001→/* Section gold left border accent */
+  1002→  1002→.section-gold-accent {
+  1003→  1003→  position: relative;
+  1004→  1004→  padding-left: 1.25rem;
+  1005→  1005→}
+  1006→  1006→.section-gold-accent::before {
+  1007→  1007→  content: '';
+  1008→  1008→  position: absolute;
+  1009→  1009→  left: 0;
+  1010→  1010→  top: 4px;
+  1011→  1011→  bottom: 4px;
+  1012→  1012→  width: 3px;
+  1013→  1013→  border-radius: 3px;
+  1014→  1014→  background: linear-gradient(180deg, rgba(212, 175, 55, 0.8), rgba(212, 175, 55, 0.15));
+  1015→  1015→}
+  1016→  1016→
+  1017→  1017→/* Footer gold gradient separator */
+  1018→  1018→.footer-gold-separator {
+  1019→  1019→  height: 1px;
+  1020→  1020→  background: linear-gradient(
+  1021→  1021→    90deg,
+  1022→  1022→    transparent 0%,
+  1023→  1023→    rgba(212, 175, 55, 0.08) 15%,
+  1024→  1024→    rgba(212, 175, 55, 0.4) 50%,
+  1025→  1025→    rgba(212, 175, 55, 0.08) 85%,
+  1026→  1026→    transparent 100%
+  1027→  1027→  );
+  1028→  1028→}
+  1029→  1029→
+  1030→  1030→/* Footer legal link hover gold effect */
+  1031→  1031→.footer-link-gold {
+  1032→  1032→  position: relative;
+  1033→  1033→  transition: color 0.25s ease;
+  1034→  1034→}
+  1035→  1035→.footer-link-gold::after {
+  1036→  1036→  content: '';
+  1037→  1037→  position: absolute;
+  1038→  1038→  bottom: -2px;
+  1039→  1039→  left: 0;
+  1040→  1040→  width: 0;
+  1041→  1041→  height: 1px;
+  1042→  1042→  background: #D4AF37;
+  1043→  1043→  transition: width 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  1044→  1044→}
+  1045→  1045→.footer-link-gold:hover {
+  1046→  1046→  color: #D4AF37;
+  1047→  1047→}
+  1048→  1048→.footer-link-gold:hover::after {
+  1049→  1049→  width: 100%;
+  1050→  1050→}
+  1051→  1051→
+  1052→  1052→/* Backed-by logo placeholder styling */
+  1053→  1053→.backed-by-logo {
+  1054→  1054→  display: inline-flex;
+  1055→  1055→  align-items: center;
+  1056→  1056→  gap: 0.375rem;
+  1057→  1057→  padding: 0.5rem 1rem;
+  1058→  1058→  border: 1px solid rgba(255, 255, 255, 0.06);
+  1059→  1059→  border-radius: 0.5rem;
+  1060→  1060→  background: rgba(255, 255, 255, 0.02);
+  1061→  1061→  transition: border-color 0.3s ease, background-color 0.3s ease;
+  1062→  1062→}
+  1063→  1063→.backed-by-logo:hover {
+  1064→  1064→  border-color: rgba(212, 175, 55, 0.2);
+  1065→  1065→  background: rgba(212, 175, 55, 0.03);
+  1066→  1066→}
+  1067→  1067→
+  1068→  1068→/* Press logo underline sweep */
+  1069→  1069→@keyframes press-underline-sweep {
+  1070→  1070→  0% { transform: translateX(-100%); }
+  1071→  1071→  100% { transform: translateX(100%); }
+  1072→  1072→}
+  1073→  1073→.press-logo-item {
+  1074→  1074→  position: relative;
+  1075→  1075→  padding-bottom: 4px;
+  1076→  1076→}
+  1077→  1077→.press-logo-item::after {
+  1078→  1078→  content: '';
+  1079→  1079→  position: absolute;
+  1080→  1080→  bottom: 0;
+  1081→  1081→  left: 0;
+  1082→  1082→  right: 0;
+  1083→  1083→  height: 1px;
+  1084→  1084→  background: linear-gradient(90deg, transparent, #D4AF37, transparent);
+  1085→  1085→  overflow: hidden;
+  1086→  1086→}
+  1087→  1087→.press-logo-item::before {
+  1088→  1088→  content: '';
+  1089→  1089→  position: absolute;
+  1090→  1090→  bottom: 0;
+  1091→  1091→  left: 0;
+  1092→  1092→  right: 0;
+  1093→  1093→  height: 1px;
+  1094→  1094→  background: #D4AF37;
+  1095→  1095→  animation: press-underline-sweep 3s ease-in-out infinite;
+  1096→  1096→}
+  1097→  1097→
+  1098→  1098→/* Reduced motion for new Round 9-A animations */
+  1099→  1099→@media (prefers-reduced-motion: reduce) {
+  1100→  1100→  .gold-border-sweep::before,
+  1101→  1101→  .text-gold-shimmer,
+  1102→  1102→  .press-logo-marquee,
+  1103→  1103→  .hero-glow-pulse,
+  1104→  1104→  .cta-gold-sweep::after,
+  1105→  1105→  .press-logo-item::before {
+  1106→  1106→    animation: none !important;
+  1107→  1107→  }
+  1108→  1108→}
+  1109→  1109→
+  1110→  1110→/* ============================================================ */
+  1111→  1111→/*  ROUND 9-F — Premium Micro-interactions & Animations          */
+  1112→  1112→/* ============================================================ */
+  1113→  1113→
+  1114→  1114→/* Gold glow hover — subtle gold box-shadow glow on hover with smooth transition */
+  1115→  1115→.gold-glow-hover {
+  1116→  1116→  transition: box-shadow 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+  1117→  1117→              border-color 0.35s ease;
+  1118→  1118→}
+  1119→  1119→.gold-glow-hover:hover {
+  1120→  1120→  box-shadow:
+  1121→  1121→    0 0 24px rgba(212, 175, 55, 0.15),
+  1122→  1122→    0 0 1px rgba(212, 175, 55, 0.4);
+  1123→  1123→  border-color: rgba(212, 175, 55, 0.3);
+  1124→  1124→}
+  1125→  1125→
+  1126→  1126→/* Gold shimmer loading state — gold-colored shimmer for loading states */
+  1127→  1127→@keyframes shimmer-gold-move {
+  1128→  1128→  0% { background-position: 200% 0; }
+  1129→  1129→  100% { background-position: -200% 0; }
+  1130→  1130→}
+  1131→  1131→.shimmer-gold {
+  1132→  1132→  background: linear-gradient(
+  1133→  1133→    110deg,
+  1134→  1134→    rgba(212, 175, 55, 0) 30%,
+  1135→  1135→    rgba(212, 175, 55, 0.35) 50%,
+  1136→  1136→    rgba(212, 175, 55, 0) 70%
+  1137→  1137→  );
+  1138→  1138→  background-size: 200% 100%;
+  1139→  1139→  animation: shimmer-gold-move 2.4s linear infinite;
+  1140→  1140→}
+  1141→  1141→
+  1142→  1142→/* Float subtle — very subtle floating animation (2px up/down) */
+  1143→  1143→@keyframes float-subtle {
+  1144→  1144→  0%, 100% { transform: translateY(0); }
+  1145→  1145→  50% { transform: translateY(-2px); }
+  1146→  1146→}
+  1147→  1147→.float-subtle {
+  1148→  1148→  animation: float-subtle 3s ease-in-out infinite;
+  1149→  1149→}
+  1150→  1150→
+  1151→  1151→/* Pulse gold — gold pulsing glow effect for important elements */
+  1152→  1152→@keyframes pulse-gold-glow {
+  1153→  1153→  0%, 100% {
+  1154→  1154→    box-shadow: 0 0 8px rgba(212, 175, 55, 0.2),
+  1155→  1155→                0 0 1px rgba(212, 175, 55, 0.4);
+  1156→  1156→  }
+  1157→  1157→  50% {
+  1158→  1158→    box-shadow: 0 0 20px rgba(212, 175, 55, 0.35),
+  1159→  1159→                0 0 1px rgba(212, 175, 55, 0.6);
+  1160→  1160→  }
+  1161→  1161→}
+  1162→  1162→.pulse-gold {
+  1163→  1163→  animation: pulse-gold-glow 2.5s ease-in-out infinite;
+  1164→  1164→}
+  1165→  1165→
+  1166→  1166→/* Slide in right — slide in from right with fade */
+  1167→  1167→@keyframes slide-in-right {
+  1168→  1168→  from {
+  1169→  1169→    opacity: 0;
+  1170→  1170→    transform: translateX(16px);
+  1171→  1171→  }
+  1172→  1172→  to {
+  1173→  1173→    opacity: 1;
+  1174→  1174→    transform: translateX(0);
+  1175→  1175→  }
+  1176→  1176→}
+  1177→  1177→.slide-in-right {
+  1178→  1178→  animation: slide-in-right 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+  1179→  1179→}
+  1180→  1180→
+  1181→  1181→/* Scale in — scale from 0.95 to 1 with fade */
+  1182→  1182→@keyframes scale-in {
+  1183→  1183→  from {
+  1184→  1184→    opacity: 0;
+  1185→  1185→    transform: scale(0.95);
+  1186→  1186→  }
+  1187→  1187→  to {
+  1188→  1188→    opacity: 1;
+  1189→  1189→    transform: scale(1);
+  1190→  1190→  }
+  1191→  1191→}
+  1192→  1192→.scale-in {
+  1193→  1193→  animation: scale-in 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+  1194→  1194→}
+  1195→  1195→
+  1196→  1196→/* Animated border glow for alert cards */
+  1197→  1197→@keyframes border-glow-pulse {
+  1198→  1198→  0%, 100% {
+  1199→  1199→    border-color: rgba(212, 175, 55, 0.25);
+  1200→  1200→    box-shadow: 0 0 12px rgba(212, 175, 55, 0.08),
+  1201→  1201→                inset 0 0 12px rgba(212, 175, 55, 0.02);
+  1202→  1202→  }
+  1203→  1203→  50% {
+  1204→  1204→    border-color: rgba(212, 175, 55, 0.55);
+  1205→  1205→    box-shadow: 0 0 28px rgba(212, 175, 55, 0.2),
+  1206→  1206→                inset 0 0 20px rgba(212, 175, 55, 0.05);
+  1207→  1207→  }
+  1208→  1208→}
+  1209→  1209→.border-glow-pulse {
+  1210→  1210→  animation: border-glow-pulse 3s ease-in-out infinite;
+  1211→  1211→}
+  1212→  1212→
+  1213→  1213→/* Gold gradient left border on active sidebar item */
+  1214→  1214→@keyframes sidebar-indicator-glow {
+  1215→  1215→  0%, 100% { opacity: 0.7; }
+  1216→  1216→  50% { opacity: 1; }
+  1217→  1217→}
+  1218→  1218→.nav-active-indicator-gold {
+  1219→  1219→  position: relative;
+  1220→  1220→  border-left: 3px solid transparent;
+  1221→  1221→  border-image: linear-gradient(180deg, #ffd700, #D4AF37, #b8860b) 1;
+  1222→  1222→  border-radius: 0;
+  1223→  1223→}
+  1224→  1224→.nav-active-indicator-glow::before {
+  1225→  1225→  content: '';
+  1226→  1226→  position: absolute;
+  1227→  1227→  left: -3px;
+  1228→  1228→  top: 15%;
+  1229→  1229→  bottom: 15%;
+  1230→  1230→  width: 3px;
+  1231→  1231→  background: linear-gradient(180deg, rgba(255, 215, 0, 0.9), rgba(212, 175, 55, 0.6));
+  1232→  1232→  border-radius: 0 2px 2px 0;
+  1233→  1233→  box-shadow: 0 0 8px rgba(212, 175, 55, 0.4);
+  1234→  1234→  animation: sidebar-indicator-glow 3s ease-in-out infinite;
+  1235→  1235→}
+  1236→  1236→
+  1237→  1237→/* Online indicator dot animation */
+  1238→  1238→@keyframes online-pulse {
+  1239→  1239→  0%, 100% { box-shadow: 0 0 0 0 rgba(0, 200, 150, 0.5); }
+  1240→  1240→  50% { box-shadow: 0 0 0 4px rgba(0, 200, 150, 0); }
+  1241→  1241→}
+  1242→  1242→.online-dot-pulse {
+  1243→  1243→  animation: online-pulse 2s ease-in-out infinite;
+  1244→  1244→}
+  1245→  1245→
+  1246→  1246→/* Need help card gold border animation */
+  1247→  1247→@keyframes help-card-border {
+  1248→  1248→  0%, 100% {
+  1249→  1249→    border-color: rgba(212, 175, 55, 0.15);
+  1250→  1250→    box-shadow: 0 0 0 rgba(212, 175, 55, 0);
+  1251→  1251→  }
+  1252→  1252→  50% {
+  1253→  1253→    border-color: rgba(212, 175, 55, 0.35);
+  1254→  1254→    box-shadow: 0 0 16px rgba(212, 175, 55, 0.08);
+  1255→  1255→  }
+  1256→  1256→}
+  1257→  1257→.help-card-glow {
+  1258→  1258→  animation: help-card-border 4s ease-in-out infinite;
+  1259→  1259→}
+  1260→  1260→
+  1261→  1261→/* Investor row hover gold left border */
+  1262→  1262→.investor-row-hover {
+  1263→  1263→  position: relative;
+  1264→  1264→  transition: background-color 0.2s ease, border-color 0.2s ease;
+  1265→  1265→  border-left: 2px solid transparent;
+  1266→  1266→}
+  1267→  1267→.investor-row-hover:hover {
+  1268→  1268→  background-color: rgba(212, 175, 55, 0.04);
+  1269→  1269→  border-left-color: rgba(212, 175, 55, 0.5);
+  1270→  1270→}
+  1271→  1271→
+  1272→  1272→/* Animated status badge */
+  1273→  1273→@keyframes badge-pulse-soft {
+  1274→  1274→  0%, 100% { opacity: 1; }
+  1275→  1275→  50% { opacity: 0.65; }
+  1276→  1276→}
+  1277→  1277→.status-badge-animated {
+  1278→  1278→  animation: badge-pulse-soft 2.5s ease-in-out infinite;
+  1279→  1279→}
+  1280→  1280→
+  1281→  1281→/* Gold ring on investor avatar */
+  1282→  1282→.investor-avatar-ring {
+  1283→  1283→  box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.3);
+  1284→  1284→  transition: box-shadow 0.3s ease, transform 0.2s ease;
+  1285→  1285→}
+  1286→  1286→.investor-avatar-ring:hover {
+  1287→  1287→  box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.7),
+  1288→  1288→              0 0 12px rgba(212, 175, 55, 0.2);
+  1289→  1289→  transform: scale(1.08);
+  1290→  1290→}
+  1291→  1291→
+  1292→  1292→/* Allocation card gold glow on hover */
+  1293→  1293→.allocation-card-glow {
+  1294→  1294→  transition: box-shadow 0.3s ease, border-color 0.3s ease, transform 0.3s ease;
+  1295→  1295→}
+  1296→  1296→.allocation-card-glow:hover {
+  1297→  1297→  box-shadow: 0 0 20px rgba(212, 175, 55, 0.12),
+  1298→  1298→              0 0 1px rgba(212, 175, 55, 0.3);
+  1299→  1299→  border-color: rgba(212, 175, 55, 0.25);
+  1300→  1300→  transform: translateY(-1px);
+  1301→  1301→}
+  1302→  1302→
+  1303→  1303→/* Save button gold gradient sweep */
+  1304→  1304→@keyframes save-sweep {
+  1305→  1305→  0% { background-position: -200% center; }
+  1306→  1306→  100% { background-position: 200% center; }
+  1307→  1307→}
+  1308→  1308→.save-btn-gold-sweep {
+  1309→  1309→  position: relative;
+  1310→  1310→  overflow: hidden;
+  1311→  1311→}
+  1312→  1312→.save-btn-gold-sweep::after {
+  1313→  1313→  content: '';
+  1314→  1314→  position: absolute;
+  1315→  1315→  inset: 0;
+  1316→  1316→  background: linear-gradient(
+  1317→  1317→    120deg,
+  1318→  1318→    transparent 25%,
+  1319→  1319→    rgba(255, 255, 255, 0.2) 50%,
+  1320→  1320→    transparent 75%
+  1321→  1321→  );
+  1322→  1322→  background-size: 200% 100%;
+  1323→  1323→  animation: none;
+  1324→  1324→  pointer-events: none;
+  1325→  1325→}
+  1326→  1326→.save-btn-gold-sweep:hover::after {
+  1327→  1327→  animation: save-sweep 0.8s ease-in-out;
+  1328→  1328→}
+  1329→  1329→
+  1330→  1330→/* Allocation weight change transition */
+  1331→  1331→.allocation-weight-transition {
+  1332→  1332→  transition: width 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+  1333→  1333→}
+  1334→  1334→
+  1335→  1335→/* Reduced motion for Round 9-F animations */
+  1336→  1336→@media (prefers-reduced-motion: reduce) {
+  1337→  1337→  .shimmer-gold,
+  1338→  1338→  .float-subtle,
+  1339→  1339→  .pulse-gold,
+  1340→  1340→  .slide-in-right,
+  1341→  1341→  .scale-in,
+  1342→  1342→  .border-glow-pulse,
+  1343→  1343→  .nav-active-indicator-glow::before,
+  1344→  1344→  .online-dot-pulse,
+  1345→  1345→  .help-card-glow,
+  1346→  1346→  .status-badge-animated,
+  1347→  1347→  .save-btn-gold-sweep::after {
+  1348→  1348→    animation: none !important;
+  1349→  1349→  }
+  1350→  1350→  .gold-glow-hover,
+  1351→  1351→  .investor-row-hover,
+  1352→  1352→  .investor-avatar-ring,
+  1353→  1353→  .allocation-card-glow {
+  1354→  1354→    transition: none !important;
+  1355→  1355→  }
+  1356→  1356→}
+  1357→  1357→
+  1358→  1358→

@@ -1355,3 +1355,166 @@
   }
 }
 
+/* ============================================================ */
+/*  ROUND 10-A — VLM-Identified Issues Premium Polish            */
+/* ============================================================ */
+
+/* Enhanced premium chip — more prominent with rounded-full and gold shadow */
+.premium-chip-enhanced {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1.25rem;
+  border-radius: 9999px;
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.12), rgba(212, 175, 55, 0.03));
+  color: #f1d27a;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  border: 1px solid transparent;
+  background-clip: padding-box;
+  box-shadow: 0 0 16px rgba(212, 175, 55, 0.12), 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+.premium-chip-enhanced::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  padding: 1px;
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.6), rgba(184, 134, 11, 0.2) 55%, rgba(212, 175, 55, 0.06));
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* Institution logo card — large monospace text with gold hover */
+.institution-logo-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 140px;
+  padding: 1rem 1.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 0.75rem;
+  background: rgba(255, 255, 255, 0.02);
+  transition: all 0.3s ease;
+}
+.institution-logo-card:hover {
+  border-color: rgba(212, 175, 55, 0.25);
+  background: rgba(212, 175, 55, 0.04);
+  box-shadow: 0 0 20px rgba(212, 175, 55, 0.08);
+}
+.institution-logo-card .logo-name {
+  font-family: var(--font-jetbrains), ui-monospace, monospace;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: rgba(245, 245, 244, 0.35);
+  transition: color 0.3s ease;
+}
+.institution-logo-card:hover .logo-name {
+  color: rgba(245, 245, 244, 0.7);
+}
+.institution-logo-card .logo-sub {
+  margin-top: 0.25rem;
+  font-size: 9px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: rgba(154, 154, 154, 0.3);
+  transition: color 0.3s ease;
+}
+.institution-logo-card:hover .logo-sub {
+  color: rgba(212, 175, 55, 0.6);
+}
+
+/* Enhanced gold glow hover — stronger glow for metric cards */
+.gold-glow-hover-strong {
+  transition: box-shadow 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+              border-color 0.35s ease,
+              transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.gold-glow-hover-strong:hover {
+  box-shadow:
+    0 0 28px rgba(212, 175, 55, 0.2),
+    0 0 1px rgba(212, 175, 55, 0.5);
+  border-color: rgba(212, 175, 55, 0.35);
+  transform: translateY(-2px);
+}
+
+/* Gold gradient section separator */
+.gold-section-separator {
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(212, 175, 55, 0.08) 15%,
+    rgba(212, 175, 55, 0.4) 50%,
+    rgba(212, 175, 55, 0.08) 85%,
+    transparent 100%
+  );
+  border-radius: 1px;
+}
+
+/* Status badge animations for transaction statuses */
+@keyframes status-pulse-pending {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(245, 166, 35, 0.4); }
+  50% { box-shadow: 0 0 0 4px rgba(245, 166, 35, 0); }
+}
+.status-badge-pending {
+  animation: status-pulse-pending 2s ease-in-out infinite;
+}
+
+@keyframes status-check-approved {
+  0% { transform: scale(0.8); opacity: 0; }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); opacity: 1; }
+}
+.status-badge-approved-icon {
+  animation: status-check-approved 0.4s ease-out both;
+}
+
+@keyframes status-x-rejected {
+  0% { transform: scale(0.8) rotate(-45deg); opacity: 0; }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+.status-badge-rejected-icon {
+  animation: status-x-rejected 0.3s ease-out both;
+}
+
+/* Search input with gold focus ring */
+.search-input-gold:focus {
+  border-color: rgba(212, 175, 55, 0.4);
+  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.12);
+}
+
+/* Export CSV button gold gradient */
+.btn-csv-export {
+  background: linear-gradient(135deg, #ffd700 0%, #d4af37 50%, #b8860b 100%);
+  color: #0a0a0b;
+  font-weight: 600;
+  box-shadow: 0 0 12px rgba(212, 175, 55, 0.15);
+  transition: all 0.2s ease;
+}
+.btn-csv-export:hover {
+  box-shadow: 0 0 20px rgba(212, 175, 55, 0.3);
+  filter: brightness(1.1);
+}
+
+/* Reduced motion for Round 10-A animations */
+@media (prefers-reduced-motion: reduce) {
+  .premium-chip-enhanced::before,
+  .status-badge-pending,
+  .status-badge-approved-icon,
+  .status-badge-rejected-icon,
+  .gold-glow-hover-strong {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+

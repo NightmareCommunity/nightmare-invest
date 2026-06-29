@@ -137,7 +137,7 @@ export function InvestorDashboard() {
               {/* Left: Fund info + NAV */}
               <div className="flex-1">
                 <div className="flex items-center gap-2">
-                  {/* Refined connection badge */}
+                  {/* Unified status badge */}
                   <span
                     className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-semibold tracking-wide transition-colors ${
                       isLive
@@ -159,7 +159,10 @@ export function InvestorDashboard() {
                     </span>
                     {isLive ? "LIVE" : connectionStatus === "connecting" ? "CONNECTING" : "OFFLINE"}
                   </span>
-                  <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Institutional Fund</span>
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-gold/30 bg-gold/[0.08] px-2.5 py-1 text-[10px] font-semibold tracking-wide text-gold">
+                    <Shield className="h-3 w-3" />
+                    Institutional Fund
+                  </span>
                 </div>
                 <h1 className="mt-2 text-xl font-bold tracking-tight text-foreground sm:text-2xl">
                   Nightmare Alpha Crypto Fund
@@ -641,20 +644,21 @@ export function InvestorDashboard() {
       <FadeIn delay={0.2}>
         <SectionTitle title="Fund Analytics" subtitle="Institutional-grade performance metrics" />
         <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <MetricTile label="Daily Return" value={fmtPct(m.dailyReturn)} accent={m.dailyReturn >= 0 ? "profit" : "loss"} icon={<ArrowUpRight className="h-4 w-4" />} />
-          <MetricTile label="Weekly Return" value={fmtPct(m.weeklyReturn)} accent={m.weeklyReturn >= 0 ? "profit" : "loss"} icon={<ArrowUpRight className="h-4 w-4" />} />
-          <MetricTile label="Monthly Return" value={fmtPct(m.monthlyReturn)} accent={m.monthlyReturn >= 0 ? "profit" : "loss"} icon={<ArrowUpRight className="h-4 w-4" />} />
-          <MetricTile label="Annual Return" value={fmtPct(m.annualReturn)} accent={m.annualReturn >= 0 ? "profit" : "loss"} icon={<ArrowUpRight className="h-4 w-4" />} />
-          <MetricTile label="CAGR" value={fmtPct(m.cagr)} accent="gold" icon={<TrendingUp className="h-4 w-4" />} sub="Since inception" />
-          <MetricTile label="Sharpe Ratio" value={fmtNum(m.sharpe, 2)} accent="gold" icon={<Activity className="h-4 w-4" />} sub="Risk-adjusted" />
-          <MetricTile label="Volatility" value={fmtPct(m.volatility)} icon={<BarChart3 className="h-4 w-4" />} sub="Annualised" />
-          <MetricTile label="Max Drawdown" value={fmtPct(m.maxDrawdown)} accent="loss" icon={<TrendingDown className="h-4 w-4" />} sub="Peak to trough" />
+          <MetricTile label="Daily Return" value={fmtPct(m.dailyReturn)} accent={m.dailyReturn >= 0 ? "profit" : "loss"} icon={<ArrowUpRight className="h-4 w-4" />} className="gold-glow-hover" />
+          <MetricTile label="Weekly Return" value={fmtPct(m.weeklyReturn)} accent={m.weeklyReturn >= 0 ? "profit" : "loss"} icon={<ArrowUpRight className="h-4 w-4" />} className="gold-glow-hover" />
+          <MetricTile label="Monthly Return" value={fmtPct(m.monthlyReturn)} accent={m.monthlyReturn >= 0 ? "profit" : "loss"} icon={<ArrowUpRight className="h-4 w-4" />} className="gold-glow-hover" />
+          <MetricTile label="Annual Return" value={fmtPct(m.annualReturn)} accent={m.annualReturn >= 0 ? "profit" : "loss"} icon={<ArrowUpRight className="h-4 w-4" />} className="gold-glow-hover" />
+          <MetricTile label="CAGR" value={fmtPct(m.cagr)} accent="gold" icon={<TrendingUp className="h-4 w-4" />} sub="Since inception" className="gold-glow-hover" />
+          <MetricTile label="Sharpe Ratio" value={fmtNum(m.sharpe, 2)} accent="gold" icon={<Activity className="h-4 w-4" />} sub="Risk-adjusted" className="gold-glow-hover" />
+          <MetricTile label="Volatility" value={fmtPct(m.volatility)} icon={<BarChart3 className="h-4 w-4" />} sub="Annualised" className="gold-glow-hover" />
+          <MetricTile label="Max Drawdown" value={fmtPct(m.maxDrawdown)} accent="loss" icon={<TrendingDown className="h-4 w-4" />} sub="Peak to trough" className="gold-glow-hover" />
           <MetricTile
             label="Beta (vs BTC)"
             value={fmtNum(m.volatility > 0 ? m.sharpe / (m.volatility / 100) : 0, 2)}
             icon={<Layers className="h-4 w-4" />}
             sub="Market sensitivity"
             sparkline={[0.8, 0.95, 1.1, 1.05, 0.9, 1.15, 1.0, 0.88, 1.02]}
+            className="gold-glow-hover"
           />
           <MetricTile
             label="Alpha"
@@ -662,6 +666,7 @@ export function InvestorDashboard() {
             accent={(m.annualReturn - m.dailyReturn * 252 * 0.3) >= 0 ? "profit" : "loss"}
             icon={<Zap className="h-4 w-4" />}
             sub="Excess return"
+            className="gold-glow-hover"
           />
           <MetricTile
             label="Info Ratio"
@@ -669,12 +674,14 @@ export function InvestorDashboard() {
             accent="gold"
             icon={<Shield className="h-4 w-4" />}
             sub="Active return / TE"
+            className="gold-glow-hover"
           />
           <MetricTile
             label="Tracking Error"
             value={fmtPct(m.volatility * 0.4)}
             icon={<BarChart3 className="h-4 w-4" />}
             sub="vs benchmark"
+            className="gold-glow-hover"
           />
         </div>
       </FadeIn>
@@ -1196,7 +1203,7 @@ function AnimatedMetric({
     ? fmtUSD(animated, { decimals })
     : `${prefix}${fmtNum(animated, decimals)}`;
   return (
-    <MetricTile label={label} value={display} icon={icon} accent={accent} sub={sub} sparkline={sparkline}>
+    <MetricTile label={label} value={display} icon={icon} accent={accent} sub={sub} sparkline={sparkline} className="gold-glow-hover">
       {extra}
     </MetricTile>
   );

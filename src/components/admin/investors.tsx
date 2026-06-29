@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { fmtDate, timeAgo } from "@/lib/format";
-import { Search, Users, UserCog, ShieldCheck, UserX, UserCheck } from "lucide-react";
+import { Search, Users, UserCog, ShieldCheck, UserX, UserCheck, Shield, ShieldOff } from "lucide-react";
 import { toast } from "sonner";
 
 export function AdminInvestors() {
@@ -90,7 +90,7 @@ export function AdminInvestors() {
       </FadeIn>
 
       <FadeIn delay={0.05}>
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-4">
           <GlassCard className="p-4 hover-lift gold-glow-hover">
             <div className="flex items-center gap-2 text-muted-foreground"><Users className="h-4 w-4" /><span className="text-[11px] uppercase tracking-wider">Total Accounts</span></div>
             <div className="mt-1 font-metric text-2xl font-bold text-foreground">{users.length}</div>
@@ -102,6 +102,10 @@ export function AdminInvestors() {
           <GlassCard className="p-4 hover-lift gold-glow-hover">
             <div className="flex items-center gap-2 text-muted-foreground"><UserX className="h-4 w-4 text-loss" /><span className="text-[11px] uppercase tracking-wider">Suspended</span></div>
             <div className="mt-1 font-metric text-2xl font-bold text-loss">{users.filter((u: any) => !u.isActive).length}</div>
+          </GlassCard>
+          <GlassCard className="p-4 hover-lift gold-glow-hover">
+            <div className="flex items-center gap-2 text-muted-foreground"><Shield className="h-4 w-4 text-profit" /><span className="text-[11px] uppercase tracking-wider">2FA Enabled</span></div>
+            <div className="mt-1 font-metric text-2xl font-bold text-profit">{users.filter((u: any) => u.totpEnabled).length}</div>
           </GlassCard>
         </div>
       </FadeIn>
@@ -115,6 +119,7 @@ export function AdminInvestors() {
                 <tr className="border-b border-border/60 text-left text-[11px] uppercase tracking-wider text-muted-foreground">
                   <th className="pb-2 pr-4 font-medium">Investor</th>
                   <th className="pb-2 pr-4 font-medium">Role</th>
+                  <th className="pb-2 pr-4 font-medium">2FA</th>
                   <th className="pb-2 pr-4 font-medium">Status</th>
                   <th className="pb-2 pr-4 font-medium">Holdings</th>
                   <th className="pb-2 pr-4 font-medium">Txns</th>
@@ -143,6 +148,19 @@ export function AdminInvestors() {
                       </Badge>
                     </td>
                     <td className="py-3 pr-4">
+                      {u.totpEnabled ? (
+                        <span className="inline-flex items-center gap-1.5 rounded-full border border-profit/30 bg-profit/10 px-2.5 py-0.5 text-[11px] font-semibold text-profit">
+                          <Shield className="h-3 w-3" />
+                          Enabled
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 rounded-full border border-loss/30 bg-loss/10 px-2.5 py-0.5 text-[11px] font-semibold text-loss">
+                          <ShieldOff className="h-3 w-3" />
+                          Disabled
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-3 pr-4">
                       {u.isActive ? (
                         <span className="status-badge-animated inline-flex items-center gap-1 text-xs text-profit"><UserCheck className="h-3.5 w-3.5" /> Active</span>
                       ) : (
@@ -161,7 +179,7 @@ export function AdminInvestors() {
                   </tr>
                 ))}
                 {users.length === 0 && (
-                  <tr><td colSpan={8}>
+                  <tr><td colSpan={9}>
                     <EmptyState
                       icon={<Users className="h-7 w-7" />}
                       title="No investors found"
@@ -201,6 +219,25 @@ export function AdminInvestors() {
                   <div className="text-xs text-muted-foreground">Suspend to block login access</div>
                 </div>
                 <Switch checked={editing.isActive} onCheckedChange={(c) => setEditing({ ...editing, isActive: c })} />
+              </div>
+              {/* 2FA Status (read-only) */}
+              <div className="flex items-center justify-between rounded-lg border border-border/60 bg-black/20 px-4 py-3">
+                <div className="flex items-center gap-2">
+                  {editing.totpEnabled ? (
+                    <Shield className="h-4 w-4 text-profit" />
+                  ) : (
+                    <ShieldOff className="h-4 w-4 text-loss" />
+                  )}
+                  <div>
+                    <div className="text-sm font-medium text-foreground">Two-Factor Authentication</div>
+                    <div className="text-xs text-muted-foreground">
+                      {editing.totpEnabled ? "2FA is active for this account" : "2FA is not enabled — account is less secure"}
+                    </div>
+                  </div>
+                </div>
+                <span className={`text-xs font-semibold ${editing.totpEnabled ? "text-profit" : "text-loss"}`}>
+                  {editing.totpEnabled ? "Enabled" : "Disabled"}
+                </span>
               </div>
             </div>
           )}

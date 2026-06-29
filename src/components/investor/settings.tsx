@@ -406,7 +406,7 @@ export function SettingsPage() {
         <FadeIn delay={0.07} className="lg:col-span-2 space-y-4">
 
           {/* ---- Profile Section (Enhanced) ---- */}
-          <GlassCard className="glass-card-hover p-6">
+          <GlassCard className="glass-card-hover p-6 border-gold/15" gold>
             <SettingsSectionHeader
               num="01"
               title="Profile"
@@ -428,10 +428,10 @@ export function SettingsPage() {
               {/* Avatar with rotating gold ring */}
               <div className="flex flex-col items-center gap-2">
                 <div className="relative avatar-gold-ring">
-                  <div className="flex h-20 w-20 items-center justify-center rounded-full border-2 border-gold/50 bg-gold/10 text-2xl font-bold text-gold-gradient">
+                  <div className="flex h-20 w-20 items-center justify-center rounded-full border-2 border-gold/60 bg-gradient-to-br from-gold/15 to-gold/5 text-2xl font-bold text-gold-gradient shadow-[0_0_20px_rgba(212,175,55,0.2)]">
                     {getInitials(user.name)}
                   </div>
-                  <div className="absolute -bottom-0.5 -right-0.5 flex h-6 w-6 items-center justify-center rounded-full border-2 border-background bg-profit text-[8px] font-bold text-white">
+                  <div className="absolute -bottom-0.5 -right-0.5 flex h-6 w-6 items-center justify-center rounded-full border-2 border-background bg-gold-gradient text-[8px] font-bold text-black shadow-[0_0_8px_rgba(212,175,55,0.5)]">
                     ✓
                   </div>
                 </div>
@@ -485,7 +485,7 @@ export function SettingsPage() {
           </GlassCard>
 
           {/* ---- Password Section (Enhanced) ---- */}
-          <GlassCard className="glass-card-hover p-6">
+          <GlassCard className="glass-card-hover p-6 border-gold/10">
             <SettingsSectionHeader
               num="02"
               title="Password"
@@ -576,7 +576,7 @@ export function SettingsPage() {
           <KycSection />
 
           {/* ---- Notification Preferences ---- */}
-          <GlassCard className="glass-card-hover p-6">
+          <GlassCard className="glass-card-hover p-6 border-gold/15" gold>
             <SettingsSectionHeader
               num="03"
               title="Notification Preferences"
@@ -620,12 +620,13 @@ export function SettingsPage() {
               ].map((item) => {
                 const Icon = item.icon;
                 return (
-                  <div
+                  <motion.div
                     key={item.id}
-                    className="flex items-center justify-between gap-4 rounded-lg border border-border/40 bg-black/20 p-3.5 transition-colors hover:bg-black/30"
+                    whileHover={{ x: 2 }}
+                    className="flex items-center justify-between gap-4 rounded-xl border border-gold/10 bg-black/20 p-3.5 transition-all duration-300 hover:bg-gold/[0.04] hover:border-gold/25"
                   >
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-gold/20 bg-gold/5">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gold/25 bg-gradient-to-br from-gold/10 to-gold/5">
                         <Icon className="h-4 w-4 text-gold" />
                       </div>
                       <div className="min-w-0">
@@ -636,16 +637,16 @@ export function SettingsPage() {
                     <Switch
                       checked={item.checked}
                       onCheckedChange={item.onChange}
-                      className="switch-gold-glow data-[state=checked]:bg-gold"
+                      className="switch-gold-glow data-[state=checked]:bg-gold data-[state=checked]:shadow-[0_0_12px_rgba(212,175,55,0.4)]"
                     />
-                  </div>
+                  </motion.div>
                 );
               })}
             </div>
           </GlassCard>
 
           {/* ---- Connected Sessions (Enhanced) ---- */}
-          <GlassCard className="glass-card-hover p-6">
+          <GlassCard className="glass-card-hover p-6 border-gold/10">
             <SettingsSectionHeader
               num="04"
               title="Connected Sessions"

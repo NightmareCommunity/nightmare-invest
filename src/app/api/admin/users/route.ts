@@ -27,6 +27,7 @@ export async function GET(req: NextRequest) {
       email: true,
       role: true,
       isActive: true,
+      totpEnabled: true,
       createdAt: true,
       lastLogin: true,
       _count: { select: { holdings: true, transactions: true } },
