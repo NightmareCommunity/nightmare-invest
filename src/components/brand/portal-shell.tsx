@@ -95,8 +95,15 @@ export function PortalShell({ children, admin = false }: { children: ReactNode; 
         <div className="flex items-center gap-2">
           <NotificationCenter />
           <div className="hidden items-center gap-2 rounded-lg border border-border/60 bg-black/30 px-3 py-1.5 sm:flex">
-            <div className={cn("flex h-7 w-7 items-center justify-center rounded-full bg-gold-gradient text-xs font-bold text-black", user.role === "ADMIN" && "ring-2 ring-gold/50 ring-offset-1 ring-offset-background")}>
-              {user.name.charAt(0).toUpperCase()}
+            <div className="relative">
+              <div className={cn("flex h-7 w-7 items-center justify-center rounded-full bg-gold-gradient text-xs font-bold text-black transition-transform duration-200 hover:scale-110", user.role === "ADMIN" && "ring-2 ring-gold/50 ring-offset-1 ring-offset-background")}>
+                {user.name.charAt(0).toUpperCase()}
+              </div>
+              {/* Online indicator dot */}
+              <span className="absolute -bottom-0.5 -right-0.5 flex h-3 w-3">
+                <span className="absolute inline-flex h-full w-full rounded-full bg-profit opacity-50 online-dot-pulse" />
+                <span className="relative inline-flex h-3 w-3 rounded-full bg-profit border-2 border-background" />
+              </span>
             </div>
             <div className="leading-none">
               <div className="text-xs font-semibold text-foreground">{user.name}</div>
@@ -123,14 +130,15 @@ export function PortalShell({ children, admin = false }: { children: ReactNode; 
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
                 onClick={() => setMobileOpen(false)}
-                className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm lg:hidden"
+                className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md lg:hidden"
               />
               <motion.aside
                 initial={{ x: -300 }}
                 animate={{ x: 0 }}
                 exit={{ x: -300 }}
-                transition={{ type: "spring", damping: 28, stiffness: 260 }}
+                transition={{ type: "spring", damping: 30, stiffness: 300 }}
                 className="fixed inset-y-0 left-0 z-50 w-72 border-r border-gold/20 bg-sidebar glass-strong lg:hidden"
               >
                 <div className="flex h-14 items-center justify-between border-b border-border/60 px-4">
@@ -155,10 +163,10 @@ export function PortalShell({ children, admin = false }: { children: ReactNode; 
             <AnimatePresence mode="wait">
               <motion.div
                 key={current}
-                initial={{ opacity: 0, y: 12, scale: 0.995 }}
+                initial={{ opacity: 0, y: 8, scale: 0.998 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -6, scale: 0.998 }}
-                transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                exit={{ opacity: 0, y: -4, scale: 0.998 }}
+                transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
               >
                 {children}
               </motion.div>
@@ -208,7 +216,7 @@ function SidebarContent({
                     className={cn(
                       "nav-item-hover group flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all",
                       active
-                        ? "nav-active-indicator bg-gold/10 text-gold"
+                        ? "nav-active-indicator-gold bg-gold/10 text-gold"
                         : "text-muted-foreground hover:bg-gold/10 hover:text-foreground"
                     )}
                   >
@@ -235,7 +243,7 @@ function SidebarContent({
 
       <div className="border-t border-border/60 p-3">
         {!admin && (
-          <div className="mb-2 rounded-lg border border-gold/15 bg-gold/5 p-3">
+          <div className="mb-2 rounded-lg border border-gold/15 bg-gold/5 p-3 help-card-glow">
             <div className="text-[10px] font-semibold uppercase tracking-wider text-gold">Need Help?</div>
             <div className="mt-1 text-xs text-muted-foreground">Contact investor relations at ir@nightmare.invest</div>
           </div>

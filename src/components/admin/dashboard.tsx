@@ -1,4 +1,5 @@
 "use client";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api-client";
 import { GlassCard, MetricTile, SectionTitle, StatusPill, FadeIn, SkeletonCard, SkeletonMetric } from "@/components/brand/primitives";
@@ -8,7 +9,7 @@ import { useApp } from "@/lib/store";
 import {
   Users, DollarSign, ArrowDownToLine, ArrowUpFromLine, TrendingUp, TrendingDown, Activity,
   Wallet, Database, ShieldCheck, Clock, Server, Cpu, CheckCircle2,
-  AlertTriangle, ChevronRight, CircleDot, Zap, Eye,
+  AlertTriangle, ChevronRight, CircleDot, Zap, Eye, RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,13 +23,24 @@ import {
 
 export function AdminDashboard() {
   const setRoute = useApp((s) => s.setRoute);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const { data, error: dashError, refetch } = useQuery<any>({
+  const { data, error: dashError, refetch, dataUpdatedAt } = useQuery<any>({
     queryKey: ["admin-dashboard"],
     queryFn: () => api.get("/api/admin/dashboard"),
     refetchInterval: 30000,
     retry: 2,
   });
+
+  // Use TanStack Query's built-in dataUpdatedAt timestamp
+  const lastUpdated = new Date(dataUpdatedAt);
+
+  // Manual refresh handler
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await refetch();
+    setIsRefreshing(false);
+  };
 
   const { data: auditLogs } = useQuery<any[]>({
     queryKey: ["admin-audit-logs"],
@@ -155,10 +167,28 @@ export function AdminDashboard() {
     <div className="space-y-6">
       {/* ═══════════════════ HEADER ═══════════════════ */}
       <FadeIn>
-        <div>
-          <span className="text-xs font-medium uppercase tracking-[0.18em] text-gold">Admin Console</span>
-          <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">Operations Dashboard</h1>
-          <p className="text-sm text-muted-foreground">{data.fund?.name ?? "—"} · Real-time fund oversight</p>
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <span className="text-xs font-medium uppercase tracking-[0.18em] text-gold">Admin Console</span>
+            <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">Operations Dashboard</h1>
+            <p className="text-sm text-muted-foreground">{data.fund?.name ?? "—"} · Real-time fund oversight</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-profit opacity-40" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-profit" />
+              </span>
+              Last updated: {lastUpdated.toLocaleTimeString()}
+            </div>
+            <button
+              onClick={handleRefresh}
+              className="flex items-center gap-1 rounded-md border border-gold/20 bg-gold/5 px-2.5 py-1 text-[11px] font-medium text-gold transition-all hover:bg-gold/10 hover:border-gold/30"
+            >
+              <RefreshCw className={`h-3 w-3 transition-transform ${isRefreshing ? "animate-spin" : ""}`} />
+              Refresh
+            </button>
+          </div>
         </div>
       </FadeIn>
 
@@ -178,6 +208,7 @@ export function AdminDashboard() {
             sparkline={navTrend.slice(-8).map((p: any) => p.aum ?? p.nav ?? 0)}
             glow
             cornerAccent
+            animated
           />
           <EnhancedMetric
             label="Active Investors"
@@ -191,6 +222,7 @@ export function AdminDashboard() {
             delta={totalInvestors > 0 ? ((data.activeInvestors / totalInvestors) * 100 - 80) : undefined}
             deltaLabel="activation rate"
             cornerAccent
+            animated
           />
           <EnhancedMetric
             label="Pending Deposits"
@@ -203,6 +235,7 @@ export function AdminDashboard() {
             sub="Awaiting review"
             pulse={data.pendingDeposits > 0}
             cornerAccent
+            animated
           />
           <EnhancedMetric
             label="Pending Withdrawals"
@@ -215,6 +248,7 @@ export function AdminDashboard() {
             sub="Awaiting review"
             pulse={data.pendingWithdrawals > 0}
             cornerAccent
+            animated
           />
         </div>
       </FadeIn>
@@ -398,7 +432,7 @@ export function AdminDashboard() {
       {/* ═══════════════════ 5. PENDING TRANSACTIONS ALERT ═══════════════════ */}
       {pendingCount > 0 && (
         <FadeIn delay={0.18}>
-          <GlassCard gold glow className="gold-corner-accent p-5">
+          <GlassCard gold glow className="gold-corner-accent border-glow-pulse p-5">
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div className="flex items-center gap-4">
                 <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-warning/15">
@@ -418,7 +452,7 @@ export function AdminDashboard() {
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => setRoute({ name: "admin-transactions" })}
-                  className="rounded-lg bg-gold-gradient px-4 py-2 text-xs font-bold text-black shadow-[0_0_16px_rgba(212,175,55,0.28)] transition-all hover:shadow-[0_0_24px_rgba(212,175,55,0.4)] hover:brightness-105"
+                  className="pulse-gold rounded-lg bg-gold-gradient px-4 py-2 text-xs font-bold text-black shadow-[0_0_16px_rgba(212,175,55,0.28)] transition-all hover:shadow-[0_0_24px_rgba(212,175,55,0.4)] hover:brightness-105"
                 >
                   <Eye className="mr-1.5 inline h-3.5 w-3.5" />
                   Review Now
@@ -588,15 +622,15 @@ export function AdminDashboard() {
             </div>
             {/* Quick stats row */}
             <div className="mt-4 grid grid-cols-3 gap-3">
-              <div className="rounded-lg bg-muted/30 p-3 text-center">
+              <div className="rounded-lg bg-muted/30 p-3 text-center transition-colors hover:bg-muted/40">
                 <div className="font-metric text-lg font-bold text-foreground">{totalInvestors}</div>
                 <div className="mt-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">Total</div>
               </div>
-              <div className="rounded-lg bg-profit/[0.06] p-3 text-center">
+              <div className="rounded-lg bg-profit/[0.06] p-3 text-center transition-colors hover:bg-profit/[0.1]">
                 <div className="font-metric text-lg font-bold text-profit">{activeCount}</div>
                 <div className="mt-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">Active</div>
               </div>
-              <div className="rounded-lg bg-warning/[0.06] p-3 text-center">
+              <div className="rounded-lg bg-warning/[0.06] p-3 text-center transition-colors hover:bg-warning/[0.1]">
                 <div className="font-metric text-lg font-bold text-warning">{pendingKyc}</div>
                 <div className="mt-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">Pending KYC</div>
               </div>
@@ -615,14 +649,23 @@ export function AdminDashboard() {
                       paddingAngle={3}
                       dataKey="value"
                       stroke="none"
+                      animationBegin={0}
+                      animationDuration={800}
+                      animationEasing="ease-out"
                     >
                       {tierData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
+                        <Cell key={`cell-${index}`} fill={entry.color} style={{ transition: "all 0.3s ease", cursor: "pointer" }} />
                       ))}
                     </Pie>
                     <Tooltip
-                      contentStyle={{ background: "rgba(10,10,11,0.95)", border: "1px solid rgba(212,175,55,0.25)", borderRadius: "10px" }}
+                      contentStyle={{ background: "rgba(10,10,11,0.95)", border: "1px solid rgba(212,175,55,0.3)", borderRadius: "10px", boxShadow: "0 0 20px rgba(212,175,55,0.12)" }}
                       formatter={(v: number, n: string) => [v, n]}
+                    />
+                    <Legend
+                      verticalAlign="bottom"
+                      iconType="circle"
+                      iconSize={8}
+                      wrapperStyle={{ fontSize: "11px", color: "#9a9a9a", paddingTop: "8px" }}
                     />
                   </PieChart>
                 </ResponsiveContainer>
@@ -631,8 +674,8 @@ export function AdminDashboard() {
                 {/* Legend */}
                 <div className="flex flex-wrap gap-3 mb-3">
                   {tierData.map((t) => (
-                    <div key={t.name} className="flex items-center gap-1.5">
-                      <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: t.color }} />
+                    <div key={t.name} className="flex items-center gap-1.5 rounded-md border border-transparent px-1.5 py-0.5 transition-colors hover:border-gold/20 hover:bg-gold/5">
+                      <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: t.color }} />
                       <span className="text-[11px] text-muted-foreground">{t.name} ({t.value})</span>
                     </div>
                   ))}
@@ -752,6 +795,7 @@ function EnhancedMetric({
   glow,
   pulse,
   cornerAccent,
+  animated = false,
 }: {
   label: string;
   value: number;
@@ -767,9 +811,10 @@ function EnhancedMetric({
   glow?: boolean;
   pulse?: boolean;
   cornerAccent?: boolean;
+  animated?: boolean;
 }) {
-  const animated = useCountUp(value, 1000);
-  const display = prefix === "$" ? fmtUSD(animated, { compact: animated > 1e6 }) : `${prefix}${fmtNum(animated, 0)}`;
+  const countVal = useCountUp(value, 1000);
+  const display = prefix === "$" ? fmtUSD(countVal, { compact: countVal > 1e6 }) : `${prefix}${fmtNum(countVal, 0)}`;
 
   const accentClass =
     accent === "profit" ? "text-profit" :
@@ -813,7 +858,7 @@ function EnhancedMetric({
       }
       accent={accent === "warning" ? "gold" : accent}
       sparkline={sparkline}
-      className={[glow ? glowClass : "", cornerAccent ? "gold-corner-accent" : ""].filter(Boolean).join(" ")}
+      className={[glow ? glowClass : "", cornerAccent ? "gold-corner-accent" : "", animated ? "scale-in" : ""].filter(Boolean).join(" ")}
     />
   );
 }
@@ -907,3 +952,4 @@ function HealthIndicator({
     </div>
   );
 }
+

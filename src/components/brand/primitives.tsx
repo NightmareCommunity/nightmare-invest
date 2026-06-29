@@ -77,6 +77,7 @@ export function GlassCard({
   gold = false,
   glow = false,
   hover = false,
+  glowOnHover = false,
   onClick,
 }: {
   className?: string;
@@ -84,6 +85,7 @@ export function GlassCard({
   gold?: boolean;
   glow?: boolean;
   hover?: boolean;
+  glowOnHover?: boolean;
   onClick?: () => void;
 }) {
   return (
@@ -95,6 +97,7 @@ export function GlassCard({
         gold ? "glass-gold" : "glass",
         glow && (gold ? "glow-gold-strong" : "glow-gold"),
         hover && "transition-all duration-300 hover:-translate-y-0.5 hover:glow-gold",
+        glowOnHover && "gold-glow-hover",
         onClick && "cursor-pointer",
         className
       )}
@@ -121,6 +124,7 @@ export function MetricTile({
   accent,
   trend,
   sparkline,
+  animated = false,
   className,
   children,
 }: {
@@ -131,13 +135,14 @@ export function MetricTile({
   accent?: "gold" | "profit" | "loss" | "neutral";
   trend?: number;
   sparkline?: number[];
+  animated?: boolean;
   className?: string;
   children?: ReactNode;
 }) {
   const accentColor =
     accent === "profit" ? "text-profit" : accent === "loss" ? "text-loss" : accent === "gold" ? "text-gold" : "text-foreground";
   return (
-    <GlassCard className={cn("metric-bottom-border p-5 transition-transform duration-200 hover:scale-[1.02]", className)} hover>
+    <GlassCard className={cn("metric-bottom-border p-5 transition-transform duration-200 hover:scale-[1.02]", animated && "scale-in", className)} hover glowOnHover>
       <div className="relative">
         <div className="flex items-start justify-between gap-2">
           <span className="text-[10.5px] font-medium uppercase leading-tight tracking-[0.12em] text-foreground/60 [overflow-wrap:anywhere]">
@@ -279,16 +284,28 @@ export function FadeIn({
   children,
   delay = 0,
   className,
+  direction = "up",
 }: {
   children: ReactNode;
   delay?: number;
   className?: string;
+  direction?: "up" | "right" | "none";
 }) {
+  const initial = (() => {
+    if (direction === "right") return { opacity: 0, x: 16 };
+    if (direction === "none") return { opacity: 0 };
+    return { opacity: 0, y: 12 };
+  })();
+  const animate = (() => {
+    if (direction === "right") return { opacity: 1, x: 0 };
+    if (direction === "none") return { opacity: 1 };
+    return { opacity: 1, y: 0 };
+  })();
   return (
     <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.45, delay, ease: [0.22, 1, 0.36, 1] }}
+      initial={initial}
+      animate={animate}
+      transition={{ duration: 0.5, delay, ease: [0.22, 1, 0.36, 1] }}
       className={className}
     >
       {children}

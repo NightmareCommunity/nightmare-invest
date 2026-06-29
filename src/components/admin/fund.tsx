@@ -140,7 +140,7 @@ export function AdminFund() {
                 <Button variant="outline" size="sm" onClick={add} className="border-gold/30 hover:bg-gold/10">
                   <Plus className="mr-1 h-4 w-4" /> Add Asset
                 </Button>
-                <Button size="sm" onClick={save} disabled={saving} className="bg-gold-gradient text-black hover:opacity-90">
+                <Button size="sm" onClick={save} disabled={saving} className="save-btn-gold-sweep bg-gold-gradient text-black hover:opacity-90">
                   <Save className="mr-1 h-4 w-4" /> {saving ? "Saving…" : "Save Allocation"}
                 </Button>
               </div>
@@ -148,7 +148,7 @@ export function AdminFund() {
           />
           <div className="mt-4 space-y-2">
             {allocations.map((a, i) => (
-              <div key={i} className="flex flex-wrap items-center gap-3 rounded-lg border border-border/60 bg-black/20 p-3">
+              <div key={i} className="allocation-card-glow flex flex-wrap items-center gap-3 rounded-lg border border-border/60 bg-black/20 p-3">
                 <input
                   type="color"
                   value={a.color}
@@ -173,7 +173,7 @@ export function AdminFund() {
                 </div>
                 <div className="hidden flex-1 sm:block">
                   <div className="h-2 overflow-hidden rounded-full bg-black/40">
-                    <div className="h-full rounded-full" style={{ width: `${a.weight}%`, background: a.color }} />
+                    <div className="allocation-weight-transition h-full rounded-full" style={{ width: `${a.weight}%`, background: a.color }} />
                   </div>
                 </div>
                 <Button variant="ghost" size="sm" onClick={() => remove(i)} className="text-loss hover:bg-loss/10">

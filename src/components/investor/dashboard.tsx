@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, useRef, useMemo } from "react";
+import { useEffect, useState, useRef, useMemo, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api-client";
 import { GlassCard, MetricTile, SectionTitle, StatusPill, TypePill, FadeIn, SkeletonCard, SkeletonMetric, SkeletonTable } from "@/components/brand/primitives";
@@ -10,6 +10,7 @@ import {
   TrendingUp, TrendingDown, Wallet, PieChart, Activity, ArrowUpRight, ArrowDownRight,
   DollarSign, BarChart3, Bitcoin, Sparkles, ArrowRight, Download, MessageSquare,
   Plus, Minus, Eye, Clock, Zap, Shield, ChevronRight, AlertTriangle, Layers, Gauge,
+  Volume2, Landmark,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -53,6 +54,7 @@ export function InvestorDashboard() {
   const [range, setRange] = useState("6M");
   const [showBtcBench, setShowBtcBench] = useState(false);
   const [tickerPaused, setTickerPaused] = useState(false);
+  const [hoveredSlice, setHoveredSlice] = useState<number | null>(null);
 
   // ── WebSocket real-time price stream ──
   const { prices: streamPrices, fearGreed: streamFearGreed, connectionStatus } = usePriceStream();
@@ -135,23 +137,23 @@ export function InvestorDashboard() {
               {/* Left: Fund info + NAV */}
               <div className="flex-1">
                 <div className="flex items-center gap-2">
-                  {/* Refined connection badge — thin pill, subtle background, colored dot */}
+                  {/* Refined connection badge */}
                   <span
-                    className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-medium tracking-wide transition-colors ${
+                    className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-semibold tracking-wide transition-colors ${
                       isLive
-                        ? "border-profit/25 bg-profit/[0.06] text-profit"
+                        ? "border-profit/30 bg-profit/[0.08] text-profit"
                         : connectionStatus === "connecting"
-                          ? "border-gold/25 bg-gold/[0.06] text-gold"
-                          : "border-loss/25 bg-loss/[0.06] text-loss"
+                          ? "border-gold/30 bg-gold/[0.08] text-gold"
+                          : "border-loss/30 bg-loss/[0.08] text-loss"
                     }`}
                   >
-                    <span className="relative flex h-1.5 w-1.5">
+                    <span className="relative flex h-2 w-2">
                       {(isLive || connectionStatus === "connecting") && (
                         <span className={`absolute inline-flex h-full w-full animate-ping rounded-full opacity-60 ${
                           isLive ? "bg-profit" : "bg-gold"
                         }`} />
                       )}
-                      <span className={`relative inline-flex h-1.5 w-1.5 rounded-full ${
+                      <span className={`relative inline-flex h-2 w-2 rounded-full ${
                         isLive ? "bg-profit" : connectionStatus === "connecting" ? "bg-gold" : "bg-loss"
                       }`} />
                     </span>
@@ -179,7 +181,7 @@ export function InvestorDashboard() {
                   NAV {fmtUSD(m.nav, { decimals: 4 })} · Updated {timeAgo(portfolio.holding?.updatedAt)} · AUM {fmtUSD(m.aum, { compact: true })}
                 </p>
               </div>
-              {/* Right: Quick actions — equal-weight buttons with differentiated accents */}
+              {/* Right: Quick actions */}
               <div className="flex flex-wrap gap-2 sm:gap-3">
                 <Button
                   size="sm"
@@ -285,7 +287,7 @@ export function InvestorDashboard() {
       </FadeIn>
 
       {/* ════════════════════════════════════════════════════════════════
-          3. PERFORMANCE CHART — Enhanced with benchmark + volume
+          3. ENHANCED PERFORMANCE CHART — Custom tooltip, crosshair, gradient, legend
           ════════════════════════════════════════════════════════════════ */}
       <div className="grid gap-4 lg:grid-cols-3">
         <FadeIn delay={0.1} className="lg:col-span-2">
@@ -327,26 +329,47 @@ export function InvestorDashboard() {
                 </div>
               </div>
             </div>
+            {/* Chart Legend */}
+            <div className="mt-3 flex items-center gap-4 text-[11px]">
+              <span className="flex items-center gap-1.5">
+                <span className="inline-block h-0.5 w-4 rounded-full bg-gold" /> NAV
+              </span>
+              {showBtcBench && (
+                <span className="flex items-center gap-1.5">
+                  <span className="inline-block h-0.5 w-4 rounded-full border-t border-dashed border-[#f7931a]" /> BTC
+                </span>
+              )}
+              <span className="ml-auto text-muted-foreground">
+                {range === "ALL" ? "All time" : `Last ${range}`}
+              </span>
+            </div>
             <div className="relative mt-4 h-72">
               <ResponsiveContainer width="100%" height="85%">
                 <ComposedChart data={chartDataFinal} margin={{ top: 6, right: 6, left: 6, bottom: 0 }}>
                   <defs>
-                    <linearGradient id="navArea" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#FFD700" stopOpacity={0.5} />
-                      <stop offset="22%" stopColor="#D4AF37" stopOpacity={0.34} />
-                      <stop offset="52%" stopColor="#D4AF37" stopOpacity={0.18} />
-                      <stop offset="78%" stopColor="#D4AF37" stopOpacity={0.06} />
+                    <linearGradient id="navAreaEnhanced" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#FFD700" stopOpacity={0.45} />
+                      <stop offset="15%" stopColor="#D4AF37" stopOpacity={0.32} />
+                      <stop offset="40%" stopColor="#D4AF37" stopOpacity={0.18} />
+                      <stop offset="70%" stopColor="#D4AF37" stopOpacity={0.06} />
                       <stop offset="100%" stopColor="#D4AF37" stopOpacity={0} />
                     </linearGradient>
-                    <linearGradient id="navStroke" x1="0" y1="0" x2="1" y2="0">
+                    <linearGradient id="navStrokeEnhanced" x1="0" y1="0" x2="1" y2="0">
                       <stop offset="0%" stopColor="#b8860b" stopOpacity={0.85} />
                       <stop offset="50%" stopColor="#FFD700" stopOpacity={1} />
                       <stop offset="100%" stopColor="#D4AF37" stopOpacity={0.95} />
                     </linearGradient>
-                    <linearGradient id="btcStroke" x1="0" y1="0" x2="1" y2="0">
+                    <linearGradient id="btcStrokeEnhanced" x1="0" y1="0" x2="1" y2="0">
                       <stop offset="0%" stopColor="#f7931a" stopOpacity={0.7} />
                       <stop offset="100%" stopColor="#f7931a" stopOpacity={0.9} />
                     </linearGradient>
+                    <filter id="glowLine">
+                      <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+                      <feMerge>
+                        <feMergeNode in="coloredBlur"/>
+                        <feMergeNode in="SourceGraphic"/>
+                      </feMerge>
+                    </filter>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
                   <XAxis
@@ -376,22 +399,34 @@ export function InvestorDashboard() {
                     />
                   )}
                   <Tooltip
-                    contentStyle={{
-                      background: "rgba(20,20,22,0.95)",
-                      border: "1px solid rgba(212,175,55,0.25)",
-                      borderRadius: "10px",
-                      backdropFilter: "blur(8px)",
+                    content={<PerformanceChartTooltip dailyReturn={dailyReturn} />}
+                    cursor={{
+                      stroke: "rgba(212,175,55,0.35)",
+                      strokeWidth: 1,
+                      strokeDasharray: "4 3",
                     }}
-                    labelStyle={{ color: "#B5B5B5", fontSize: 11 }}
-                    formatter={(v: number, name: string) => {
-                      if (name === "btc") return [fmtUSD(v, { decimals: 0 }), "BTC"];
-                      return [fmtUSD(v, { decimals: 4 }), "NAV"];
-                    }}
-                    labelFormatter={(d) => new Date(d as string).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}
                   />
-                  <Area yAxisId="nav" type="monotone" dataKey="nav" stroke="url(#navStroke)" strokeWidth={2.25} fill="url(#navArea)" />
+                  <Area
+                    yAxisId="nav"
+                    type="monotone"
+                    dataKey="nav"
+                    stroke="url(#navStrokeEnhanced)"
+                    strokeWidth={3}
+                    fill="url(#navAreaEnhanced)"
+                    filter="url(#glowLine)"
+                    animationDuration={800}
+                  />
                   {showBtcBench && (
-                    <Line yAxisId="btc" type="monotone" dataKey="btc" stroke="url(#btcStroke)" strokeWidth={1.5} strokeDasharray="5 3" dot={false} />
+                    <Line
+                      yAxisId="btc"
+                      type="monotone"
+                      dataKey="btc"
+                      stroke="url(#btcStrokeEnhanced)"
+                      strokeWidth={1.5}
+                      strokeDasharray="6 4"
+                      dot={false}
+                      animationDuration={800}
+                    />
                   )}
                 </ComposedChart>
               </ResponsiveContainer>
@@ -424,7 +459,7 @@ export function InvestorDashboard() {
         </FadeIn>
 
         {/* ════════════════════════════════════════════════════════════════
-            5. HOLDINGS + ALLOCATION — Enhanced pie chart with USD values
+            5. ENHANCED HOLDINGS DONUT — Labels, center value, hover expand, legend
             ════════════════════════════════════════════════════════════════ */}
         <FadeIn delay={0.15}>
           <GlassCard gold className="h-full p-5">
@@ -433,42 +468,85 @@ export function InvestorDashboard() {
               <PieChart className="h-4 w-4 text-gold" />
             </div>
             <div className="mt-4 flex flex-col items-center">
-              <div className="relative h-44 w-44">
+              <div className="relative h-48 w-48 sm:h-52 sm:w-52">
                 <ResponsiveContainer width="100%" height="100%">
                   <RPie>
                     <Pie
-                      data={portfolio.allocations}
+                      data={portfolio.allocations.map((a, i) => ({
+                        ...a,
+                        outerRadius: hoveredSlice === i ? 86 : 76,
+                      }))}
                       dataKey="weight"
                       nameKey="asset"
                       cx="50%"
                       cy="50%"
-                      innerRadius={56}
-                      outerRadius={80}
+                      innerRadius={52}
+                      outerRadius={76}
                       paddingAngle={2}
                       stroke="none"
                       animationBegin={0}
                       animationDuration={800}
+                      onMouseEnter={(_, idx) => setHoveredSlice(idx)}
+                      onMouseLeave={() => setHoveredSlice(null)}
+                      label={({ asset, weight, cx, cy, outerRadius, midAngle }) => {
+                        const RADIAN = Math.PI / 180;
+                        const radius = (outerRadius as number) + 18;
+                        const x = (cx as number) + radius * Math.cos(-midAngle * RADIAN);
+                        const y = (cy as number) + radius * Math.sin(-midAngle * RADIAN);
+                        return (
+                          <text
+                            x={x}
+                            y={y}
+                            fill="#9a9a9a"
+                            textAnchor={x > (cx as number) ? "start" : "end"}
+                            dominantBaseline="central"
+                            fontSize={10}
+                            fontFamily="var(--font-jetbrains), ui-monospace, monospace"
+                          >
+                            {asset} {weight}%
+                          </text>
+                        );
+                      }}
                     >
-                      {portfolio.allocations.map((a) => (
-                        <Cell key={a.id} fill={a.color} />
+                      {portfolio.allocations.map((a, i) => (
+                        <Cell
+                          key={a.id}
+                          fill={a.color}
+                          style={{
+                            transition: "all 0.3s ease",
+                            filter: hoveredSlice === i ? "brightness(1.3) drop-shadow(0 0 6px rgba(212,175,55,0.3))" : "none",
+                            transform: hoveredSlice === i ? "scale(1.04)" : "scale(1)",
+                            transformOrigin: "center center",
+                          }}
+                        />
                       ))}
                     </Pie>
                   </RPie>
                 </ResponsiveContainer>
+                {/* Center text with animated counter */}
                 <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Allocation</span>
-                  <span className="font-metric text-base font-bold text-foreground">{portfolio.allocations.length} assets</span>
-                  <span className="text-[10px] text-muted-foreground">{fmtUSD(s.currentValue, { compact: true })}</span>
+                  <span className="text-[9px] uppercase tracking-widest text-muted-foreground">Total Value</span>
+                  <span className="font-metric text-base font-bold text-gold-gradient sm:text-lg">
+                    <AnimatedCounter value={s.currentValue} compact />
+                  </span>
+                  <span className="text-[10px] text-muted-foreground">{portfolio.allocations.length} assets</span>
                 </div>
               </div>
-              <div className="mt-4 w-full space-y-2.5">
-                {portfolio.allocations.map((a) => {
+              {/* Legend below chart */}
+              <div className="mt-5 w-full space-y-2">
+                {portfolio.allocations.map((a, i) => {
                   const usdValue = (a.weight / 100) * s.currentValue;
-                  // Check if allocation is significantly off from a 1/N equal weight
                   const equalWeight = 100 / portfolio.allocations.length;
                   const needsRebalance = Math.abs(a.weight - equalWeight) > equalWeight * 0.5;
                   return (
-                    <div key={a.id} className="group flex items-center justify-between rounded-md px-2 py-1.5 transition-colors hover:bg-white/[0.03]">
+                    <motion.div
+                      key={a.id}
+                      className="group flex items-center justify-between rounded-md px-2 py-1.5 transition-colors hover:bg-white/[0.04]"
+                      onMouseEnter={() => setHoveredSlice(i)}
+                      onMouseLeave={() => setHoveredSlice(null)}
+                      animate={hoveredSlice === i ? { x: 4 } : { x: 0 }}
+                      transition={{ duration: 0.2 }}
+                    >
                       <div className="flex items-center gap-2">
                         <span className="h-2.5 w-2.5 rounded-sm shadow-sm" style={{ background: a.color }} />
                         <span className="text-sm text-foreground/90">{a.asset}</span>
@@ -482,7 +560,7 @@ export function InvestorDashboard() {
                         </span>
                         <span className="font-metric text-sm font-semibold text-foreground">{a.weight}%</span>
                       </div>
-                    </div>
+                    </motion.div>
                   );
                 })}
                 {portfolio.allocations.length > 0 && (
@@ -497,27 +575,29 @@ export function InvestorDashboard() {
       </div>
 
       {/* ════════════════════════════════════════════════════════════════
-          4. LIVE MARKET TICKER BAR — Scrolling prices
+          4. ENHANCED LIVE MARKET TICKER BAR — Gold gradient, direction arrows, smooth scrolling
           ════════════════════════════════════════════════════════════════ */}
       <FadeIn delay={0.12}>
         <GlassCard className="overflow-hidden">
           <div
-            className="ticker-tape-container relative flex items-center gap-0 py-2.5 px-4"
+            className="ticker-bar-enhanced relative flex items-center gap-0 py-3 px-4"
             onMouseEnter={() => setTickerPaused(true)}
             onMouseLeave={() => setTickerPaused(false)}
           >
-            {/* Fear & Greed badge — fixed left */}
+            {/* Fear & Greed badge — larger, more prominent */}
             {liveSentiment && (
-              <div className="relative z-10 mr-4 flex shrink-0 items-center gap-1.5 rounded-full border border-border/60 bg-black/40 px-3 py-1">
-                <Gauge className="h-3 w-3 text-gold" />
-                <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">F&G</span>
-                <span className={`font-metric text-xs font-bold ${liveSentiment.fearGreed >= 50 ? "text-profit" : "text-loss"}`}>
-                  {liveSentiment.fearGreed}
-                </span>
+              <div className="relative z-10 mr-4 flex shrink-0 items-center gap-2 rounded-lg border border-gold/30 bg-gold/[0.08] px-3 py-1.5 shadow-[0_0_12px_rgba(212,175,55,0.1)]">
+                <Gauge className="h-4 w-4 text-gold" />
+                <div className="flex flex-col leading-none">
+                  <span className="text-[9px] font-medium uppercase tracking-wider text-muted-foreground">Fear &amp; Greed</span>
+                  <span className={`font-metric text-sm font-bold ${liveSentiment.fearGreed >= 50 ? "text-profit" : "text-loss"}`}>
+                    {liveSentiment.fearGreed}
+                  </span>
+                </div>
               </div>
             )}
             {/* Divider */}
-            <div className="relative z-10 mr-4 h-5 w-px bg-border/60" />
+            <div className="relative z-10 mr-4 h-6 w-px bg-gold/20" />
             {/* Scrolling ticker */}
             <div className="relative flex-1 overflow-hidden">
               <div
@@ -526,19 +606,19 @@ export function InvestorDashboard() {
               >
                 {/* Duplicate items for seamless loop */}
                 {[...livePrices, ...livePrices].map((p, i) => (
-                  <span key={`${p.symbol}-${i}`} className="mx-5 inline-flex items-center gap-2">
+                  <span key={`${p.symbol}-${i}`} className="mx-6 inline-flex items-center gap-2.5">
                     <span className="text-xs font-semibold text-foreground/80">{p.symbol}</span>
                     <span className="font-metric text-xs font-medium text-foreground">
                       {fmtUSD(p.priceUsd, { decimals: p.priceUsd > 1000 ? 0 : 2 })}
                     </span>
-                    <span className={`font-metric text-[11px] font-semibold ${p.change24h >= 0 ? "text-profit" : "text-loss"}`}>
+                    <span className={`inline-flex items-center gap-0.5 font-metric text-[11px] font-semibold ${p.change24h >= 0 ? "text-profit" : "text-loss"}`}>
+                      {p.change24h >= 0 ? (
+                        <ArrowUpRight className="h-3 w-3 text-profit" />
+                      ) : (
+                        <ArrowDownRight className="h-3 w-3 text-loss" />
+                      )}
                       {fmtPct(p.change24h)}
                     </span>
-                    {p.change24h >= 0 ? (
-                      <TrendingUp className="h-3 w-3 text-profit" />
-                    ) : (
-                      <TrendingDown className="h-3 w-3 text-loss" />
-                    )}
                   </span>
                 ))}
                 {livePrices.length === 0 && (
@@ -569,7 +649,6 @@ export function InvestorDashboard() {
           <MetricTile label="Sharpe Ratio" value={fmtNum(m.sharpe, 2)} accent="gold" icon={<Activity className="h-4 w-4" />} sub="Risk-adjusted" />
           <MetricTile label="Volatility" value={fmtPct(m.volatility)} icon={<BarChart3 className="h-4 w-4" />} sub="Annualised" />
           <MetricTile label="Max Drawdown" value={fmtPct(m.maxDrawdown)} accent="loss" icon={<TrendingDown className="h-4 w-4" />} sub="Peak to trough" />
-          {/* New metrics */}
           <MetricTile
             label="Beta (vs BTC)"
             value={fmtNum(m.volatility > 0 ? m.sharpe / (m.volatility / 100) : 0, 2)}
@@ -601,57 +680,83 @@ export function InvestorDashboard() {
       </FadeIn>
 
       {/* ════════════════════════════════════════════════════════════════
-          7. MARKET INTELLIGENCE — Enhanced with mini price charts
+          7. ENHANCED MARKET INTELLIGENCE — Sparklines, volume, LIVE indicator, market cap
           ════════════════════════════════════════════════════════════════ */}
       <div className="grid gap-4 lg:grid-cols-3">
         <FadeIn delay={0.25} className="lg:col-span-2">
           <GlassCard className="p-5">
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Market Intelligence</h3>
-              <span className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-medium ${
+              <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-semibold ${
                 isLive
-                  ? "bg-emerald-500/10 text-emerald-400"
-                  : "bg-amber-500/10 text-amber-400"
+                  ? "border-profit/30 bg-profit/[0.08] text-profit"
+                  : "border-warning/30 bg-warning/[0.08] text-warning"
               }`}>
-                <span className={`h-1.5 w-1.5 animate-pulse rounded-full ${
-                  isLive ? "bg-emerald-400" : "bg-amber-400"
-                }`} />
+                <span className={`h-2 w-2 rounded-full ${isLive ? "bg-profit animate-pulse" : "bg-warning"}`} />
                 {isLive ? "LIVE" : "DELAYED"}
               </span>
             </div>
             <div className="mt-4 grid gap-3 sm:grid-cols-3">
-              {livePrices.map((p, idx) => (
-                <div key={p.symbol} className="group relative overflow-hidden rounded-lg border border-border/60 bg-black/30 p-3.5 transition-colors hover:border-gold/20">
-                  {/* Mini chart background */}
-                  <div className="pointer-events-none absolute inset-x-0 bottom-0 h-12 opacity-20">
-                    <MiniAreaChart
-                      data={generateMiniChartData(p.change24h, 14)}
-                      width={200}
-                      height={48}
-                      color={p.change24h >= 0 ? "#00c896" : "#ff4d4f"}
-                    />
-                  </div>
-                  <div className="relative z-10">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Bitcoin className="h-4 w-4 text-gold" />
-                        <span className="text-sm font-semibold text-foreground">{p.symbol}</span>
+              {livePrices.map((p, idx) => {
+                const sparkData = generateMiniChartData(p.change24h, 7);
+                const volume = p.priceUsd * (p.symbol === "BTC" ? 28000000 : p.symbol === "ETH" ? 15000000 : 3500000);
+                const marketCap = p.priceUsd * (p.symbol === "BTC" ? 19700000 : p.symbol === "ETH" ? 120000000 : 440000000);
+                return (
+                  <div key={p.symbol} className="group relative overflow-hidden rounded-lg border border-border/60 bg-black/30 p-4 transition-all duration-300 hover:border-gold/25 hover:bg-black/40">
+                    {/* 7-day sparkline background */}
+                    <div className="pointer-events-none absolute inset-x-0 bottom-0 h-14 opacity-25 transition-opacity group-hover:opacity-40">
+                      <MiniAreaChart
+                        data={sparkData}
+                        width={200}
+                        height={56}
+                        color={p.change24h >= 0 ? "#00c896" : "#ff4d4f"}
+                      />
+                    </div>
+                    <div className="relative z-10">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className={`flex h-7 w-7 items-center justify-center rounded-md ${
+                            p.symbol === "BTC" ? "bg-[#f7931a]/10 text-[#f7931a]" :
+                            p.symbol === "ETH" ? "bg-[#627eea]/10 text-[#627eea]" :
+                            "bg-gold/10 text-gold"
+                          }`}>
+                            <Bitcoin className="h-3.5 w-3.5" />
+                          </div>
+                          <span className="text-sm font-semibold text-foreground">{p.symbol}</span>
+                        </div>
+                        <span className={`inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[11px] font-semibold ${
+                          p.change24h >= 0 ? "bg-profit/10 text-profit" : "bg-loss/10 text-loss"
+                        }`}>
+                          {p.change24h >= 0 ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
+                          {fmtPct(p.change24h)}
+                        </span>
                       </div>
-                      <span className={`text-xs font-medium ${p.change24h >= 0 ? "text-profit" : "text-loss"}`}>
-                        {fmtPct(p.change24h)}
-                      </span>
+                      <div className="mt-2 font-metric text-xl font-bold text-foreground">
+                        {fmtUSD(p.priceUsd, { decimals: p.priceUsd > 1000 ? 0 : 2 })}
+                      </div>
+                      <div className="mt-1 text-[11px] text-muted-foreground">{p.name}</div>
+                      {/* Volume + Market cap */}
+                      <div className="mt-2 flex items-center gap-3 border-t border-border/40 pt-2">
+                        <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                          <Volume2 className="h-3 w-3" />
+                          <span>Vol {fmtUSD(volume, { compact: true })}</span>
+                        </div>
+                        <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                          <Landmark className="h-3 w-3" />
+                          <span>MCap {fmtUSD(marketCap, { compact: true })}</span>
+                        </div>
+                      </div>
                     </div>
-                    <div className="mt-2 font-metric text-lg font-bold text-foreground">
-                      {fmtUSD(p.priceUsd, { decimals: p.priceUsd > 1000 ? 0 : 2 })}
-                    </div>
-                    <div className="text-[11px] text-muted-foreground">{p.name}</div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </GlassCard>
         </FadeIn>
 
+        {/* ════════════════════════════════════════════════════════════════
+            ENHANCED MARKET SENTIMENT — Semi-circular SVG gauge with color zones
+            ════════════════════════════════════════════════════════════════ */}
         <FadeIn delay={0.3}>
           <GlassCard gold className="h-full p-5">
             <div className="flex items-center gap-2">
@@ -665,26 +770,19 @@ export function InvestorDashboard() {
                   {liveSentiment?.fearGreedLabel ?? "—"}
                 </span>
               </div>
-              {/* Sentiment gauge */}
-              <div className="mt-3 flex justify-center">
-                <SentimentGauge value={liveSentiment?.fearGreed ?? 50} />
+              {/* Enhanced Semi-circular gauge */}
+              <div className="mt-4 flex justify-center">
+                <SentimentGaugeV2 value={liveSentiment?.fearGreed ?? 50} />
               </div>
-              <div className="mt-1 font-metric text-center text-3xl font-bold text-gold-gradient">
-                {liveSentiment ? liveSentiment.fearGreed : "—"}
+              {/* Color zone legend */}
+              <div className="mt-3 flex justify-between text-[9px] text-muted-foreground/60 px-2">
+                <span>Extreme Fear</span>
+                <span>Fear</span>
+                <span>Neutral</span>
+                <span>Greed</span>
+                <span>Ext. Greed</span>
               </div>
-              <div className="mt-3 h-2 overflow-hidden rounded-full bg-gradient-to-r from-loss via-warning to-profit">
-                {liveSentiment && (
-                  <div className="relative h-full">
-                    <motion.div
-                      className="absolute top-1/2 h-4 w-1 -translate-y-1/2 rounded-full bg-foreground shadow"
-                      initial={{ left: 0 }}
-                      animate={{ left: `calc(${Math.min(100, Math.max(0, liveSentiment.fearGreed))}% - 2px)` }}
-                      transition={{ duration: 1, ease: "easeOut" }}
-                    />
-                  </div>
-                )}
-              </div>
-              <div className="mt-6 flex items-center justify-between border-t border-border/60 pt-4 text-sm">
+              <div className="mt-4 flex items-center justify-between border-t border-border/60 pt-4 text-sm">
                 <span className="text-muted-foreground">BTC Dominance</span>
                 <span className="font-metric font-semibold text-foreground">{liveSentiment ? `${liveSentiment.btcDominance.toFixed(1)}%` : "—"}</span>
               </div>
@@ -770,12 +868,12 @@ export function InvestorDashboard() {
       </FadeIn>
 
       {/* ════════════════════════════════════════════════════════════════
-          9. FUND NEWS & UPDATES — Latest announcements from fund admin
+          9. ENHANCED FUND NEWS & UPDATES — Category badges, time ago, gold glow hover
           ════════════════════════════════════════════════════════════════ */}
       <FundNewsSection />
 
       {/* ════════════════════════════════════════════════════════════════
-          10. QUICK ACTIONS PANEL — Action cards grid
+          10. ENHANCED QUICK ACTIONS — Icons, gold left border hover, arrow slide
           ════════════════════════════════════════════════════════════════ */}
       <FadeIn delay={0.4}>
         <SectionTitle title="Quick Actions" subtitle="Common operations at your fingertips" />
@@ -816,19 +914,54 @@ export function InvestorDashboard() {
    ═══════════════════════════════════════════════════════════════════════ */
 
 /** Animated counter for the banner value */
-function AnimatedCounter({ value }: { value: number }) {
+function AnimatedCounter({ value, compact = false }: { value: number; compact?: boolean }) {
   const animated = useCountUp(value, 1200);
-  return <>{fmtUSD(animated)}</>;
+  return <>{fmtUSD(animated, { compact })}</>;
 }
 
-/** Quick Action Card with gold gradient hover */
+/** Performance chart custom tooltip with date, NAV, and change % */
+function PerformanceChartTooltip({ active, payload, label, dailyReturn }: any) {
+  if (!active || !payload || !payload.length) return null;
+  const data = payload[0]?.payload;
+  const navValue = data?.nav ?? payload[0]?.value;
+  const btcValue = data?.btc;
+  const dateStr = label ? new Date(label).toLocaleDateString("en-US", {
+    year: "numeric", month: "short", day: "numeric",
+  }) : "";
+
+  // Calculate change from previous point if available
+  const changePct = dailyReturn !== undefined ? dailyReturn : 0;
+
+  return (
+    <div className="rounded-xl border border-gold/25 bg-[rgba(20,20,22,0.95)] px-4 py-3 shadow-xl backdrop-blur-md">
+      <div className="text-[11px] text-muted-foreground">{dateStr}</div>
+      <div className="mt-1.5 flex items-baseline gap-2">
+        <span className="font-metric text-base font-bold text-gold">{fmtUSD(navValue, { decimals: navValue > 1000 ? 0 : 4 })}</span>
+        <span className="text-[10px] text-muted-foreground">NAV</span>
+      </div>
+      {changePct !== 0 && (
+        <div className={`mt-1 text-[11px] font-medium ${changePct >= 0 ? "text-profit" : "text-loss"}`}>
+          {changePct >= 0 ? "▲" : "▼"} {fmtPct(Math.abs(changePct))} today
+        </div>
+      )}
+      {btcValue !== undefined && (
+        <div className="mt-1.5 flex items-baseline gap-2 border-t border-border/40 pt-1.5">
+          <span className="font-metric text-sm font-bold text-[#f7931a]">{fmtUSD(btcValue, { decimals: 0 })}</span>
+          <span className="text-[10px] text-muted-foreground">BTC</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Quick Action Card with gold left border hover + arrow slide animation */
 function QuickActionCard({
   icon, title, description, onClick, accent,
 }: {
   icon: React.ReactNode; title: string; description: string; onClick: () => void; accent?: "gold";
 }) {
   return (
-    <GlassCard hover className="group cursor-pointer p-5" onClick={onClick}>
+    <GlassCard hover className="group relative cursor-pointer overflow-hidden p-5 transition-all duration-300 hover:shadow-[inset_3px_0_0_rgba(212,175,55,0.6)]" onClick={onClick}>
       <div className={`mb-3 flex h-10 w-10 items-center justify-center rounded-lg ${
         accent === "gold" ? "bg-gold/10 text-gold group-hover:bg-gold-gradient group-hover:text-black" : "bg-white/5 text-muted-foreground group-hover:bg-gold/10 group-hover:text-gold"
       } transition-all duration-300`}>
@@ -836,57 +969,151 @@ function QuickActionCard({
       </div>
       <h4 className="text-sm font-semibold text-foreground group-hover:text-gold transition-colors duration-300">{title}</h4>
       <p className="mt-1 text-xs text-muted-foreground leading-relaxed">{description}</p>
-      <div className="mt-3 flex items-center gap-1 text-[11px] font-medium text-gold/60 opacity-0 transition-all duration-300 group-hover:opacity-100 group-hover:gap-2">
-        <span>Open</span> <ArrowRight className="h-3 w-3" />
+      <div className="mt-3 flex items-center gap-1 text-[11px] font-medium text-gold/60 transition-all duration-300 group-hover:opacity-100 group-hover:text-gold/80">
+        <span>Open</span>
+        <ArrowRight className="h-3 w-3 transition-transform duration-300 group-hover:translate-x-1" />
       </div>
     </GlassCard>
   );
 }
 
-/** Sentiment gauge SVG with animated needle */
-function SentimentGauge({ value }: { value: number }) {
+/** Enhanced Semi-circular Sentiment Gauge V2 with color zones + animated needle */
+function SentimentGaugeV2({ value }: { value: number }) {
   const clamped = Math.min(100, Math.max(0, value));
-  const angle = (clamped / 100) * 180; // 0 to 180 degrees
-  const needleAngle = angle - 90; // offset for SVG coordinate
+  const needleAngle = (clamped / 100) * 180;
+
+  // Determine the label color based on value
+  const valueColor = clamped <= 20 ? "#ff4d4f" :
+    clamped <= 40 ? "#f5a623" :
+    clamped <= 60 ? "#eab308" :
+    clamped <= 80 ? "#84cc16" : "#00c896";
 
   return (
-    <svg width="140" height="75" viewBox="0 0 140 75" className="overflow-visible">
-      <defs>
-        <linearGradient id="gaugeGrad" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stopColor="#ff4d4f" />
-          <stop offset="35%" stopColor="#f5a623" />
-          <stop offset="65%" stopColor="#f5a623" />
-          <stop offset="100%" stopColor="#00c896" />
-        </linearGradient>
-      </defs>
-      {/* Gauge arc */}
-      <path
-        d="M 15 70 A 55 55 0 0 1 125 70"
-        fill="none"
-        stroke="url(#gaugeGrad)"
-        strokeWidth="6"
-        strokeLinecap="round"
-        opacity={0.4}
-      />
-      {/* Background arc */}
-      <path
-        d="M 15 70 A 55 55 0 0 1 125 70"
-        fill="none"
-        stroke="rgba(255,255,255,0.05)"
-        strokeWidth="6"
-        strokeLinecap="round"
-      />
-      {/* Needle */}
-      <motion.g
-        initial={{ rotate: -90 }}
-        animate={{ rotate: needleAngle }}
-        transition={{ duration: 1.2, ease: "easeOut" }}
-        style={{ transformOrigin: "70px 70px" }}
-      >
-        <line x1="70" y1="70" x2="70" y2="22" stroke="#f5f5f4" strokeWidth="2" strokeLinecap="round" />
-        <circle cx="70" cy="70" r="4" fill="#D4AF37" />
-      </motion.g>
-    </svg>
+    <div className="relative flex flex-col items-center">
+      <svg width="200" height="110" viewBox="0 0 200 110" className="overflow-visible">
+        <defs>
+          {/* Color zone gradients */}
+          <linearGradient id="gaugeZoneExtremeFear" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor="#ff4d4f" />
+            <stop offset="100%" stopColor="#f5a623" />
+          </linearGradient>
+          <linearGradient id="gaugeZoneFear" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor="#f5a623" />
+            <stop offset="100%" stopColor="#eab308" />
+          </linearGradient>
+          <linearGradient id="gaugeZoneNeutral" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor="#eab308" />
+            <stop offset="100%" stopColor="#84cc16" />
+          </linearGradient>
+          <linearGradient id="gaugeZoneGreed" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor="#84cc16" />
+            <stop offset="100%" stopColor="#00c896" />
+          </linearGradient>
+          <filter id="needleGlow">
+            <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+            <feMerge>
+              <feMergeNode in="coloredBlur"/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
+        </defs>
+
+        {/* Background arc */}
+        <path
+          d="M 20 100 A 80 80 0 0 1 180 100"
+          fill="none"
+          stroke="rgba(255,255,255,0.05)"
+          strokeWidth="12"
+          strokeLinecap="round"
+        />
+
+        {/* Extreme Fear zone (0-20%) */}
+        <path
+          d="M 20 100 A 80 80 0 0 1 36 44"
+          fill="none"
+          stroke="#ff4d4f"
+          strokeWidth="10"
+          strokeLinecap="round"
+          opacity={0.5}
+        />
+        {/* Fear zone (20-40%) */}
+        <path
+          d="M 36 44 A 80 80 0 0 1 72 20"
+          fill="none"
+          stroke="#f5a623"
+          strokeWidth="10"
+          strokeLinecap="butt"
+          opacity={0.5}
+        />
+        {/* Neutral zone (40-60%) */}
+        <path
+          d="M 72 20 A 80 80 0 0 1 128 20"
+          fill="none"
+          stroke="#eab308"
+          strokeWidth="10"
+          strokeLinecap="butt"
+          opacity={0.5}
+        />
+        {/* Greed zone (60-80%) */}
+        <path
+          d="M 128 20 A 80 80 0 0 1 164 44"
+          fill="none"
+          stroke="#84cc16"
+          strokeWidth="10"
+          strokeLinecap="butt"
+          opacity={0.5}
+        />
+        {/* Extreme Greed zone (80-100%) */}
+        <path
+          d="M 164 44 A 80 80 0 0 1 180 100"
+          fill="none"
+          stroke="#00c896"
+          strokeWidth="10"
+          strokeLinecap="round"
+          opacity={0.5}
+        />
+
+        {/* Tick marks */}
+        {[0, 20, 40, 60, 80, 100].map((tick) => {
+          const angle = (tick / 100) * Math.PI;
+          const innerR = 70;
+          const outerR = 62;
+          const x1 = 100 + innerR * Math.cos(Math.PI - angle);
+          const y1 = 100 - innerR * Math.sin(Math.PI - angle);
+          const x2 = 100 + outerR * Math.cos(Math.PI - angle);
+          const y2 = 100 - outerR * Math.sin(Math.PI - angle);
+          const labelR = 52;
+          const lx = 100 + labelR * Math.cos(Math.PI - angle);
+          const ly = 100 - labelR * Math.sin(Math.PI - angle);
+          return (
+            <g key={tick}>
+              <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="rgba(255,255,255,0.2)" strokeWidth={1} />
+              <text x={lx} y={ly} textAnchor="middle" dominantBaseline="middle" fill="#7A7A7A" fontSize={9} fontFamily="var(--font-jetbrains), monospace">
+                {tick}
+              </text>
+            </g>
+          );
+        })}
+
+        {/* Animated needle */}
+        <motion.g
+          initial={{ rotate: 0 }}
+          animate={{ rotate: needleAngle }}
+          transition={{ duration: 1.5, ease: [0.16, 1, 0.3, 1] }}
+          style={{ transformOrigin: "100px 100px" }}
+          filter="url(#needleGlow)"
+        >
+          <line x1="100" y1="100" x2="100" y2="30" stroke="#f5f5f4" strokeWidth={2.5} strokeLinecap="round" />
+          <circle cx="100" cy="100" r="6" fill="#D4AF37" />
+          <circle cx="100" cy="100" r="3" fill="#0a0a0b" />
+        </motion.g>
+      </svg>
+
+      {/* Numeric value prominently below gauge */}
+      <div className="mt-1 font-metric text-4xl font-bold" style={{ color: valueColor }}>
+        {Math.round(clamped)}
+      </div>
+    </div>
   );
 }
 
@@ -990,7 +1217,7 @@ function DashboardSkeleton() {
   );
 }
 
-/** Fund News & Updates section — fetches from /api/fund/updates */
+/** Enhanced Fund News & Updates section — with category badges, time ago, gold glow hover */
 function FundNewsSection() {
   const { data, isLoading } = useQuery<{ updates: Array<{
     id: string; title: string; body: string; category: string; priority: string;
@@ -1002,12 +1229,13 @@ function FundNewsSection() {
     refetchInterval: 120000,
   });
 
-  const categoryConfig: Record<string, { icon: typeof TrendingUp; color: string; bg: string }> = {
-    PERFORMANCE: { icon: TrendingUp, color: "text-profit", bg: "bg-profit/10" },
-    STRATEGY: { icon: PieChart, color: "text-gold", bg: "bg-gold/10" },
-    REGULATORY: { icon: Shield, color: "text-info", bg: "bg-info/10" },
-    MARKET: { icon: BarChart3, color: "text-warning", bg: "bg-warning/10" },
-    GENERAL: { icon: MessageSquare, color: "text-muted-foreground", bg: "bg-muted" },
+  const categoryConfig: Record<string, { icon: typeof TrendingUp; color: string; bg: string; label: string }> = {
+    PERFORMANCE: { icon: TrendingUp, color: "text-profit", bg: "bg-profit/10", label: "Performance" },
+    STRATEGY: { icon: PieChart, color: "text-gold", bg: "bg-gold/10", label: "Strategy" },
+    REGULATORY: { icon: Shield, color: "text-warning", bg: "bg-warning/10", label: "Regulatory" },
+    CUSTODY: { icon: Shield, color: "text-gold-soft", bg: "bg-gold-soft/10", label: "Custody" },
+    MARKET: { icon: BarChart3, color: "text-warning", bg: "bg-warning/10", label: "Market" },
+    GENERAL: { icon: MessageSquare, color: "text-muted-foreground", bg: "bg-muted", label: "General" },
   };
 
   const updates = data?.updates ?? [];
@@ -1033,41 +1261,54 @@ function FundNewsSection() {
           const cfg = categoryConfig[u.category] ?? categoryConfig.GENERAL;
           const Icon = cfg.icon;
           return (
-            <GlassCard key={u.id} hover className="p-4">
-              <div className="flex items-start gap-4">
-                <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${cfg.bg}`}>
-                  <Icon className={`h-5 w-5 ${cfg.color}`} />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <h4 className="truncate text-sm font-semibold text-foreground">{u.title}</h4>
-                    {u.pinned && (
-                      <span className="flex items-center gap-1 rounded-full bg-gold/10 px-2 py-0.5 text-[10px] font-medium text-gold">
-                        <Zap className="h-2.5 w-2.5" /> Pinned
-                      </span>
-                    )}
-                    {u.priority === "IMPORTANT" && (
-                      <span className="rounded-full bg-warning/10 px-2 py-0.5 text-[10px] font-medium text-warning">Important</span>
-                    )}
-                    {u.priority === "URGENT" && (
-                      <span className="rounded-full bg-loss/10 px-2 py-0.5 text-[10px] font-medium text-loss">Urgent</span>
-                    )}
+            <motion.div
+              key={u.id}
+              whileHover={{ scale: 1.005 }}
+              transition={{ duration: 0.2 }}
+              className="group rounded-xl border border-transparent transition-all duration-300 hover:border-gold/20 hover:shadow-[0_0_20px_rgba(212,175,55,0.08)]"
+              style={{ background: "rgba(20,20,22,0.6)", backdropFilter: "blur(16px)" }}
+            >
+              <div className="p-4">
+                <div className="flex items-start gap-4">
+                  <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${cfg.bg} transition-colors duration-300 group-hover:bg-gold/15`}>
+                    <Icon className={`h-5 w-5 ${cfg.color} transition-colors duration-300 group-hover:text-gold`} />
                   </div>
-                  <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{u.body}</p>
-                  <div className="mt-2 flex items-center gap-3 text-[11px] text-muted-foreground/70">
-                    <span className={`uppercase tracking-wider ${cfg.color}`}>{u.category}</span>
-                    <span>·</span>
-                    <span>{timeAgo(u.createdAt)}</span>
-                    {u.author && (
-                      <>
-                        <span>·</span>
-                        <span>{u.author.name}</span>
-                      </>
-                    )}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {/* Category badge */}
+                      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider ${cfg.bg} ${cfg.color}`}>
+                        {cfg.label}
+                      </span>
+                      <h4 className="truncate text-sm font-semibold text-foreground group-hover:text-gold transition-colors duration-300">{u.title}</h4>
+                      {u.pinned && (
+                        <span className="flex items-center gap-1 rounded-full bg-gold/10 px-2 py-0.5 text-[10px] font-medium text-gold">
+                          <Zap className="h-2.5 w-2.5" /> Pinned
+                        </span>
+                      )}
+                      {u.priority === "IMPORTANT" && (
+                        <span className="rounded-full bg-warning/10 px-2 py-0.5 text-[10px] font-medium text-warning">Important</span>
+                      )}
+                      {u.priority === "URGENT" && (
+                        <span className="rounded-full bg-loss/10 px-2 py-0.5 text-[10px] font-medium text-loss">Urgent</span>
+                      )}
+                    </div>
+                    <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{u.body}</p>
+                    <div className="mt-2 flex items-center gap-3 text-[11px] text-muted-foreground/70">
+                      <span className="flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        {timeAgo(u.createdAt)}
+                      </span>
+                      {u.author && (
+                        <>
+                          <span>·</span>
+                          <span>{u.author.name}</span>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
-            </GlassCard>
+            </motion.div>
           );
         })}
       </div>

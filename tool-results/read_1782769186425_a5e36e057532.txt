@@ -1,0 +1,1048 @@
+     1→# NIGHTMARE INVEST — Project Worklog
+     2→
+     3→## Project Status: ✅ ROUND 8 — PDF STATEMENTS, DOCUMENT VAULT, REALTIME NOTIFICATIONS, STATEMENT REQUESTS
+     4→**Phase:** Major new features (PDF generation, Document Vault, real-time WebSocket notifications, statement request workflow) + premium UI polish. VLM-verified quality improvements.
+     5→**Premium Rating (VLM-assessed, Round 8):** 
+     6→- Landing: 6/10 → **8/10** (+2)
+     7→- Investor Dashboard: 6/10 → **8/10** (+2)
+     8→- Investor Documents Vault: **8/10** (NEW)
+     9→- Admin Documents: **7/10** (NEW with statement requests)
+    10→- Admin Dashboard: 7/10 → **8/10** (+1, polished)
+    11→
+    12→**Stack:** Next.js 16 (App Router) + TypeScript + Tailwind 4 + shadcn/ui + Prisma (SQLite v11) + JWT (access+refresh httpOnly cookies) + Framer Motion + Recharts + TanStack Query + Zustand + pdfkit (server-side PDF) + Socket.io (real-time).
+    13→**Theme:** Dark luxury institutional (matte black #0a0a0b + gold #D4AF37 + glassmorphism + gold glow).
+    14→**Realtime:** Price-stream service on port 3003 (Socket.io) + internal webhook on port 3004 (POST /notify). Live BTC/ETH/SOL prices + Fear & Greed + push notifications.
+    15→
+    16→---
+    17→
+    18→## Round 8 — Consolidated Summary (Main Agent)
+    19→
+    20→### QA Findings (Pre-Round 8)
+    21→- Landing: 6/10 (visual hierarchy, alignment, missing premium details)
+    22→- Investor Dashboard: 6/10 (chart data alignment, button hierarchy)
+    23→- Admin Dashboard: 7/10 (text truncation, chart bar overlap)
+    24→- Settings: 4/10 (typography inconsistency, low contrast)
+    25→- WebSocket "OFFLINE" badge when accessed via port 3000 (works via gateway) — cosmetic
+    26→
+    27→### Round 8 Sub-Tasks Dispatched
+    28→
+    29→| Task ID | Agent | Feature | Status |
+    30→|---------|-------|---------|--------|
+    31→| 8-A | fullstack-developer | PDF Statement Generation + Investor Documents Vault | ✅ Complete |
+    32→| 8-B | frontend-styling-expert | Premium UI Polish (VLM-driven) | ✅ Complete |
+    33→| 8-C | fullstack-developer | Real-time WebSocket Notifications | ✅ Complete |
+    34→| 8-D | fullstack-developer | Investor Statement Requests + Final Polish | ✅ Complete |
+    35→
+    36→### Major New Features (Round 8)
+    37→
+    38→#### 1. PDF Statement Generation (Task 8-A)
+    39→- Installed `pdfkit` + `@types/pdfkit` for server-side PDF generation
+    40→- Added `serverExternalPackages: ["pdfkit"]` to next.config.ts (fixes Turbopack __dirname rewriting)
+    41→- Created `src/lib/pdf.ts` — institutional-grade PDF generator with 8 sections (header, investor info, fund info, position summary, transaction activity, performance metrics, fee disclosure, footer with confidentiality notice + page numbers)
+    42→- Generated PDFs are 8-page professional documents with gold accents, color-coded P&L, proper typography
+    43→
+    44→#### 2. Document Vault (Task 8-A)
+    45→- New Prisma `Document` model (versioned v10-documents)
+    46→- 6 new API endpoints: admin generate, investor list, download (streams + marks read), admin list (paginated), admin delete, admin upload (multipart, 25MB cap)
+    47→- Investor Documents page (`src/components/investor/documents.tsx`): stats bar, 5 filter tabs (All/Statements/Tax/Trade Confirms/Other), responsive table/cards, EmptyState, SkeletonTable
+    48→- Admin Documents page (`src/components/admin/documents.tsx`): Generate Statement card + Upload Document card (drag-drop) + paginated documents table
+    49→- Seed data: 5 documents (3 monthly statements + 1 tax + 1 trade confirmation)
+    50→
+    51→#### 3. Premium UI Polish (Task 8-B)
+    52→- 10 new premium CSS utility classes in globals.css: `.gold-corner-accent`, `.gold-divider`, `.text-glow-gold`, `.glass-card-hover`, `.number-badge`, `.scroll-indicator`, `.premium-chip`, `.gold-underline-accent`, `.avatar-gold-ring`, `.section-number`
+    53→- Landing page: headline rebalance, premium-chip badge, hero stat card icons + hover, press row (Bloomberg/CoinDesk/Forbes/Reuters/The Block), scroll-down indicator
+    54→- Investor dashboard: refined connection badge, equal-weight Deposit/Withdraw buttons, gold corner brackets on fund banner, gold divider
+    55→- Settings page: numbered section headers (01-05), rotating avatar gold ring, thicker security progress ring with glow, switch gold-glow on state
+    56→- Admin dashboard: gold corner accents on summary cards, TrendingUp/Down lucide icons, horizontal-only chart gridlines, larger bar spacing, "Review Now" gold CTA, section dividers
+    57→- Added `prefers-reduced-motion` accessibility block
+    58→
+    59→#### 4. Real-time WebSocket Notifications (Task 8-C)
+    60→- Extended price-stream service: Socket.io on port 3003 + new internal HTTP webhook on port 3004 (POST /notify, GET /health)
+    61→- Architecture decision: Two listeners in same process (Socket.io path "/" matches every URL, so webhook must be on separate port)
+    62→- New `src/lib/realtime.ts` server-side helper: `notifyUser`, `notifyUsers`, `notifyAll` (3s timeout, swallows errors)
+    63→- New `src/hooks/use-realtime-notifications.ts` client hook: separate Socket.io connection, joins `user:{userId}` room, shows Sonner toasts, dispatches `notifications-updated` window event
+    64→- Wired into 8 existing API routes: transaction approve/reject, admin messages (broadcast + direct), statement generate, document upload, KYC approve/reject, fund updates
+    65→- Notification center listens for `notifications-updated` event → refetch + invalidate TanStack cache
+    66→
+    67→#### 5. Investor Statement Requests (Task 8-D)
+    68→- New Prisma `StatementRequest` model (versioned v11-statement-requests)
+    69→- Added `"@prisma/client"` to `serverExternalPackages` (long-term fix for stale PrismaClient after schema changes)
+    70→- 5 new API endpoints: investor create/list, admin list (with pendingCount + pagination), admin fulfill (generates PDF + dual notification), admin reject
+    71→- Extracted shared `generateStatementForInvestor()` helper to `src/lib/statement.ts` — eliminates ~150 LOC duplication
+    72→- Investor UI: "Request Statement" dialog (type + period + notes), "Statement Requests" section with status badges + View Document link
+    73→- Admin UI: Top-level Tabs (All Documents | Statement Requests with pending badge), filterable requests table, fulfill/reject actions with reason dialog
+    74→- Seed data: 2 PENDING + 1 COMPLETED statement requests
+    75→
+    76→### Final Quality Verification
+    77→- `bun run lint` exits 0 (clean, no errors, no warnings)
+    78→- All API endpoints tested end-to-end with curl
+    79→- Realtime notifications verified in price-stream log
+    80→- VLM-assessed scores improved across all polished pages
+    81→- PDF generation verified: 8-page PDFs with `file` command confirming "PDF document, version 1.3, 8 page(s)"
+    82→- Price-stream service running stably on ports 3003 + 3004
+    83→
+    84→### Files Created (Round 8)
+    85→- `src/lib/pdf.ts` — PDF statement generator
+    86→- `src/lib/realtime.ts` — server-side notification helper
+    87→- `src/lib/statement.ts` — shared statement generation helper
+    88→- `src/hooks/use-realtime-notifications.ts` — client realtime hook
+    89→- `src/components/investor/documents.tsx` — investor Document Vault
+    90→- `src/components/admin/documents.tsx` — admin Document Management
+    91→- `src/app/api/documents/route.ts` — investor documents list
+    92→- `src/app/api/documents/[id]/download/route.ts` — download endpoint
+    93→- `src/app/api/admin/documents/route.ts` — admin documents list
+    94→- `src/app/api/admin/documents/[id]/route.ts` — admin delete
+    95→- `src/app/api/admin/documents/upload/route.ts` — admin upload
+    96→- `src/app/api/admin/statements/generate/route.ts` — PDF generation
+    97→- `src/app/api/statement-requests/route.ts` — investor statement requests
+    98→- `src/app/api/admin/statement-requests/route.ts` — admin statement requests list
+    99→- `src/app/api/admin/statement-requests/[id]/fulfill/route.ts` — fulfill request
+   100→- `src/app/api/admin/statement-requests/[id]/reject/route.ts` — reject request
+   101→
+   102→### Files Modified (Round 8)
+   103→- `prisma/schema.prisma` — added Document + StatementRequest models + User relations
+   104→- `src/lib/db.ts` — bumped schema version to v11-statement-requests
+   105→- `next.config.ts` — added `serverExternalPackages: ["pdfkit", "@prisma/client"]`
+   106→- `src/lib/store.ts` — added `documents` and `admin-documents` routes
+   107→- `src/app/page.tsx` — wired new routes
+   108→- `src/components/brand/portal-shell.tsx` — added Documents nav items + useRealtimeNotifications hook
+   109→- `src/components/brand/notification-center.tsx` — listens for notifications-updated event
+   110→- `src/components/public/landing.tsx` — premium polish
+   111→- `src/components/investor/dashboard.tsx` — premium polish
+   112→- `src/components/investor/settings.tsx` — premium polish
+   113→- `src/components/admin/dashboard.tsx` — premium polish
+   114→- `src/app/globals.css` — 12 new CSS utility classes + reduced-motion block
+   115→- `src/app/api/seed/route.ts` — seeds documents + statement requests
+   116→- 8 existing API routes — added realtime notification calls
+   117→
+   118→### Unresolved Issues & Risks
+   119→1. **Pre-existing TypeScript errors** in some old components (audit logs type, XAxis/YAxis overloads) — these existed before Round 8 and don't affect runtime
+   120→2. **WebSocket "OFFLINE" badge** when accessing via port 3000 directly (works via Caddy gateway port 81) — cosmetic only, not a real bug
+   121→3. **No automated tests** — all testing manual via agent-browser + VLM
+   122→4. **No multi-fund support** — system is single-fund (Nightmare Alpha Crypto Fund); adding multi-fund would require schema changes + UI refactor
+   123→
+   124→### Priority Recommendations for Round 9
+   125→1. **Multi-fund support** — Allow admin to create/manage multiple funds; investors can apply to multiple funds
+   126→2. **Email notifications** — Integrate email service (SendGrid/Resend) for transaction status updates
+   127→3. **Advanced TradingView charts** — Replace Recharts with TradingView Lightweight Charts for professional candlestick/line charts
+   128→4. **KYC document viewer** — In-browser PDF/image preview for admin KYC review
+   129→5. **Portfolio rebalancing tool** — Visual rebalance suggestions based on drift
+   130→6. **Tax center** — Capital gains/losses tracking, taxable events, generate tax documents
+   131→7. **Referral program** — Investor referral codes + tracking
+   132→8. **Scheduled reports** — Investor subscribes to weekly/monthly statements (cron-based generation)
+   133→9. **Mobile app shell** — PWA manifest + service worker for mobile install
+   134→10. **Two-factor auth enforcement** — Require 2FA for withdrawals above threshold
+   135→
+   136→---
+   137→
+   138→## Round 3 — PREMIUM STYLING & NEW FEATURES (Historical)
+   139→**Phase:** Massive UI/UX overhaul + new features (Fund Updates/News system, enhanced dashboards). VLM-verified quality improvements.
+   140→**Premium Rating (VLM-assessed):** 
+   141→- Landing: 4/10 → **8/10** (+4)
+   142→- Investor Dashboard: 4/10 → **7/10** (+3)
+   143→- Portfolio: 3/10 → **6/10** (+3)
+   144→- Analytics: 2/10 → **9/10** (+7)
+   145→- Settings: 2/10 → **8/10** (+6)
+   146→- Admin Dashboard: 6/10 → **7/10** (+1)
+   147→
+   148→**Stack:** Next.js 16 (App Router) + TypeScript + Tailwind 4 + shadcn/ui + Prisma (SQLite) + JWT (access+refresh httpOnly cookies) + Framer Motion + Recharts + TanStack Query + Zustand.
+   149→**Theme:** Dark luxury institutional (matte black #0a0a0b + gold #D4AF37 + glassmorphism + gold glow).
+   150→**Live data:** CoinGecko BTC/ETH/SOL prices (30s cache) + Fear & Greed Index + BTC dominance.
+   151→
+   152→## Round 3 Changes Summary
+   153→
+   154→### QA Testing (via agent-browser + VLM)
+   155→- Full browser QA of all pages (Landing, Investor Dashboard, Portfolio, Analytics, Transactions, Settings, Admin Dashboard)
+   156→- VLM-assessed quality scores for each page
+   157→- Identified: low visual hierarchy, placeholder-like content, inconsistent contrast, missing interactive elements
+   158→
+   159→### Bug Fixes
+   160→- **Prisma chainIndex error**: Bumped schema version to force client regeneration
+   161→- **Prisma engine not connected**: Added `$connect()` call in db.ts createClient()
+   162→- **Database schema version**: Bumped to v6-fund-updates after adding FundUpdate model
+   163→
+   164→### Landing Page — Complete Redesign (4/10 → 8/10)
+   165→- **Hero Section**: Full viewport with gold dot grid background, animated scanning line, bold headline with gold gradient, two CTAs, 4 hero stat cards
+   166→- **Live Ticker Tape**: Marquee-style scrolling crypto prices from CoinGecko, pause on hover
+   167→- **Strategy Section**: 5 allocation cards with icons, animated progress bars
+   168→- **Performance Section**: NAV area chart with gold gradient, stat cards for key metrics
+   169→- **Security & Compliance**: 6-card grid with glass cards
+   170→- **Testimonial & Trust**: Featured quote, trust badges, onboarding steps
+   171→- **Final CTA**: Bold headline with gold gradient glow
+   172→- **New CSS**: `.hero-dot-grid`, `.hero-scan-line`, `@keyframes particle-pulse`
+   173→
+   174→### Investor Dashboard — Major Enhancement (4/10 → 7/10)
+   175→- **Fund Overview Banner**: Full-width gold card with animated NAV counter, daily change, quick action buttons
+   176→- **Enhanced Summary Tiles**: Sparklines, progress rings, P&L glow, mini area charts
+   177→- **Performance Chart**: Benchmark toggle (Fund vs BTC), volume bars, ComposedChart
+   178→- **Live Market Ticker Bar**: Scrolling BTC/ETH/SOL prices, Fear & Greed badge
+   179→- **Holdings + Allocation**: Larger pie, animated segments, USD values, rebalance drift
+   180→- **Fund Analytics Grid**: 12 metrics (was 8) — Beta, Alpha, Info Ratio, Tracking Error
+   181→- **Market Intelligence**: Mini price charts, SVG sentiment gauge with animated needle
+   182→- **Recent Activity Feed**: Timeline-style with animated dots
+   183→- **Quick Actions Panel**: 4 action cards with gold gradient hover
+   184→- **Fund News Section** (NEW): Fetches from `/api/fund/updates`, shows category badges, pinned/important/urgent tags
+   185→
+   186→### Portfolio Page — Enhanced (3/10 → 6/10)
+   187→- **NAV Performance Chart**: Area chart with time range selector (1M/3M/6M/1Y/ALL)
+   188→- **Asset Exposure Chart**: Wider bars with both USD and % weight
+   189→- **Position Detail Card**: Circular ROI gauge (SVG ring), days invested, next NAV update
+   190→- **Allocation Breakdown**: Animated progress bars with drift indicators
+   191→- **Risk Exposure Summary** (NEW): Volatility, Max DD, Sharpe, CAGR with animated bars
+   192→- **Transaction Summary** (NEW): Quick stats + recent activity list
+   193→
+   194→### Analytics Page — Complete Overhaul (2/10 → 9/10)
+   195→- **Enhanced Risk Ratio Tiles**: Background glow effects, interpretation badges (Excellent/Good/Moderate/Poor)
+   196→- **Drawdown Chart**: Stroke 2.5px, vibrant gradient, Max DD & Avg DD reference lines
+   197→- **Monthly Returns Heatmap**: Complete redesign with larger cells, vibrant colors, hover effects, year-total bars
+   198→- **Value at Risk**: Animated fill bars (Framer Motion), VaR vs CVaR comparison
+   199→- **Daily Statistics**: Best/Worst Day highlight cards, glass card stats
+   200→- **Streaks & Trends**: Visual streak dots, rolling Sharpe mini sparkline
+   201→- **Rolling Sharpe Chart** (NEW): 30-day rolling Sharpe with 1.0 reference line
+   202→- **Correlation & Beta** (NEW): BTC/ETH correlation cards, Beta with animated scale
+   203→
+   204→### Settings Page — Enhanced (2/10 → 8/10)
+   205→- **Account Completion Progress** (NEW): Gold gradient progress bar with percentage circle
+   206→- **KYC Progress Visualization** (NEW): 3-step visual indicator with animated connections
+   207→- **Profile Section**: Avatar with gold ring, verified badge, account tier badge
+   208→- **Password Section**: Show/hide toggle, strength meter, requirements checklist
+   209→- **Security Center**: SVG animated circular progress ring showing security score
+   210→- **Notification Preferences** (NEW): 4 toggle switches with gold checked state
+   211→- **Connected Sessions**: Browser detection, green active indicator
+   212→
+   213→### Admin Dashboard — Enhanced (6/10 → 7/10)
+   214→- **Summary Metric Cards**: Colored icon backgrounds, glow effects, delta indicators, sparklines
+   215→- **AUM & NAV Trend Chart**: 3px stroke, brighter gold, enhanced tooltip, NAV indicator dot
+   216→- **Capital Flows**: ComposedChart with deposit/withdrawal bars + net flow line
+   217→- **Fund Performance Metrics**: Interpretation badges, background color tints
+   218→- **Pending Transactions Alert** (NEW): Gold-bordered card with pulsing dot
+   219→- **Recent Admin Activity** (NEW): Timeline from audit logs
+   220→- **Investor Breakdown** (NEW): Tier distribution pie chart, top investors table
+   221→- **System Health** (NEW): DB status, API response time, last NAV update, cache status
+   222→
+   223→### New Feature: Fund Updates/News System
+   224→- **Prisma Model**: `FundUpdate` with id, title, body, category, priority, pinned, authorId
+   225→- **User Model**: Added `fundUpdates` relation
+   226→- **API Endpoints**:
+   227→  - `GET /api/fund/updates` — Public for authenticated users, with category filter
+   228→  - `POST /api/admin/fund-updates` — Admin only, creates new update with audit log
+   229→  - `DELETE /api/admin/fund-updates?id=X` — Admin only, deletes with audit log
+   230→- **Admin Page**: `AdminFundUpdates` component with create dialog, delete, category/priority selectors, pinned toggle
+   231→- **Investor Integration**: `FundNewsSection` component on investor dashboard showing latest updates
+   232→- **Seed Data**: 6 realistic fund updates (performance, strategy, custody, market outlook, regulatory, NAV update)
+   233→- **Admin Nav**: Added "Fund Updates" nav item with Megaphone icon
+   234→
+   235→### CSS Additions
+   236→- `.hero-dot-grid` — Gold radial dot pattern for landing hero
+   237→- `.hero-scan-line` — Vertical scanning line animation
+   238→- `@keyframes particle-pulse` — Opacity pulse for hero dots
+   239→- Additional utility classes for new components
+   240→
+   241→### Files Modified/Created
+   242→- `src/components/public/landing.tsx` — Complete redesign (~400 lines → ~600 lines)
+   243→- `src/components/investor/dashboard.tsx` — Enhanced (433 → ~1026 lines)
+   244→- `src/components/investor/portfolio.tsx` — Enhanced (110 → ~500 lines)
+   245→- `src/components/investor/analytics.tsx` — Enhanced (447 → ~600 lines)
+   246→- `src/components/investor/settings.tsx` — Enhanced (210 → ~400 lines)
+   247→- `src/components/admin/dashboard.tsx` — Enhanced (300 → ~872 lines)
+   248→- `src/components/admin/fund-updates.tsx` — NEW (~200 lines)
+   249→- `src/components/brand/primitives.tsx` — Added children prop to MetricTile
+   250→- `src/components/brand/portal-shell.tsx` — Added Megaphone icon + Fund Updates nav item
+   251→- `src/lib/db.ts` — Added $connect() call, bumped schema version to v6
+   252→- `src/lib/store.ts` — Added admin-fund-updates route type
+   253→- `src/app/page.tsx` — Added AdminFundUpdates import and route
+   254→- `src/app/globals.css` — Appended new CSS utilities
+   255→- `src/app/api/fund/updates/route.ts` — NEW API endpoint
+   256→- `src/app/api/admin/fund-updates/route.ts` — NEW admin API endpoint
+   257→- `src/app/api/seed/route.ts` — Added fund updates seed data
+   258→- `prisma/schema.prisma` — Added FundUpdate model + User relation
+   259→
+   260→## Unresolved Issues & Risks
+   261→1. **Server instability**: Dev server occasionally crashes during compilation of large components (likely Turbopack memory pressure). Works fine after restart. Production build would be more stable.
+   262→2. **Portfolio page placeholder content**: VLM noted "placeholder content" — may need to verify API data is loading correctly after Prisma client refresh
+   263→3. **Admin dashboard**: Could not fully verify in browser due to server crashes, but code compiles and API routes work independently
+   264→4. **No automated tests**: All testing done manually via agent-browser + VLM
+   265→
+   266→## Priority Recommendations for Next Round
+   267→1. **Production build test**: Run `bun run build` to verify all components compile correctly
+   268→2. **WebSocket real-time**: Add Socket.io for live price updates and transaction notifications
+   269→3. **Multi-fund support**: Allow admins to create/manage multiple funds
+   270→4. **Email notifications**: Integrate email service for transaction status updates
+   271→5. **PDF report generation**: Server-side PDF generation for statements
+   272→6. **Advanced charting**: TradingView Lightweight Charts for professional-grade price charts
+   273→7. **Server stability**: Investigate and fix Turbopack crash on large component compilation
+   274→8. **KYC document viewer**: In-browser PDF/image preview for admin KYC review
+   275→
+   276→---
+   277→
+   278→## Round 4 — WebSocket Real-Time Price Streaming
+   279→
+   280→**Task ID:** 2
+   281→**Agent:** fullstack-developer
+   282→**Date:** 2025-01-xx
+   283→
+   284→### What Was Built
+   285→
+   286→A **WebSocket mini-service** using Socket.io that streams real-time crypto price updates to the frontend, replacing polling-only market data with live-streamed data.
+   287→
+   288→#### 1. Mini-Service (`mini-services/price-stream/`)
+   289→- **`package.json`**: Independent bun project with `socket.io` dependency, port 3003, `bun --hot` dev script
+   290→- **`index.ts`**: Socket.io server on port 3003 that:
+   291→  - Fetches BTC/ETH/SOL prices from CoinGecko every 15 seconds
+   292→  - Fetches Fear & Greed Index from Alternative.me
+   293→  - Emits `price-update` events with `{ prices, updatedAt }` payload
+   294→  - Emits `fear-greed-update` events with sentiment data
+   295→  - Sends cached data immediately on client connect (zero-latency first paint)
+   296→  - Handles graceful shutdown (SIGTERM/SIGINT)
+   297→  - Logs connections, disconnections, and price fetches
+   298→  - CORS enabled for all origins
+   299→  - Uses `path: "/"` for Caddy gateway compatibility
+   300→
+   301→#### 2. React Hook (`src/hooks/use-price-stream.ts`)
+   302→- Connects via `io("/?XTransformPort=3003")` (relative path + query param, NOT direct URL)
+   303→- Listens for `price-update` and `fear-greed-update` events
+   304→- Returns `{ prices, lastPriceUpdate, fearGreed, connectionStatus, reconnect }`
+   305→- Exports TypeScript interfaces: `StreamPrice`, `StreamPriceUpdate`, `StreamFearGreedUpdate`, `ConnectionStatus`
+   306→- Auto-reconnects via Socket.io built-in reconnection
+   307→- Cleans up socket on unmount
+   308→- Manual reconnect via `reconnect()` (increments state counter to re-trigger effect)
+   309→
+   310→#### 3. Dashboard Integration (`src/components/investor/dashboard.tsx`)
+   311→- Imported and used `usePriceStream` hook
+   312→- Added **LIVE indicator** in the fund overview banner:
+   313→  - Green pulsing dot + "LIVE" when WebSocket connected with data
+   314→  - Amber pulsing dot + "CONNECTING" during connection
+   315→  - Red pulsing dot + "OFFLINE" when disconnected
+   316→- Added **LIVE/DELAYED indicator** in Market Intelligence section header
+   317→- Created merged data variables:
+   318→  - `livePrices` = stream prices (if available) → fall back to polled API prices
+   319→  - `liveSentiment` = stream fear/greed → fall back to polled API sentiment
+   320→  - `isLive` = `connectionStatus === "connected" && streamPrices.length > 0`
+   321→- Updated all market data consumers to use merged data:
+   322→  - Market Ticker Bar (scrolling prices + F&G badge)
+   323→  - Market Intelligence cards (BTC/ETH/SOL price cards)
+   324→  - Market Sentiment gauge (Fear & Greed + BTC Dominance)
+   325→
+   326→### Files Created
+   327→- `mini-services/price-stream/package.json` — new
+   328→- `mini-services/price-stream/index.ts` — new
+   329→- `src/hooks/use-price-stream.ts` — new
+   330→
+   331→### Files Modified
+   332→- `src/components/investor/dashboard.tsx` — added usePriceStream hook, LIVE indicator, merged data
+   333→- `package.json` — added `socket.io-client` dependency
+   334→
+   335→### Key Architecture Decisions
+   336→- **Fallback pattern**: Stream data is preferred but the dashboard gracefully falls back to polled REST API data when WebSocket is disconnected. This ensures the UI always shows data.
+   337→- **State-based reconnect**: Uses a `reconnectId` state counter instead of a ref to trigger effect re-runs, satisfying React linting rules.
+   338→- **Immediate cache on connect**: Server sends cached prices on connect so clients don't wait 15 seconds for first data.
+   339→
+   340→### Service Status
+   341→- Price-stream service running on port 3003
+   342→- Accessible via Caddy gateway at `/?XTransformPort=3003`
+   343→
+   344→---
+   345→
+   346→## Round 5 — Investor Watchlist & Profit/Loss Calculator
+   347→
+   348→**Task ID:** 3
+   349→**Agent:** fullstack-developer
+   350→**Date:** 2026-06-29
+   351→
+   352→### What Was Built
+   353→
+   354→Two major new features for the investor portal: **Watchlist** (track favorite crypto assets with price alerts) and **Profit/Loss Calculator** (hypothetical P&L projection based on fund performance).
+   355→
+   356→#### 1. WatchlistItem Database Model
+   357→- Added `WatchlistItem` model to Prisma schema with: id, userId, symbol, name, alertPrice, alertDirection (ABOVE/BELOW), notes, createdAt
+   358→- Added `@@unique([userId, symbol])` constraint to prevent duplicate watchlist entries
+   359→- Added `watchlist WatchlistItem[]` relation to User model
+   360→- Bumped Prisma schema version to `v7-watchlist` in db.ts for cache busting
+   361→- Ran `bun run db:push` and `prisma generate` to sync database
+   362→
+   363→#### 2. Watchlist API Endpoints
+   364→- **`GET /api/watchlist`**: Returns user's watchlist items enriched with current market prices and alert trigger status
+   365→- **`POST /api/watchlist`**: Add asset to watchlist (validates symbol, checks duplicates)
+   366→- **`DELETE /api/watchlist?id=xxx`**: Remove asset from watchlist
+   367→- **`PUT /api/watchlist/[id]`**: Update watchlist item (alert price, direction, notes)
+   368→- **`GET /api/watchlist/alerts`**: Check which watchlist items have triggered price alerts
+   369→- All endpoints require authentication (`requireUser()`) and use `safeHandler` wrapper
+   370→
+   371→#### 3. Fund NAV API (Public)
+   372→- **`GET /api/fund/nav`**: Returns NAV history for authenticated users (used by calculator)
+   373→  - Supports `?limit=N` query parameter (max 730 points)
+   374→  - Returns date, nav, aum for each point
+   375→
+   376→#### 4. Watchlist Component (`src/components/investor/watchlist.tsx`)
+   377→- **Header Section**: Gold gradient title "Watchlist", subtitle, "Add Asset" button with gold gradient
+   378→- **Search Bar**: Filter assets by name or symbol
+   379→- **Stats Bar**: Asset count + triggered alert count
+   380→- **Desktop Table**: Sortable by name/price/change, columns: Asset (icon + name), Price, 24h Change (green/red with arrow), Alert Status (pill), Actions (edit/remove)
+   381→- **Mobile Cards**: Responsive card layout for smaller screens
+   382→- **Alert Status Pills**: "No alert" (muted), "Active" (green with alert details), "Triggered" (gold with pulse animation)
+   383→- **Add Asset Dialog**: Coin selector (BTC/ETH/SOL), optional alert price with ABOVE/BELOW toggle, optional notes
+   384→- **Edit Alert Dialog**: Change alert price/direction/notes, remove alert entirely
+   385→- **Empty State**: Illustration with "Add Your First Asset" CTA
+   386→- **Skeleton Loader**: Animated loading placeholders
+   387→- **Visual Polish**: Gold accent borders on triggered alerts, green/red for price changes, FadeIn animations, AnimatePresence for row transitions
+   388→
+   389→#### 5. Profit/Loss Calculator Component (`src/components/investor/calculator.tsx`)
+   390→- **Investment Amount Selection**: Preset buttons ($50K, $100K, $250K, $500K, $1M) + custom input
+   391→- **Time Period Selection**: 1M, 3M, 6M, 1Y, Since Inception
+   392→- **Calculation Engine**: Fetches NAV history from `/api/fund/nav`, calculates actual returns for selected period, falls back to approximate returns if no data
+   393→- **Results Display**:
+   394→  - Initial Investment (gold MetricTile)
+   395→  - Projected Value (green/red MetricTile with animated counter)
+   396→  - Net P&L with percentage (MetricTile)
+   397→- **Growth Chart**: Area chart (Recharts) showing investment growth trajectory with gold reference line at initial investment
+   398→- **Progress Bar**: Visual comparison of investment vs returns with animated fill
+   399→- **Animated Counter**: Smooth cubic-ease-out counter animation (800ms) using requestAnimationFrame + useRef
+   400→- **Risk Disclaimer**: Warning card with amber styling and detailed text
+   401→- **Responsive Layout**: 3-column grid on desktop (1 input + 2 results), stacked on mobile
+   402→
+   403→#### 6. Integration
+   404→- **Store**: Added `{ name: "watchlist" }` and `{ name: "calculator" }` to Route type
+   405→- **Page Router**: Added WatchlistPage and CalculatorPage imports and cases in `renderInvestor()`
+   406→- **Portal Shell**: Added "Watchlist" nav item (Star icon, after Analytics) and "Calculator" nav item (Calculator icon, after Watchlist)
+   407→- **Seed API**: Added 3 default watchlist items for demo investor (BTC above $70K, ETH below $3200, SOL above $200)
+   408→
+   409→### Files Created
+   410→- `src/app/api/watchlist/route.ts` — CRUD endpoints (GET, POST, DELETE)
+   411→- `src/app/api/watchlist/[id]/route.ts` — Update endpoint (PUT)
+   412→- `src/app/api/watchlist/alerts/route.ts` — Alert trigger check endpoint
+   413→- `src/app/api/fund/nav/route.ts` — Public NAV history endpoint
+   414→- `src/components/investor/watchlist.tsx` — Watchlist page component (~750 lines)
+   415→- `src/components/investor/calculator.tsx` — P&L Calculator page component (~490 lines)
+   416→
+   417→### Files Modified
+   418→- `prisma/schema.prisma` — Added WatchlistItem model + User relation
+   419→- `src/lib/db.ts` — Bumped schema version to v7-watchlist
+   420→- `src/lib/store.ts` — Added watchlist and calculator route types
+   421→- `src/app/page.tsx` — Added imports and route cases
+   422→- `src/components/brand/portal-shell.tsx` — Added Star, Calculator icons + 2 nav items
+   423→- `src/app/api/seed/route.ts` — Added watchlist seed data for demo investor
+   424→
+   425→### Key Architecture Decisions
+   426→- **Key-based form reset**: EditAlertDialog uses `key={item.id}` on EditAlertForm to force React remounting, avoiding `setState` in `useEffect` which violates React lint rules
+   427→- **Ref-based animation tracking**: AnimatedCounter uses `useRef` to track previous value, avoiding stale closure issues with `useState` initial values in effects
+   428→- **Fallback returns**: Calculator falls back to approximate annualized returns when NAV history is insufficient (< 2 points)
+   429→- **Server-side enrichment**: Watchlist API enriches items with current market prices and alert trigger status in a single request, avoiding N+1 queries on the client
+   430→- **SortIcon as module-level component**: Moved outside render function to satisfy React static-components lint rule
+   431→
+   432→### Issues Encountered
+   433→- **Prisma client cache**: After adding WatchlistItem model, the dev server's Turbopack cache persisted the old Prisma client without the new model. Required clearing `.next` cache and regenerating Prisma client to resolve.
+   434→- **React lint rules**: Multiple iterations to satisfy `react-hooks/static-components` (SortIcon inside render) and `react-hooks/set-state-in-effect` (form initialization) rules.
+   435→
+   436→---
+   437→
+   438→## Round 6 — Premium UI Polish: Loading Skeletons, Micro-Animations, Empty States
+   439→
+   440→**Task ID:** 5
+   441→**Agent:** ui-polish-agent
+   442→**Date:** 2026-03-05
+   443→
+   444→### What Was Built
+   445→
+   446→Comprehensive UI polish pass across ALL pages: enhanced loading skeletons, reusable empty state component, micro-animation interactions, premium toast styling, and improved page transitions.
+   447→
+   448→#### 1. Skeleton Components (primitives.tsx)
+   449→
+   450→Added three reusable skeleton components to `src/components/brand/primitives.tsx`:
+   451→
+   452→- **`SkeletonCard`**: Simple rounded glass card with shimmer, for chart containers and generic content blocks
+   453→- **`SkeletonMetric`**: Mimics MetricTile layout with staggered label/value/sub shimmer blocks, for metric tiles
+   454→- **`SkeletonTable`**: Renders header row + N body rows with fade-out opacity, for table data
+   455→
+   456→All use the existing `shimmer` CSS class and `glass` background utility.
+   457→
+   458→#### 2. EmptyState Component (primitives.tsx)
+   459→
+   460→Added `EmptyState` component with:
+   461→- Gold-ringed icon circle
+   462→- Title + description
+   463→- Optional action slot (e.g., CTA button)
+   464→- Uses FadeIn primitive for entrance animation
+   465→- Consistent gold/60 icon coloring
+   466→
+   467→Applied to pages: Transactions, Watchlist, Admin Investors, Admin Transactions, Admin KYC, Admin Ledger, Admin Audit, Admin Fund Updates
+   468→
+   469→#### 3. Micro-Animation CSS Classes (globals.css)
+   470→
+   471→Added 6 new CSS utility classes:
+   472→- **`.hover-lift`**: Card lifts -2px on hover with gold-accented shadow
+   473→- **`.press-scale`**: Button scales to 0.97 on active press
+   474→- **`.value-flash`**: Gold-to-inherited color flash animation for value changes
+   475→- **`.row-enter`**: Slide-in-from-left animation for table rows
+   476→- **`.chart-hover-glow`**: Subtle gold glow on chart container hover
+   477→- **`.tooltip-gold`**: Dark glass + gold border tooltip style
+   478→
+   479→#### 4. Premium Toast Styling (globals.css)
+   480→
+   481→Added Sonner toast overrides for dark luxury theme:
+   482→- Dark glass background with gold border
+   483→- Backdrop blur
+   484→- Gold-accented shadow
+   485→- Proper title/description colors
+   486→
+   487→#### 5. Page Transition Enhancement (portal-shell.tsx)
+   488→
+   489→Updated AnimatePresence motion.div:
+   490→- Added subtle scale (0.995 → 1) for depth perception
+   491→- Adjusted y offsets (12 → 0, 0 → -6) for smoother flow
+   492→- Extended duration to 0.3s with cubic-bezier easing [0.22, 1, 0.36, 1]
+   493→
+   494→#### 6. Updated Investor Pages
+   495→
+   496→| Page | Skeleton | EmptyState | Micro-Animations |
+   497→|------|----------|------------|------------------|
+   498→| Dashboard | ✅ SkeletonMetric + SkeletonCard | — | ✅ chart-hover-glow, hover-lift |
+   499→| Portfolio | ✅ SkeletonMetric + SkeletonCard | — | ✅ chart-hover-glow, hover-lift |
+   500→| Analytics | ✅ SkeletonMetric + SkeletonCard | — | ✅ chart-hover-glow |
+   501→| Transactions | ✅ SkeletonMetric + SkeletonTable | ✅ EmptyState | ✅ hover-lift, press-scale, row-enter |
+   502→| Reports | ✅ SkeletonCard + SkeletonTable | — | ✅ hover-lift, press-scale |
+   503→| Settings | ✅ import added | — | ✅ hover-lift on all cards |
+   504→| Watchlist | ✅ SkeletonTable | ✅ EmptyState | ✅ press-scale |
+   505→| Calculator | ✅ import added | — | ✅ chart-hover-glow, hover-lift |
+   506→
+   507→#### 7. Updated Admin Pages
+   508→
+   509→| Page | Skeleton | EmptyState | Micro-Animations |
+   510→|------|----------|------------|------------------|
+   511→| Dashboard | ✅ SkeletonMetric + SkeletonCard | — | ✅ chart-hover-glow, hover-lift |
+   512→| Investors | ✅ SkeletonMetric + SkeletonTable | ✅ EmptyState | ✅ hover-lift, press-scale, row-enter |
+   513→| Transactions | — (already has cards) | ✅ EmptyState | — |
+   514→| Fund | ✅ SkeletonCard | — | ✅ hover-lift |
+   515→| NAV | ✅ import added | — | — |
+   516→| KYC | ✅ import added | ✅ EmptyState | — |
+   517→| Ledger | ✅ import added | ✅ EmptyState | — |
+   518→| Audit | ✅ import added | ✅ EmptyState | — |
+   519→| Fund Updates | ✅ SkeletonCard | ✅ EmptyState | ✅ hover-lift, press-scale |
+   520→
+   521→### Files Modified
+   522→
+   523→- `src/components/brand/primitives.tsx` — Added SkeletonCard, SkeletonMetric, SkeletonTable, EmptyState
+   524→- `src/app/globals.css` — Added micro-animation CSS classes + premium toast styling
+   525→- `src/components/brand/portal-shell.tsx` — Enhanced page transition animation
+   526→- `src/components/investor/dashboard.tsx` — Updated skeleton + fund news skeleton
+   527→- `src/components/investor/portfolio.tsx` — Updated skeleton
+   528→- `src/components/investor/analytics.tsx` — Updated skeleton
+   529→- `src/components/investor/transactions.tsx` — Added loading skeleton + EmptyState + micro-animations
+   530→- `src/components/investor/reports.tsx` — Added loading skeleton + micro-animations
+   531→- `src/components/investor/settings.tsx` — Added hover-lift on cards
+   532→- `src/components/investor/watchlist.tsx` — Updated EmptyState + SkeletonTable
+   533→- `src/components/investor/calculator.tsx` — Added chart-hover-glow + hover-lift
+   534→- `src/components/admin/dashboard.tsx` — Updated skeleton
+   535→- `src/components/admin/investors.tsx` — Added loading skeleton + EmptyState + micro-animations
+   536→- `src/components/admin/transactions.tsx` — Added EmptyState
+   537→- `src/components/admin/fund.tsx` — Added loading skeleton
+   538→- `src/components/admin/nav.tsx` — Added import
+   539→- `src/components/admin/kyc.tsx` — Added EmptyState
+   540→- `src/components/admin/ledger.tsx` — Added EmptyState
+   541→- `src/components/admin/audit.tsx` — Added EmptyState
+   542→- `src/components/admin/fund-updates.tsx` — Added EmptyState + SkeletonCard
+   543→
+   544→### Key Design Decisions
+   545→
+   546→- **SkeletonCard vs raw divs**: Replacing bare `glass shimmer` divs with named skeleton components provides consistency and makes future updates easier
+   547→- **EmptyState component**: Centralizes the empty data UI pattern with a gold-ringed icon, removing duplicated code across pages
+   548→- **row-enter staggered delay**: Uses inline `animationDelay` with 40ms increments for a cascade effect on table row appearance
+   549→- **chart-hover-glow**: Very subtle (0.08 opacity gold glow) to avoid being distracting on data-dense chart containers
+   550→- **press-scale on buttons**: Only 0.97 scale for a tactile feel without being jarring
+   551→
+   552→---
+   553→
+   554→## Round 7 — Enhanced Admin System Health & Communication Tools
+   555→
+   556→**Task ID:** 6
+   557→**Agent:** fullstack-developer
+   558→**Date:** 2026-03-05
+   559→
+   560→### What Was Built
+   561→
+   562→Three major new features for the admin and investor portal: **System Health Dashboard** (real-time infrastructure monitoring), **Admin Communications** (admin-to-investor messaging with broadcast support), and **Investor Inbox** (message viewing for investors).
+   563→
+   564→#### 1. AdminMessage Database Model
+   565→- Added `AdminMessage` model to Prisma schema with: id, senderId, recipientId, subject, body, priority (NORMAL|IMPORTANT|URGENT), isBroadcast, isRead, createdAt
+   566→- Added `sentMessages` and `receivedMessages` relations to User model
+   567→- Created indexes on recipientId, senderId, and isBroadcast for query performance
+   568→- Bumped Prisma schema version to `v8-admin-messages` in db.ts
+   569→- Ran `bun run db:push` and `prisma generate` to sync database
+   570→
+   571→#### 2. System Health API Endpoint
+   572→- **`GET /api/admin/system-health`**: Returns comprehensive system diagnostics
+   573→  - `overallHealth`: "healthy" | "degraded" | "critical" (based on aggregated checks)
+   574→  - `dbStatus` + `dbLatency`: Real Prisma query health check with timing
+   575→  - `apiLatency`: Measured internal API response time
+   576→  - `memoryUsage`: Full process.memoryUsage() stats (rss, heapTotal, heapUsed, external, arrayBuffers)
+   577→  - `uptime`: process.uptime() in seconds
+   578→  - `lastNavUpdate`: Timestamp of latest NAV point
+   579→  - `activeConnections`: Count of users with lastLogin in last 24h
+   580→  - `cacheStatus`: "warm" | "cold" based on MarketPrice data freshness (<5min)
+   581→  - `priceFeedStatus`: "live" | "stale" based on MarketPrice.updatedAt (<2min)
+   582→  - `cachedAssets`: Count of MarketPrice entries
+   583→  - `version` + `environment`: App version and NODE_ENV
+   584→  - `accessExpiry`: JWT access token expiry config
+   585→  - `twoFaRate`: 2FA adoption percentage across active users
+   586→  - `activity`: Recent timeline events (NAV updates, price feed changes, admin audit logs)
+   587→- Uses `safeHandler` and `requireAdmin` for auth/security
+   588→
+   589→#### 3. Admin Messages API Endpoints
+   590→- **`GET /api/admin/messages`**: List sent messages with pagination and filter (all/broadcast/individual)
+   591→- **`POST /api/admin/messages`**: Send message (broadcast to all or direct to specific recipient)
+   592→  - Validates subject, body, and recipient (for non-broadcast)
+   593→  - Creates audit log entries for each message sent
+   594→  - Supports priority levels: NORMAL, IMPORTANT, URGENT
+   595→
+   596→#### 4. Investor Messages API Endpoint
+   597→- **`GET /api/messages`**: List messages for current user (broadcasts + direct messages)
+   598→  - Auto-marks individual unread messages as read on fetch
+   599→  - Returns unreadCount for badge display
+   600→  - Includes sender info for each message
+   601→
+   602→#### 5. System Health Component (`src/components/admin/system-health.tsx`)
+   603→- **Header Section**: Gold-accented "System Health" title, overall health indicator badge (green/amber/red)
+   604→- **Health Cards Grid (2×3)**:
+   605→  1. **Database** — Status indicator, latency in ms, engine type (SQLite)
+   606→  2. **API Server** — Response time, uptime (formatted as Xd Xh Xm), heap usage with progress bar
+   607→  3. **Price Feed** — Live/Stale indicator, data source (CoinGecko), cached asset count
+   608→  4. **Cache** — Warm/Cold status, entry count, TTL
+   609→  5. **NAV Engine** — Last NAV update (relative time), status, next scheduled update
+   610→  6. **Authentication** — Active sessions (24h), JWT expiry, 2FA adoption rate
+   611→- **System Info Bar**: Version, environment, uptime, RSS memory badges
+   612→- **Activity Timeline**: Recent events (NAV updates, price feed status, admin actions) with type icons
+   613→- **Auto-refresh**: Polls health API every 30 seconds, shows "Last checked: Xs ago" with live counter, manual "Refresh Now" button
+   614→- **Visual Polish**: Green glow on healthy, amber pulse on degraded, red pulse on critical, GlassCard for each metric, FadeIn animations, hover-lift effects
+   615→
+   616→#### 6. Admin Communications Component (`src/components/admin/communications.tsx`)
+   617→- **Compose Tab**:
+   618→  - Broadcast toggle switch (megaphone icon, sends to all investors)
+   619→  - Recipient selector (dropdown of non-admin users) when not broadcasting
+   620→  - Subject input, body textarea, priority selector (Normal/Important/Urgent with colored dots)
+   621→  - Send button with loading state and gold gradient
+   622→  - Clear button to reset form
+   623→- **Sent Messages Tab**:
+   624→  - Filter buttons: All, Broadcast, Individual
+   625→  - Table with columns: Type (broadcast/direct with icons), Recipient, Subject, Priority badge, Date
+   626→  - Pagination controls
+   627→  - EmptyState when no messages
+   628→- **Priority Badges**: Gold for URGENT, amber for IMPORTANT, muted for NORMAL
+   629→- **Broadcast messages**: Marked with megaphone icon, gold accent
+   630→- Uses TanStack Query for data fetching, Sonner for toast notifications
+   631→
+   632→#### 7. Investor Inbox Component (`src/components/investor/inbox.tsx`)
+   633→- **Header**: "Inbox" with gold accent, unread count badge
+   634→- **Two-panel layout** (1/3 + 2/3 on desktop):
+   635→  - **Message List**: Each message shows read/unread indicator (gold dot for unread), subject, sender, relative time, priority badge. Unread messages have gold left border accent. Broadcast messages have megaphone icon.
+   636→  - **Message Detail**: Subject (large), sender info with avatar, date, priority badge, body text, broadcast indicator, read status. Back button on mobile.
+   637→- **Pagination**: Page controls in message list
+   638→- **Empty State**: Illustration when no messages exist
+   639→- **Responsive**: Stacked layout on mobile, side-by-side on desktop
+   640→
+   641→#### 8. Route Integration
+   642→- Added 3 new route types to `src/lib/store.ts`: `admin-system-health`, `admin-communications`, `inbox`
+   643→- Added 3 new route cases in `src/app/page.tsx` (2 in renderAdmin, 1 in renderInvestor)
+   644→- Added 3 new nav items in `src/components/brand/portal-shell.tsx`:
+   645→  - Admin: "Communications" (Mail icon), "System Health" (Activity icon)
+   646→  - Investor: "Inbox" (Mail icon)
+   647→- Added Activity and Mail icon imports to portal-shell
+   648→
+   649→### Files Created
+   650→- `src/app/api/admin/system-health/route.ts` — System health API endpoint
+   651→- `src/app/api/admin/messages/route.ts` — Admin messages API (GET + POST)
+   652→- `src/app/api/messages/route.ts` — Investor messages API (GET)
+   653→- `src/components/admin/system-health.tsx` — System Health dashboard (~300 lines)
+   654→- `src/components/admin/communications.tsx` — Admin Communications (~300 lines)
+   655→- `src/components/investor/inbox.tsx` — Investor Inbox (~260 lines)
+   656→
+   657→### Files Modified
+   658→- `prisma/schema.prisma` — Added AdminMessage model + User relations
+   659→- `src/lib/db.ts` — Bumped schema version to v8-admin-messages
+   660→- `src/lib/store.ts` — Added 3 new route types
+   661→- `src/app/page.tsx` — Added 3 imports + 3 route cases
+   662→- `src/components/brand/portal-shell.tsx` — Added Activity, Mail icons + 3 nav items
+   663→
+   664→### Key Architecture Decisions
+   665→- **Broadcast efficiency**: Broadcast messages are stored as a single row with `isBroadcast=true` and `recipientId=null`, rather than duplicating for each investor. The investor API queries both broadcast messages and direct messages in a single `OR` query.
+   666→- **Auto-read on fetch**: The investor messages API automatically marks individual unread messages as read when fetched, avoiding a separate "mark as read" API call. Broadcast read status is tracked separately.
+   667→- **Health aggregation**: The overall health status is computed from 5 checks (DB healthy, DB latency, API latency, price feed, cache), giving "healthy" if all pass, "degraded" if ≥3 pass, "critical" otherwise.
+   668→- **Activity timeline**: Merges NAV updates, price feed events, and audit logs into a unified timeline for the admin health dashboard, giving a complete operational picture.
+   669→- **2FA adoption tracking**: The health endpoint calculates 2FA adoption rate from the User table, providing admins with visibility into security posture.
+   670→
+   671→### Issues Encountered
+   672→- None — all lint checks passed cleanly on first try.
+   673→
+   674→---
+   675→Task ID: 4 (Round 4)
+   676→Agent: Main Agent
+   677→Task: Round 4 — WebSocket Real-time, Watchlist, Calculator, Admin System Health, Communications, UI Polish
+   678→
+   679→Work Log:
+   680→- QA tested all pages with agent-browser and VLM (investor + admin sides)
+   681→- Found and fixed admin dashboard crash: TypeError on `auditLogs` (API returns `{logs: [...]}` not array directly)
+   682→- Added `safeHandler` wrapper to all admin API routes that were missing it (dashboard, audit-logs, ledger)
+   683→- Added error boundary state to AdminDashboard component with retry button
+   684→- Built WebSocket real-time price mini-service (mini-services/price-stream/) on port 3003
+   685→  - Socket.io server fetching CoinGecko prices every 15s
+   686→  - Frontend hook usePriceStream with connection status indicator
+   687→  - LIVE/OFFLINE/CONNECTING badges on investor dashboard
+   688→- Built Investor Watchlist feature
+   689→  - New Prisma model: WatchlistItem (with alertPrice, alertDirection, notes)
+   690→  - API: GET/POST/DELETE /api/watchlist, GET /api/watchlist/alerts, PUT /api/watchlist/[id]
+   691→  - Full watchlist component with add/edit alert dialogs, price tracking, alert status
+   692→  - Seed data: BTC/ETH/SOL with price alerts
+   693→- Built Profit/Loss Calculator
+   694→  - Interactive calculator with preset amounts, time period selector
+   695→  - Projected value based on actual NAV history
+   696→  - Animated counters, growth chart, risk disclaimer
+   697→- Built Admin System Health dashboard
+   698→  - API: GET /api/admin/system-health with real diagnostics (DB, memory, uptime, cache, etc.)
+   699→  - 2×3 health cards grid with green/amber/red indicators
+   700→  - Auto-refresh every 30s, activity timeline
+   701→- Built Admin Communications tool
+   702→  - New Prisma model: AdminMessage (with broadcast, priority, read status)
+   703→  - API: POST/GET /api/admin/messages (admin), GET /api/messages (investor)
+   704→  - Compose dialog with broadcast toggle, recipient selector, priority
+   705→  - Sent messages tab with filters and pagination
+   706→- Built Investor Inbox
+   707→  - Two-panel layout (message list + detail)
+   708→  - Unread indicators, priority badges, auto-read on view
+   709→  - 3 seed messages (Welcome, Q3 Outlook, Maintenance Window)
+   710→- Premium UI Polish
+   711→  - Added SkeletonCard, SkeletonMetric, SkeletonTable reusable components
+   712→  - Added EmptyState reusable component
+   713→  - Added 6 CSS micro-animation classes (hover-lift, press-scale, value-flash, row-enter, chart-hover-glow, tooltip-gold)
+   714→  - Premium Sonner toast styling (dark glass + gold border)
+   715→  - Enhanced page transitions with scale + fade in PortalShell
+   716→  - Applied skeleton/empty states to all 16+ pages
+   717→- Route integration for all new features (store.ts, page.tsx, portal-shell.tsx)
+   718→- Bumped Prisma schema version to v9-messages-refresh for client cache busting
+   719→- Cleared .next cache to force Prisma client regeneration after schema changes
+   720→- Re-seeded database with admin messages
+   721→
+   722→Stage Summary:
+   723→- **VLM Quality Ratings (Round 4):**
+   724→  - Landing: 7/10 (unchanged)
+   725→  - Investor Dashboard: 7/10 (unchanged)
+   726→  - Watchlist: 8/10 (NEW)
+   727→  - Calculator: 8/10 (NEW)
+   728→  - Investor Inbox: 8/10 (NEW)
+   729→  - Admin Dashboard: Working (fixed crash)
+   730→  - Admin System Health: 7/10 (NEW)
+   731→  - Admin Communications: Functional (NEW)
+   732→- **New Features:** WebSocket real-time prices, Watchlist, Calculator, Admin System Health, Admin Communications, Investor Inbox
+   733→- **Bug Fixes:** Admin dashboard crash (auditLogs type error), admin API 500 errors (added safeHandler), Prisma client cache issues
+   734→- **UI Polish:** Loading skeletons, empty states, micro-animations, premium toasts, page transitions
+   735→- **All lint checks pass**
+   736→- **All API endpoints verified working**
+   737→
+   738→---
+   739→Task ID: 8-B
+   740→Agent: frontend-styling-expert
+   741→Task: Premium UI Polish — VLM-driven visual improvements
+   742→
+   743→Work Log:
+   744→- Read worklog.md (Rounds 1-7) to understand project context, theme conventions, and existing CSS utilities.
+   745→- Read all four target component files (landing, investor/dashboard, investor/settings, admin/dashboard) and the brand primitives to understand existing class usage.
+   746→- Audited VLM-identified issues: landing headline imbalance, cramped badge, low-contrast fine print, clashing connection badge, uneven Deposit/Withdraw button hierarchy, admin text truncation, chart bar overlap, settings section inconsistency.
+   747→- Added 10 new premium utility classes to `src/app/globals.css` (foundation for all polish work).
+   748→- Polished landing page hero (headline rebalance, badge redesign, stat-card icons + hover, press-row, scroll indicator).
+   749→- Polished investor dashboard banner (corner brackets, refined connection badge, equal-weight buttons, gold divider).
+   750→- Polished settings page (numbered section headers, rotating avatar ring, thicker security ring with glow, enhanced switch glow).
+   751→- Polished admin dashboard (gold corner accents on summary cards, trend icons, chart gridlines + bar spacing, "Review Now" gold-gradient CTA, section dividers).
+   752→- Verified `bun run lint` passes with exit code 0 (no errors, no warnings).
+   753→- Verified `bunx tsc --noEmit` shows only the same 2 pre-existing errors (admin `auditLogs.logs` and dashboard `timeAgo(updatedAt)`); no new TS errors introduced by this round (confirmed via `git stash` comparison).
+   754→
+   755→Stage Summary:
+   756→- **Files modified (5):**
+   757→  - `src/app/globals.css` — +10 premium utility classes (~230 lines added)
+   758→  - `src/components/public/landing.tsx` — hero headline rebalance, premium-chip badge, iconified hero stats with hover, as-featured-in row, scroll indicator
+   759→  - `src/components/investor/dashboard.tsx` — fund overview banner with SVG corner brackets, refined connection pill badge, equal-weight Deposit/Withdraw buttons, gold gradient divider below banner
+   760→  - `src/components/investor/settings.tsx` — new `SettingsSectionHeader` component (numbered, accent-lined, iconified), rotating avatar gold ring, thicker security ring with SVG glow filter, gold-glow on Switch checked state
+   761→  - `src/components/admin/dashboard.tsx` — `cornerAccent` prop on EnhancedMetric, lucide TrendingUp/TrendingDown icons in delta indicator, CartesianGrid horizontal-only gridlines, capital-flows barSize 18→22, gold-gradient "Review Now" CTA, gold-divider between sections 1/2, 5/6, 7/8
+   762→- **New CSS utility classes added:**
+   763→  - `.gold-corner-accent` — L-shaped gold corner brackets via ::before/::after, expands on hover
+   764→  - `.gold-divider` — thin horizontal gold gradient line fading from edges
+   765→  - `.glass-card-hover` — translateY + scale + gold border glow on hover
+   766→  - `.number-badge` — 28px circular gold-bordered number badge for section numbering
+   767→  - `.scroll-indicator` — animated bouncing chevron (2s cubic-bezier)
+   768→  - `.premium-chip` — refined chip with gold gradient border via mask compositing
+   769→  - `.gold-underline-accent` — thin gold underline that grows from 0→70% on hover
+   770→  - `.avatar-gold-ring` — rotating conic-gradient ring (8s linear infinite) masked to ring shape
+   771→  - `.section-number` — large faded background number for section headers
+   772→  - `.section-accent-line` — vertical gold gradient bar to the left of section titles
+   773→  - `.switch-gold-glow` — gold halo glow on Switch checked state
+   774→- **Specific before/after improvements:**
+   775→  1. **Landing headline** — "NIGHTMARE ALPHA | CRYPTO FUND" now reads as one continuous line with a thin gold vertical separator; "CRYPTO FUND" upgraded from `font-extrabold` to `font-black` with depth drop-shadow, balancing the gold-dominant first half.
+   776→  2. **Landing badge** — replaced the cramped text-only pill with `premium-chip` (gold gradient border via mask compositing) + a 2px ping-pulsing gold-bright dot with 8px glow.
+   777→  3. **Landing hero stats** — added Wallet/TrendingUp/Gauge/Users lucide icons next to each label, swapped center-align for left-align, added `glass-card-hover` + `gold-corner-accent` for premium hover lift.
+   778→  4. **Landing trust row** — new "As featured in" row with BLOOMBERG · COINDESK · FORBES · REUTERS · THE BLOCK in muted monospace tracking.
+   779→  5. **Landing scroll indicator** — animated bouncing ChevronDown at hero bottom (clickable, scrolls to strategy section).
+   780→  6. **Investor connection badge** — replaced bg-emerald/bg-amber/bg-red filled pill with thin-border `bg-profit/[0.06]` / `bg-gold/[0.06]` / `bg-loss/[0.06]` pill with dual-ring (ping + solid) dot, much subtler on dark theme.
+   781→  7. **Investor Deposit/Withdraw** — both buttons now `h-9` (equal height), Deposit gold-filled, Withdraw gold-outlined with `bg-gold/[0.04]` tint and matching hover shadow — visual parity achieved.
+   782→  8. **Investor banner** — added 4 SVG L-brackets at corners + `gold-corner-accent` class + thin `gold-divider` below the banner to separate it from the metric tiles section.
+   783→  9. **Settings sections** — every section card now has a `01`-`05` number badge, gold accent divider line above, and a section-appropriate lucide icon (User/KeyRound/Bell/Monitor/Shield) next to the title.
+   784→  10. **Settings avatar** — wrapped in `avatar-gold-ring` class → 8s rotating conic-gradient ring (gold→bright→gold) masked to a 4px ring around the 80px avatar circle.
+   785→  11. **Settings security ring** — strokeWidth 6→8, added SVG `feGaussianBlur` glow filter on the animated arc, percent text gets a `text-shadow: 0 0 12px ${ringColor}66` for color-matched glow.
+   786→  12. **Admin summary cards** — Total AUM / Active Investors / Pending Deposits / Pending Withdrawals all now have `gold-corner-accent` L-brackets that brighten on hover.
+   787→  13. **Admin trend indicator** — replaced the ↑/↓ unicode arrows with `TrendingUp` / `TrendingDown` lucide icons sized 12px next to the delta percentage.
+   788→  14. **Admin AUM chart** — CartesianGrid changed from `3 3` dasharray with `vertical` lines to `4 6` dasharray with `vertical={false}` (horizontal gridlines only, less visual noise, more institutional).
+   789→  15. **Admin capital flows** — barSize 18→22 for clearer bar separation.
+   790→  16. **Admin pending-tx alert** — pulsing dot enlarged from 3×3px to 3.5×3.5px with `shadow-[0_0_10px_rgba(245,166,35,0.7)]` warning glow; body text bumped from `text-muted-foreground` to `text-foreground/70` for AA contrast; "Review All" button replaced with gold-gradient "Review Now" CTA (font-bold, gold glow shadow).
+   791→  17. **Admin section dividers** — added `gold-divider opacity-30/40` between summary cards↔charts, pending-tx↔activity, activity↔system-health sections for visual rhythm.
+   792→- **Quality bar met:**
+   793→  - All animations use 200-400ms with cubic-bezier easing (scroll-bounce, avatar-ring-spin uses 8s linear for the slow rotation, gold-underline grows on 0.4s cubic-bezier).
+   794→  - `prefers-reduced-motion` block added at the end of new CSS to disable scroll-indicator, avatar ring, and gold underline animations.
+   795→  - WCAG AA contrast maintained: muted-foreground text kept above 4.5:1 on the dark `#0a0a0b` background; admin alert body text upgraded from `text-muted-foreground` to `text-foreground/70`.
+   796→  - `bun run lint` exits 0 (clean).
+   797→  - No new TypeScript errors introduced (verified via git stash comparison).
+   798→- **Files NOT touched (per constraints):** Prisma schema, API routes, Zustand store, routing logic — purely a UI/CSS polish task.
+   799→
+   800→---
+   801→Task ID: 8-A
+   802→Agent: full-stack-developer
+   803→Task: PDF Statement Generation + Investor Documents Vault
+   804→
+   805→Work Log:
+   806→- Read worklog.md (Rounds 1–8) to understand project context, theme conventions, and existing brand primitives (SkeletonCard, SkeletonTable, EmptyState, GlassCard, FadeIn, SectionTitle).
+   807→- Discovered the entire feature surface was scaffolded by a previous round (pdf.ts, both documents.tsx components, all 6 API routes, Prisma Document model, schema bump to v10-documents, store.ts routes, page.tsx cases, portal-shell nav items, seed route). Verified the scaffolding against the task spec.
+   808→- Identified a critical runtime bug: `pdfkit` uses `__dirname + '/data/Helvetica.afm'` to load its bundled font metric files. Next.js Turbopack rewrites `__dirname` to a synthetic `/ROOT` placeholder, so PDF generation failed at runtime with `ENOENT: no such file or directory, open '/ROOT/node_modules/pdfkit/js/data/Helvetica.afm'`. Only the text-based trade confirmation seeded successfully (4 PDFs failed silently inside the seed's try/catch blocks).
+   809→- Fixed by adding `serverExternalPackages: ["pdfkit"]` to `next.config.ts`. This tells Next.js not to bundle pdfkit, preserving the real `__dirname` so font metrics + ICC profile resolve correctly from `node_modules/pdfkit/js/data/`.
+   810→- Restarted the dev server (the previously-running process was dead — port 3000 not listening) to pick up the next.config change.
+   811→- Cleared the partial document seed (1 leftover trade-confirmation record) and re-ran `POST /api/seed` — all 5 documents now generate successfully (3 monthly statement PDFs + 1 H1 tax statement PDF + 1 trade confirmation TXT).
+   812→- Verified PDF validity with `file`: each generated statement is a valid `PDF document, version 1.3, 8 page(s)` ~8 KB.
+   813→- Verified all 6 API endpoints end-to-end with curl using both admin and investor cookies:
+   814→  - `POST /api/auth/login` (admin + investor) → 200
+   815→  - `POST /api/seed` → 200 (no errors in dev.log)
+   816→  - `GET /api/documents` (investor) → 200, returns 5 documents
+   817→  - `GET /api/documents/[id]/download` → 200, streams 8200-byte PDF with `Content-Type: application/pdf`, sets `isRead=true` on the DB record (verified via Prisma query)
+   818→  - `GET /api/admin/documents` → 200, returns documents with `user` relation included
+   819→  - `POST /api/admin/statements/generate` → 201, generates a new March 2026 PDF statement on disk + creates Document record + audit log entry
+   820→- Final `bun run lint` exits 0 (clean, no errors, no warnings).
+   821→
+   822→Stage Summary:
+   823→- **Critical fix:** `next.config.ts` — added `serverExternalPackages: ["pdfkit"]` to prevent Turbopack from rewriting pdfkit's `__dirname`, which broke runtime font loading. Without this fix, the entire PDF feature was non-functional.
+   824→- **Files verified (no changes needed — already built to spec):**
+   825→  - `src/lib/pdf.ts` (576 lines) — full institutional statement PDF generator with dark luxury theme, 8 sections (header, investor/fund info, position summary, transaction activity, performance metrics, fee disclosure, footer + disclaimer on every page), gold accents (#D4AF37), color-coded P&L, page numbering, ~8 KB output per statement.
+   826→  - `src/app/api/admin/statements/generate/route.ts` (216 lines) — fetches user/fund/holdings/NAV/transactions from Prisma, computes period return + Sharpe + max drawdown from NAV series, generates PDF, saves to `/download/statements/`, creates Document record, writes audit log.
+   827→  - `src/app/api/documents/route.ts` — investor list endpoint with optional `?type=` filter, sorted DESC.
+   828→  - `src/app/api/documents/[id]/download/route.ts` — ownership/admin verified, streams file with correct Content-Type/Content-Disposition/Cache-Control, marks `isRead=true` fire-and-forget.
+   829→  - `src/app/api/admin/documents/route.ts` — paginated list with user relation, optional `userId`/`type` filters.
+   830→  - `src/app/api/admin/documents/[id]/route.ts` — DELETE (file + DB + audit log) + GET (single doc metadata).
+   831→  - `src/app/api/admin/documents/upload/route.ts` — multipart upload (25 MB max), validates MIME type against allow-list (PDF/PNG/JPEG/WebP/TXT/DOCX/XLSX), validates document type, saves to `/download/documents/`, audit log.
+   832→  - `src/components/investor/documents.tsx` (350 lines) — Document Vault page: stats bar (Total/Unread/Latest statement), 5 filter tabs with counts, responsive table (desktop) + cards (mobile), type icons, unread gold-dot indicator, download button, EmptyState, SkeletonTable loading, FadeIn animations, "Need a new statement?" gold-card contact CTA.
+   833→  - `src/components/admin/documents.tsx` (640 lines) — Document Management page: Generate Statement card (investor selector + month/year dropdowns + generate button with loading state), Upload Document card (investor selector + title/type/description + drag-and-drop file area + upload button), Documents table (search by investor/title + type filter + pagination), AlertDialog delete confirmation with loading state, SkeletonTable loading, EmptyState.
+   834→  - `prisma/schema.prisma` — Document model with userId, title, type, period, description, fileName, filePath, mimeType, sizeBytes, generatedBy, isRead, createdAt; indexes on userId/type/createdAt; `documents Document[]` relation added to User.
+   835→  - `src/lib/db.ts` — schema version `v10-documents`.
+   836→  - `src/lib/store.ts` — `documents` and `admin-documents` routes added.
+   837→  - `src/app/page.tsx` — imports + switch cases for both new routes.
+   838→  - `src/components/brand/portal-shell.tsx` — `Documents` nav item (FolderArchive icon) added to both INVESTOR_NAV (after Reports, before Settings) and ADMIN_NAV (after Fund Updates, before Communications).
+   839→  - `src/app/api/seed/route.ts` — section 13 seeds 5 documents for the demo investor (Alexander Whitmore): April/May/June 2026 Monthly Statements (real PDFs with historical NAV-derived performance metrics), 2026 H1 Preliminary Tax Statement (real PDF), Trade Confirmation (TXT) with realistic reference numbers and execution details. Each statement has unique createdAt timestamps matching its period.
+   840→- **Verification results:**
+   841→  - `bun run lint` — ✅ clean (0 errors, 0 warnings)
+   842→  - `POST /api/auth/login` (admin) → 200 ✅
+   843→  - `POST /api/auth/login` (investor) → 200 ✅
+   844→  - `GET /api/admin/documents` → 200, returns 5+ documents with user info ✅
+   845→  - `GET /api/documents` → 200, returns 5 documents ✅
+   846→  - `GET /api/documents/[id]/download` → 200, streams valid 8200-byte PDF, marks isRead=true ✅
+   847→  - `POST /api/admin/statements/generate` → 201, generates new PDF + Document record + audit log ✅
+   848→  - `POST /api/seed` → 200, generates all 5 seeded PDFs without errors ✅
+   849→  - Generated PDFs verified with `file` command: "PDF document, version 1.3, 8 page(s)" — valid, openable, professional institutional layout.
+   850→
+   851→---
+   852→Task ID: 8-C
+   853→Agent: fullstack-developer
+   854→Task: Real-time WebSocket Notifications
+   855→
+   856→Work Log:
+   857→- Read `/home/z/my-project/worklog.md` (first 100 + last 400 lines) to understand project context. Confirmed Rounds 8-A (PDF + Document Vault) and 8-B (UI polish) are complete. Identified existing price-stream service at `mini-services/price-stream/index.ts` (port 3003, Socket.io with `path: "/"`, fetches CoinGecko prices every 15s + Fear & Greed Index), existing `use-price-stream.ts` hook (uses `io("/?XTransformPort=3003")`), existing `notification-center.tsx` + `/api/notifications` route, existing transaction approval / KYC / messages / fund-updates routes.
+   858→- Read all 8 existing API routes that needed notification hooks to understand their structure, response shapes, and what user-id/payload data was available at the call site.
+   859→- **Step 1 (price-stream service):** Modified `mini-services/price-stream/index.ts`. Hit a critical architecture issue: Socket.io's `path: "/"` matches EVERY URL (engine.io uses `url.indexOf(path) === 0`), so it intercepts ALL HTTP requests on port 3003 — including `/notify` and `/health` — before any custom HTTP handler can respond. Verified empirically: a `GET /health` request to port 3003 returned `{"code":0,"message":"Transport unknown"}` from engine.io, not from our handler. Solved by running TWO listeners in the same process: (a) Socket.io server on port 3003 (path "/" — unchanged, required by frontend via Caddy), (b) NEW internal HTTP webhook server on port 3004 with `POST /notify` and `GET /health` routes. The Next.js server calls `http://localhost:3004/notify` (server-side only, no Caddy involvement). Also added a `socket.on("join", userId)` room-join handler to the Socket.io connection logic so clients can be targeted by `user:{userId}` room. Preserved ALL existing functionality (price-update broadcasts, fear-greed-update broadcasts, 15s fetch interval, cached-data-on-connect, graceful shutdown). Updated shutdown handler to close both servers.
+   860→- **Step 2 (realtime helper):** Created `src/lib/realtime.ts` with `notifyUser(userId, event, payload)`, `notifyUsers(userIds[], event, payload)`, and `notifyAll(event, payload)` exports. Uses `fetch()` against `http://localhost:3004/notify` (configurable via `PRICE_STREAM_WEBHOOK_URL` env var). Best-effort: 3s abort timeout, swallows all errors so a down price-stream service never breaks the primary API flow. Server-side only.
+   861→- **Step 3 (wire into 8 API routes):** Added `notifyUser` / `notifyAll` calls at the END of each route handler (after DB write + audit log, before `return json(...)`) so notifications only fire on successful commits:
+   862→  - `src/app/api/admin/transactions/[id]/approve/route.ts` → `notifyUser(txn.userId, "transaction_approved", { transactionId, type, amount, fundName })`
+   863→  - `src/app/api/admin/transactions/[id]/reject/route.ts` → `notifyUser(txn.userId, "transaction_rejected", { transactionId, type, amount, reason })`
+   864→  - `src/app/api/admin/messages/route.ts` (POST) → broadcast branch calls `notifyAll("new_message", { messageId, subject, priority, isBroadcast, senderName })`; direct branch calls `notifyUser(recipient.id, "new_message", {...})`
+   865→  - `src/app/api/admin/statements/generate/route.ts` → `notifyUser(investor.id, "new_document", { documentId, title, type: "MONTHLY_STATEMENT", period })`
+   866→  - `src/app/api/admin/documents/upload/route.ts` → `notifyUser(investor.id, "new_document", { documentId, title, type })`
+   867→  - `src/app/api/admin/kyc/[id]/approve/route.ts` → `notifyUser(doc.userId, "kyc_approved", { tier })` ONLY when `fullyVerified` is true (i.e. the user now has both GOVT_ID + PROOF_OF_ADDRESS approved, so their overall KYC status moves to APPROVED). This avoids spamming notifications for every individual document approval.
+   868→  - `src/app/api/admin/kyc/[id]/reject/route.ts` → `notifyUser(doc.userId, "kyc_rejected", { reason, documentType })` ONLY when `!hasApprovedOfSameType && doc.user.kycStatus === "PENDING"` (i.e. the user's overall KYC status actually moves to REJECTED).
+   869→  - `src/app/api/admin/fund-updates/route.ts` (POST) → `notifyAll("fund_update", { updateId, title, category, priority, pinned })`
+   870→- **Step 4 (client hook):** Created `src/hooks/use-realtime-notifications.ts`. Opens a SEPARATE Socket.io connection (`forceNew: true`) from `use-price-stream` so notification handling is decoupled from price data. On `connect`, emits `socket.emit("join", user.id)` so the server can target this user's room. Listens for `notification` events with `{ event, payload, timestamp }` shape. Uses an `EVENT_CONFIG` lookup table mapping all 7 events to a `{ title, description(payload), type }` triple, where `type` is `success | info | warning | error`. Calls `toast[type](title, { description })` (Sonner) for the appropriate toast variant, then dispatches a `window.CustomEvent("notifications-updated")` so other components can refetch. Cleanup disconnects the socket on unmount or user change.
+   871→- **Step 5 (portal-shell integration):** Added `import { useRealtimeNotifications }` and `useRealtimeNotifications();` call near the top of the `PortalShell` component body (after the `useState` for `mobileOpen`, before the `nav` derivation) so the hook is active whenever the shell is mounted (i.e. user is logged in, both investor and admin portals).
+   872→- **Step 6 (notification-center integration):** Updated `src/components/brand/notification-center.tsx` to (a) destructure `refetch` from the `useQuery` result, (b) add a `useEffect` that registers a `notifications-updated` window event listener which calls `refetch()` + `queryClient.invalidateQueries(["notifications"])` so the bell badge count refreshes within ~50ms of a realtime notification arriving.
+   873→- **Step 7 (restart price-stream):** Killed the existing 2 stale `bun --hot index.ts` processes (PIDs 1675, 3645 from previous rounds). After several iterations discovered that the sandbox kills any backgrounded process whose parent bash shell exits — `nohup`, `disown`, and `setsid` alone don't survive. Solved by wrapping the start command in `( setsid bun index.ts > /tmp/price-stream.log 2>&1 < /dev/null & )` (subshell + setsid + redirect all 3 stdio streams). Service now persists across bash calls and has been running stably for 5+ minutes through all end-to-end tests. Started with `bun index.ts` (not `bun --hot index.ts`) to avoid the file-watcher restart-on-any-change behavior that was causing crashes during Next.js rebuilds.
+   874→- **Step 8 (end-to-end testing):** All 5 notification flows verified working via curl + log inspection:
+   875→  - Admin rejects a pending withdrawal → price-stream log: `[price-stream] Notified 1 user(s): transaction_rejected` ✅
+   876→  - Admin posts a fund update → price-stream log: `[price-stream] Broadcast notification: fund_update` ✅
+   877→  - Admin sends broadcast message → price-stream log: `[price-stream] Broadcast notification: new_message` ✅
+   878→  - Admin sends direct message → price-stream log: `[price-stream] Notified 1 user(s): new_message` ✅
+   879→  - Admin generates June 2026 PDF statement → price-stream log: `[price-stream] Notified 1 user(s): new_document` ✅
+   880→  - Admin uploads a custom document → price-stream log: `[price-stream] Notified 1 user(s): new_document` ✅
+   881→  - Investor's `/api/notifications` endpoint confirmed to show the rejected txn at the top of the list with `read: false` → badge count will refresh.
+   882→  - Direct webhook tests on port 3004: `GET /health` returns 200 with `{ ok, socketPort, webhookPort, clients, pricesCached, fearGreed, fearGreedLabel }`; `POST /notify` with `"all"` returns `{ ok: true, sent: "all" }`; with `["uid1"]` returns `{ ok: true, sent: 1 }`; with `["u1","u2","u3"]` returns `{ ok: true, sent: 3 }`; with empty array returns `{ ok: true, sent: 0 }`; bad JSON returns 400 + `{ error: "Invalid JSON body" }`; missing `userIds` returns 400 + `{ error: "userIds must be an array or 'all'" }`; unknown route returns 404.
+   883→  - Port 3003 (Socket.io) correctly returns the engine.io `{"code":0,"message":"Transport unknown"}` response for non-WebSocket HTTP requests — this is expected and does NOT affect WebSocket connections (the frontend's `io("/?XTransformPort=3003")` continues to work for both `use-price-stream` and `use-realtime-notifications`).
+   884→- **Step 9 (lint):** `bun run lint` exits 0 (clean, no errors, no warnings).
+   885→- Cleaned up test artifacts (deleted the test fund update, test uploaded document, and temp cookie files created during verification).
+   886→
+   887→Stage Summary:
+   888→- **Files modified (11):**
+   889→  - `mini-services/price-stream/index.ts` — rewrote server bootstrap to run TWO listeners: Socket.io on port 3003 (path "/" unchanged) + new internal HTTP webhook server on port 3004 (POST /notify, GET /health). Added `socket.on("join", userId)` room-join handler. Preserved all existing price/fear-greed broadcast logic. (~110 lines added/changed)
+   890→  - `src/lib/realtime.ts` — NEW server-side helper module. Exports `notifyUser`, `notifyUsers`, `notifyAll`. 3s fetch timeout, swallows errors, configurable webhook URL via `PRICE_STREAM_WEBHOOK_URL` env (defaults to `http://localhost:3004`).
+   891→  - `src/app/api/admin/transactions/[id]/approve/route.ts` — added `notifyUser(txn.userId, "transaction_approved", { transactionId, type, amount, fundName })` after audit log.
+   892→  - `src/app/api/admin/transactions/[id]/reject/route.ts` — added `notifyUser(txn.userId, "transaction_rejected", { transactionId, type, amount, reason })` after audit log.
+   893→  - `src/app/api/admin/messages/route.ts` — added `notifyAll("new_message", {...})` for broadcast branch and `notifyUser(recipient.id, "new_message", {...})` for direct branch, both after audit log.
+   894→  - `src/app/api/admin/statements/generate/route.ts` — added `notifyUser(investor.id, "new_document", { documentId, title, type: "MONTHLY_STATEMENT", period })` after audit log.
+   895→  - `src/app/api/admin/documents/upload/route.ts` — added `notifyUser(investor.id, "new_document", { documentId, title, type })` after audit log.
+   896→  - `src/app/api/admin/kyc/[id]/approve/route.ts` — added `notifyUser(doc.userId, "kyc_approved", { tier })` after audit log, gated on `fullyVerified` flag.
+   897→  - `src/app/api/admin/kyc/[id]/reject/route.ts` — added `notifyUser(doc.userId, "kyc_rejected", { reason, documentType })` after audit log, gated on overall KYC status change.
+   898→  - `src/app/api/admin/fund-updates/route.ts` — added `notifyAll("fund_update", { updateId, title, category, priority, pinned })` after audit log.
+   899→  - `src/components/brand/notification-center.tsx` — added `useEffect` listener for `notifications-updated` window event to refetch + invalidate the TanStack Query cache for `["notifications"]`. Imported `useEffect`. Destructured `refetch` from `useQuery` result.
+   900→  - `src/components/brand/portal-shell.tsx` — imported `useRealtimeNotifications` and called it near the top of the `PortalShell` component body so it's active for both investor and admin portals whenever a user is logged in.
+   901→- **Files created (2):**
+   902→  - `src/lib/realtime.ts` — server-side webhook helper
+   903→  - `src/hooks/use-realtime-notifications.ts` — client-side React hook (separate Socket.io connection, joins user room, shows Sonner toasts, dispatches `notifications-updated` event)
+   904→- **Architecture decisions:**
+   905→  - **Dual-port design** for price-stream service: Socket.io on 3003 (path "/") + HTTP webhook on 3004. This was forced by engine.io's path matching behavior — `path: "/"` makes engine.io intercept every URL, so no custom HTTP routes can be served on port 3003. The webhook server is internal-only (Next.js → localhost:3004, no Caddy exposure needed).
+   906→  - **Separate Socket.io connection** for notifications (vs reusing `use-price-stream`'s connection): cleaner separation of concerns, independent reconnection logic, no risk of one breaking the other. Both connections join the same server-side Socket.io instance.
+   907→  - **Server-to-server webhook** (Next.js → price-stream) rather than direct Socket.io client in Next.js: avoids pulling socket.io-client into the server bundle, simpler error handling (just `fetch()` with timeout), best-effort semantics.
+   908→  - **Event-gated notifications** for KYC: only notify on overall status change (PENDING → APPROVED or PENDING → REJECTED), not on every individual document review, to avoid spamming investors when admins review multiple documents in sequence.
+   909→  - **Best-effort delivery**: all `notifyUser`/`notifyAll` calls swallow errors so a down or unresponsive price-stream service never blocks the primary API operation. Investors can still discover changes via the 30s polling of `/api/notifications` (existing fallback).
+   910→- **Verification results:**
+   911→  - `bun run lint` — ✅ clean (0 errors, 0 warnings, exit 0)
+   912→  - price-stream service health: `curl http://localhost:3004/health` returns 200 with valid JSON including `clients`, `pricesCached`, `fearGreed`, `fearGreedLabel` ✅
+   913→  - Webhook `POST /notify` (broadcast) returns `{ ok: true, sent: "all" }` ✅
+   914→  - Webhook `POST /notify` (array of 3 user IDs) returns `{ ok: true, sent: 3 }` ✅
+   915→  - Webhook `POST /notify` (bad JSON) returns 400 + `{ error: "Invalid JSON body" }` ✅
+   916→  - Webhook `POST /notify` (missing userIds) returns 400 + `{ error: "userIds must be an array or 'all'" }` ✅
+   917→  - End-to-end: admin rejects txn → price-stream logs `Notified 1 user(s): transaction_rejected` ✅
+   918→  - End-to-end: admin posts fund update → price-stream logs `Broadcast notification: fund_update` ✅
+   919→  - End-to-end: admin sends broadcast message → price-stream logs `Broadcast notification: new_message` ✅
+   920→  - End-to-end: admin sends direct message → price-stream logs `Notified 1 user(s): new_message` ✅
+   921→  - End-to-end: admin generates PDF statement → price-stream logs `Notified 1 user(s): new_document` ✅
+   922→  - End-to-end: admin uploads custom document → price-stream logs `Notified 1 user(s): new_document` ✅
+   923→  - Investor's `/api/notifications` endpoint reflects the rejected txn at the top with `read: false` (badge count will refresh via the `notifications-updated` window event) ✅
+   924→  - Existing price-update + fear-greed-update broadcasts continue to fire every 15s (verified in price-stream log) ✅
+   925→  - price-stream service running stably as PID 18928, listening on both ports 3003 (Socket.io) and 3004 (webhook), surviving across multiple bash tool invocations ✅
+   926→
+   927→
+   928→---
+   929→Task ID: 8-D
+   930→Agent: fullstack-developer
+   931→Task: Investor Statement Requests + Final Polish
+   932→
+   933→Work Log:
+   934→- Read `/home/z/my-project/worklog.md` (first 100 + last 400 lines) to confirm Rounds 8-A (PDF + Document Vault), 8-B (UI polish), and 8-C (Realtime WebSocket notifications via port 3004 webhook) are complete. Documented theme conventions, brand primitives, safeHandler/requireUser/requireAdmin pattern, notifyUser/notifyAll helper, and existing /api/admin/statements/generate route + Document model.
+   935→- **Step 1 (Prisma schema):** Added `StatementRequest` model (id, userId, periodStart, periodEnd, type, notes, status, documentId soft-link, processedBy, processor, createdAt, completedAt) with indexes on userId + status. Added two back-relations on `User`: `statementRequests` ("StatementRequestRequester") and `processedStatementRequests` ("StatementRequestProcessor"). Bumped `PRISMA_SCHEMA_VERSION` to `v11-statement-requests` in `src/lib/db.ts`. Ran `bun run db:push` + `bun run db:generate` + `rm -rf .next/cache`.
+   936→- **Step 2 (API endpoints):** Created 4 new API routes (all using `safeHandler` + `requireUser`/`requireAdmin`):
+   937→  - `POST /api/statement-requests` — investor creates a PENDING request. Validates periodEnd > periodStart, periodStart not in future, type ∈ {MONTHLY_STATEMENT, QUARTERLY_REPORT, TAX_STATEMENT, CUSTOM}. Audit log `STATEMENT_REQUEST_CREATED`.
+   938→  - `GET /api/statement-requests` — investor lists their own requests DESC. Hydrates linked documents for COMPLETED requests (soft-link via documentId, fetched separately because Prisma schema treats documentId as a plain String field per spec — no FK relation).
+   939→  - `GET /api/admin/statement-requests?status=PENDING&page=1&limit=20` — admin lists ALL requests with user + processor info + hydrated document. Returns `pendingCount` for the tab badge.
+   940→  - `POST /api/admin/statement-requests/[id]/fulfill` — admin generates a PDF on the spot, links it to the request (status=COMPLETED, documentId, processedBy, completedAt), writes `STATEMENT_REQUEST_FULFILLED` audit log, sends TWO realtime notifications to the investor: `new_document` + `new_message`.
+   941→  - `POST /api/admin/statement-requests/[id]/reject` — admin rejects with optional reason. Updates status=REJECTED, processedBy, completedAt, appends `[REJECTION REASON]: <reason>` to notes. Audit log `STATEMENT_REQUEST_REJECTED`. Realtime `new_message` notification with priority IMPORTANT.
+   942→- **Refactor (shared PDF logic):** Extracted the PDF generation + Document record creation logic from `/api/admin/statements/generate/route.ts` into a new shared helper `src/lib/statement.ts` (`generateStatementForInvestor({ investorId, periodStart, periodEnd, type, generatedBy })`). The original admin generate route now calls this helper — same behavior, ~150 LOC of duplicated business logic eliminated. The helper supports all 4 statement types (MONTHLY_STATEMENT, QUARTERLY_REPORT, TAX_STATEMENT, CUSTOM) with type-appropriate titles + period strings.
+   943→- **Step 3 (Investor UI):** Updated `src/components/investor/documents.tsx`:
+   944→  - Added "Request Statement" gold-outline button next to the page header
+   945→  - Dialog with: type selector (4 options with descriptions), period start date, period end date, notes textarea, submit button (gold gradient). All inputs have `focus:ring-2 focus:ring-gold/30` for accessibility.
+   946→  - New "Statement Requests" section below the documents table showing the user's requests with status badges (PENDING=amber pulse, COMPLETED=green checkmark, REJECTED=red X), period, requested/completed timestamps, notes, and "View Document" button for COMPLETED requests.
+   947→  - Stats bar changed: "Latest Statement" tile → "Pending Requests" tile (amber count) — more relevant to the new flow.
+   948→  - Polish: filter tabs enlarged from `px-3.5 py-1.5` to `px-4 py-2` with subtle hover lift + gold glow on active; download action column changed from `text-right` to `text-center` with `align-middle` and `justify-center` wrapper; "New" indicator upgraded from a small gold dot to a pulsing gold pill badge "NEW" with `animate-pulse` and `status-pill-pulse` class.
+   949→- **Step 4 (Admin UI):** Updated `src/components/admin/documents.tsx`:
+   950→  - Added top-level Tabs: "All Documents" | "Statement Requests (N)" where N is pendingCount (with amber pulsing badge).
+   951→  - Statement Requests tab: filter by status (all/pending/completed/rejected) + table with columns: Requested | Investor | Type | Period | Status | Actions. Pending requests have "Generate Now" (gold gradient) + "Reject" (outline red) buttons. Completed requests show "View" link. Rejected requests show rejection reason excerpt. Pagination.
+   952→  - Reject dialog with optional reason textarea (border-loss styling).
+   953→  - Polish: Generate Statement card padding `p-5` → `p-6` (already p-6, increased gap-3 → gap-4 between fields); all labels standardized to `text-xs uppercase tracking-wider text-muted-foreground`; all inputs/selects use shared `INPUT_CLS`/`SELECT_TRIGGER_CLS` constants with `focus:ring-2 focus:ring-gold/30`; upload dropzone enlarged to `min-h-[200px]` with `.upload-dropzone` class (dashed gold border, hover lift, gradient overlay, "Click or drag files here" text, accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.webp,.txt,.xlsx").
+   954→- **Step 5 (Seed data):** Added section 14 to `/api/seed/route.ts` (OUTSIDE the documents seed block so it's idempotent on its own): 2 PENDING requests (April 2026 monthly + Q1 2026 quarterly, with realistic notes + timestamps 26h/4h ago), 1 COMPLETED request linked to the existing April 2026 statement (mid-May 2026 timestamps). Audit log `STATEMENT_REQUESTS_SEEDED`.
+   955→- **Feature 2 (CSS polish):** Added two new utility classes to `src/app/globals.css`:
+   956→  - `.status-pill-pulse` — relative-positioned pill with an `::after` pseudo-element that renders a radial-gradient amber glow halo behind the pill, animated with `status-pill-pulse-glow` keyframes (2.4s ease-in-out, opacity 0.25↔0.85, scale 0.98↔1.05). Used for PENDING badges and unread NEW indicators.
+   957→  - `.upload-dropzone` — dashed-border upload area with smooth transitions on border-color/background/box-shadow/transform, `:hover` lift (`translateY(-1px)`), and a `::before` gradient overlay that fades in on hover. Combined with `min-h-[200px]` Tailwind utility for sizing.
+   958→  - Updated `prefers-reduced-motion` block to disable the new `status-pill-pulse::after` animation for accessibility.
+   959→- **Landing page audit:** Verified "CRYPTO FUND" uses `font-black` and "NIGHTMARE ALPHA" uses the parent `font-extrabold` with `text-gold-gradient` — already correctly balanced from Round 8-B. Verified "As featured in" press row (BLOOMBERG · COINDESK · FORBES · REUTERS · THE BLOCK) is present, visible, and well-spaced (`gap-x-7 gap-y-2`, monospace tracking). No changes needed.
+   960→- **Critical infrastructure fix:** After `bun run db:push` + `bun run db:generate`, the running dev server (PID 16021, started at 20:28) had the OLD PrismaClient class cached in its module graph — `db.statementRequest` was undefined at runtime even though the freshly-generated `node_modules/@prisma/client` had it (verified via standalone `node` script). Solved by adding `"@prisma/client"` to `serverExternalPackages` in `next.config.ts`. This tells Turbopack NOT to bundle @prisma/client, so the runtime loads it directly from node_modules — picking up freshly-regenerated clients without a manual server restart. The next.config.ts change triggered Next.js's automatic server restart (logged: "Found a change in next.config.ts. Restarting the server to apply the changes..."), and the new PrismaClient class was loaded successfully.
+   961→- **Verification (all endpoints tested end-to-end with curl):**
+   962→  - POST /api/auth/login (investor + admin) → 200 ✅
+   963→  - POST /api/seed → 200, seeds 2 pending + 1 completed statement request ✅
+   964→  - GET /api/statement-requests (investor) → 200, returns 3 seeded requests with hydrated document link for COMPLETED ✅
+   965→  - POST /api/statement-requests (investor creates new) → 201 ✅
+   966→  - POST /api/statement-requests (future date) → 400 "periodStart cannot be in the future" ✅
+   967→  - POST /api/statement-requests (end < start) → 400 "periodStart must be before periodEnd" ✅
+   968→  - GET /api/admin/statement-requests?status=PENDING → 200, pendingCount=3 ✅
+   969→  - GET /api/admin/statement-requests (as investor) → 403 Forbidden ✅
+   970→  - GET /api/statement-requests (unauth) → 401 Unauthorized ✅
+   971→  - POST /api/admin/statement-requests/[id]/fulfill → 200, generates PDF (8 KB), updates request to COMPLETED, audit log written, TWO realtime notifications fired: `new_document` + `new_message` (verified in price-stream log) ✅
+   972→  - POST /api/admin/statement-requests/[id]/reject (with reason) → 200, updates to REJECTED, audit log written, realtime `new_message` notification fired ✅
+   973→  - POST /api/admin/statement-requests/[id]/reject (without body) → 200, reason=null ✅
+   974→  - POST /api/admin/statement-requests/nonexistent-id/fulfill → 404 "Statement request not found" ✅
+   975→- **Lint:** `bun run lint` exits 0 (clean, 0 errors, 0 warnings).
+   976→- **TypeScript:** `bunx tsc --noEmit` shows only pre-existing errors from earlier rounds (admin/dashboard.tsx `auditLogs.logs`, admin/fund-updates.tsx `api.delete`, investor/analytics.tsx XAxis/YAxis overload mismatches, investor/calculator.tsx, investor/dashboard.tsx `timeAgo`). NO new TypeScript errors introduced by this round — verified all new files (`src/lib/statement.ts`, `src/app/api/statement-requests/route.ts`, `src/app/api/admin/statement-requests/route.ts`, `src/app/api/admin/statement-requests/[id]/fulfill/route.ts`, `src/app/api/admin/statement-requests/[id]/reject/route.ts`, updated `src/components/investor/documents.tsx`, updated `src/components/admin/documents.tsx`, updated `src/app/api/seed/route.ts`) are type-clean.
+   977→
+   978→Stage Summary:
+   979→- **Files created (5):**
+   980→  - `src/lib/statement.ts` — shared `generateStatementForInvestor()` helper that fetches investor/fund/NAV/holdings/transactions data, computes performance metrics (periodReturnPct, inceptionReturnPct, Sharpe, maxDrawdown), generates the PDF via pdfkit, saves to /download/statements/, and creates the Document DB record. Supports all 4 statement types with type-appropriate titles + period strings. Eliminates ~150 LOC of duplicated business logic between the existing /api/admin/statements/generate route and the new /api/admin/statement-requests/[id]/fulfill route.
+   981→  - `src/app/api/statement-requests/route.ts` — investor POST (create PENDING request with validation + audit log) + GET (list own requests with hydrated document links).
+   982→  - `src/app/api/admin/statement-requests/route.ts` — admin GET (list ALL requests with user/processor/document hydration + pendingCount + pagination + status filter).
+   983→  - `src/app/api/admin/statement-requests/[id]/fulfill/route.ts` — admin POST (generate PDF on the spot via shared helper, link to request, mark COMPLETED, audit log, dual realtime notification: new_document + new_message).
+   984→  - `src/app/api/admin/statement-requests/[id]/reject/route.ts` — admin POST (mark REJECTED with optional reason appended to notes, audit log, realtime new_message notification with IMPORTANT priority).
+   985→- **Files modified (7):**
+   986→  - `prisma/schema.prisma` — added `StatementRequest` model (13 fields + 2 indexes) + 2 back-relations on `User` (`statementRequests` as requester, `processedStatementRequests` as admin processor).
+   987→  - `src/lib/db.ts` — bumped `PRISMA_SCHEMA_VERSION` to `v11-statement-requests`.
+   988→  - `next.config.ts` — added `"@prisma/client"` to `serverExternalPackages` so the runtime picks up freshly-regenerated Prisma clients without a manual dev-server restart. Critical for schema changes mid-session.
+   989→  - `src/app/api/admin/statements/generate/route.ts` — refactored to use the shared `generateStatementForInvestor()` helper (removed ~150 LOC of inline PDF generation logic). Same external behavior, now supports optional `type` field in the request body.
+   990→  - `src/components/investor/documents.tsx` — added "Request Statement" dialog (type selector + date pickers + notes), new "Statement Requests" section showing user's requests with status badges + View Document link, stats bar changed Latest Statement → Pending Requests, VLM polish fixes (filter tabs px-4 py-2 with hover lift + gold glow, download column centered with align-middle + justify-center, "NEW" indicator upgraded from dot to pulsing gold pill badge).
+   991→  - `src/components/admin/documents.tsx` — added top-level Tabs (All Documents | Statement Requests with pending badge), new Statement Requests tab with filterable table (status filter, fulfill + reject actions, document link for completed), reject dialog with reason textarea, VLM polish fixes (consistent label styling via shared LABEL_CLS constant, all inputs use focus:ring-2 focus:ring-gold/30, upload dropzone enlarged to min-h-[200px] with .upload-dropzone class + "Click or drag files here" text + accept all required file types, gap-4 between form fields).
+   992→  - `src/app/api/seed/route.ts` — added section 14 (statement requests seeding, OUTSIDE the documents seed block for idempotency): 2 PENDING + 1 COMPLETED request with realistic notes + timestamps + audit log.
+   993→  - `src/app/globals.css` — added `.status-pill-pulse` (radial-gradient amber glow halo, 2.4s pulse animation) and `.upload-dropzone` (dashed border hover lift + gradient overlay) classes. Updated `prefers-reduced-motion` block.
+   994→- **Architecture decisions:**
+   995→  - **Soft-link for documentId:** Per the task spec, `documentId` is a plain `String?` field on `StatementRequest` rather than a Prisma FK relation. This keeps the schema minimal but means the API routes fetch linked documents separately (via `db.document.findMany({ where: { id: { in: docIds } } })`) and hydrate them with a `Map`. Trade-off: slightly more query overhead but cleaner schema that doesn't require cascading deletes when a Document is removed.
+   996→  - **Shared PDF generation helper:** Extracted the 150-LOC PDF generation logic from the existing `/api/admin/statements/generate` route into `src/lib/statement.ts` so both the direct admin generation flow and the new fulfill-request flow use the exact same code path. Future-proof: any future caller (e.g. a scheduled monthly statement job) can reuse it.
+   997→  - **Dual notification on fulfill:** When an admin fulfills a request, the investor gets BOTH `new_document` (so the bell badge increments + toast says "New document ready") AND `new_message` (so they get a separate toast saying "Statement Request Completed"). This double-notification is intentional — the document event refreshes the Document Vault, the message event explicitly references the request being fulfilled.
+   998→  - **`@prisma/client` as serverExternalPackage:** This is the long-term fix for the recurring "stale PrismaClient class after schema changes" issue documented across multiple prior rounds (8-A had to restart the dev server for the same problem). By marking @prisma/client as external, Turbopack doesn't bundle it, so the runtime always loads the latest generated client from node_modules. The first compile after the config change takes ~5s longer (because Turbopack has to re-evaluate the module graph), but subsequent schema bumps won't require any server restart at all.
+   999→- **Quality bar met:**
+  1000→  - All API routes use `safeHandler` + `requireUser()`/`requireAdmin()` per project convention.
+  1001→  - All interactive components have `'use client'`.
+  1002→  - Uses existing brand primitives (GlassCard, FadeIn, SectionTitle, SkeletonTable, EmptyState).
+  1003→  - Uses `notifyUser` from `src/lib/realtime.ts` for notifications (not direct Socket.io).
+  1004→  - `bun run lint` exits 0 (clean).
+  1005→  - All 5 new API endpoints + 4 validation cases + 3 access-control cases verified end-to-end with curl.
+  1006→  - Realtime notifications verified in price-stream log: `Notified 1 user(s): new_document` + `Notified 1 user(s): new_message` on fulfill, `Notified 1 user(s): new_message` on reject.
+  1007→  - Pre-existing functionality (existing /api/admin/statements/generate, document vault, download endpoint, admin documents upload/delete) all still work — the refactor to use the shared helper preserves identical external behavior.
+  1008→
+  1009→---
+  1010→
+  1011→## Round 9-A — Premium Landing Page Overhaul (Agent: full-stack-developer)
+  1012→
+  1013→**Task ID:** 9-A
+  1014→**Scope:** Frontend-only visual and animation overhaul of the public landing page
+  1015→**Status:** ✅ Complete
+  1016→
+  1017→### What Changed
+  1018→
+  1019→#### New CSS Utilities (`src/app/globals.css` — ~150 lines added)
+  1020→- `.gold-border-sweep` — Animated gold gradient border that sweeps around elements
+  1021→- `.text-gold-shimmer` — Text with animated gold shimmer effect (used on hero headline)
+  1022→- `.press-logo-marquee` — Infinite horizontal scroll for press logos
+  1023→- `.hero-particle-canvas` — Styling for particle canvas overlay
+  1024→- `.hero-glow-pulse` — Pulsing gold border glow for CTA container
+  1025→- `.cta-gold-sweep` — Gold gradient sweep animation on CTA buttons
+  1026→- `.section-gold-accent` — Gold left border accent on section titles
+  1027→- `.footer-gold-separator` — Gold gradient line separator for footer
+  1028→- `.footer-link-gold` — Legal link hover gold effect with animated underline
+  1029→- `.backed-by-logo` — Styling for institutional logo containers
+  1030→- `.press-logo-item` — Press logo with animated gold underline sweep
+  1031→- All new animations respect `prefers-reduced-motion`
+  1032→
+  1033→#### Landing Page Overhaul (`src/components/public/landing.tsx`)
+  1034→1. **Animated Particle Background** — Canvas-based gold particle constellation (70 particles, connecting lines, pulsing opacity)
+  1035→2. **Animated Counters** — Hero stats count up from 0 with cubic ease-out when scrolled into view
+  1036→3. **Scroll-Triggered Reveals** — Every section fades in + slides up on scroll via `ScrollReveal` component
+  1037→4. **Enhanced Hero** — Gold shimmer headline, spring-animated CTAs, "Backed by" institutional logos row
+  1038→5. **Press Row Marquee** — Infinite horizontal scroll with animated gold underline sweep, 7 press logos
+  1039→6. **Typography Hierarchy** — Section gold left-border accent, larger subheadline, number badges for steps
+  1040→7. **Premium Footer** — Gold gradient separators, hover-gold legal links, "institutional-grade infrastructure" tagline, better spacing
+  1041→8. **Performance Section** — Animated gold border sweep on chart card
+  1042→9. **Final CTA** — Animated border + pulsing glow, spring-animated buttons
+  1043→
+  1044→### Quality
+  1045→- `bun run lint` passes clean
+  1046→- No backend/API changes
+  1047→- All existing data and structure preserved
+  1048→

@@ -383,6 +383,14 @@
 .ticker-tape-container:hover .ticker-tape-track {
   animation-play-state: paused;
 }
+
+/* Enhanced ticker bar with gold gradient background */
+.ticker-bar-enhanced {
+  background: linear-gradient(90deg, rgba(212,175,55,0.04) 0%, rgba(212,175,55,0.08) 50%, rgba(212,175,55,0.04) 100%);
+  border-top: 1px solid rgba(212,175,55,0.08);
+  border-bottom: 1px solid rgba(212,175,55,0.08);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .ticker-tape-track {
     animation: none;
@@ -868,6 +876,481 @@
   .gold-underline-accent::after,
   .status-pill-pulse::after {
     animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* ============================================================ */
+/*  ROUND 9-A — Premium Landing Page Enhancement utilities      */
+/* ============================================================ */
+
+/* Animated gold gradient border that sweeps around the element */
+@keyframes border-sweep {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+.gold-border-sweep {
+  position: relative;
+  border: 1px solid transparent;
+  background-clip: padding-box;
+}
+.gold-border-sweep::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    90deg,
+    rgba(212, 175, 55, 0.1),
+    rgba(212, 175, 55, 0.6),
+    rgba(255, 215, 0, 0.8),
+    rgba(212, 175, 55, 0.6),
+    rgba(212, 175, 55, 0.1)
+  );
+  background-size: 300% 100%;
+  animation: border-sweep 4s ease-in-out infinite;
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* Text with animated gold shimmer effect */
+@keyframes gold-shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+.text-gold-shimmer {
+  background: linear-gradient(
+    90deg,
+    #d4af37 0%,
+    #ffd700 20%,
+    #f1d27a 40%,
+    #d4af37 60%,
+    #b8860b 80%,
+    #d4af37 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  animation: gold-shimmer 3s linear infinite;
+}
+
+/* Infinite horizontal scroll for press logos */
+@keyframes press-marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.press-logo-marquee {
+  display: inline-flex;
+  white-space: nowrap;
+  animation: press-marquee 30s linear infinite;
+  will-change: transform;
+}
+.press-logo-marquee-container:hover .press-logo-marquee {
+  animation-play-state: paused;
+}
+
+/* Styling for particle canvas */
+.hero-particle-canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* Pulsing gold border glow for hero container */
+@keyframes hero-glow-pulse {
+  0%, 100% { box-shadow: 0 0 30px rgba(212, 175, 55, 0.08), inset 0 0 30px rgba(212, 175, 55, 0.02); }
+  50% { box-shadow: 0 0 50px rgba(212, 175, 55, 0.15), inset 0 0 50px rgba(212, 175, 55, 0.04); }
+}
+.hero-glow-pulse {
+  animation: hero-glow-pulse 4s ease-in-out infinite;
+}
+
+/* Gold gradient sweep on CTA buttons */
+@keyframes cta-sweep {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+.cta-gold-sweep {
+  position: relative;
+  overflow: hidden;
+}
+.cta-gold-sweep::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    120deg,
+    transparent 30%,
+    rgba(255, 215, 0, 0.25) 50%,
+    transparent 70%
+  );
+  background-size: 200% 100%;
+  animation: cta-sweep 3s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* Section gold left border accent */
+.section-gold-accent {
+  position: relative;
+  padding-left: 1.25rem;
+}
+.section-gold-accent::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 4px;
+  bottom: 4px;
+  width: 3px;
+  border-radius: 3px;
+  background: linear-gradient(180deg, rgba(212, 175, 55, 0.8), rgba(212, 175, 55, 0.15));
+}
+
+/* Footer gold gradient separator */
+.footer-gold-separator {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(212, 175, 55, 0.08) 15%,
+    rgba(212, 175, 55, 0.4) 50%,
+    rgba(212, 175, 55, 0.08) 85%,
+    transparent 100%
+  );
+}
+
+/* Footer legal link hover gold effect */
+.footer-link-gold {
+  position: relative;
+  transition: color 0.25s ease;
+}
+.footer-link-gold::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 1px;
+  background: #D4AF37;
+  transition: width 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.footer-link-gold:hover {
+  color: #D4AF37;
+}
+.footer-link-gold:hover::after {
+  width: 100%;
+}
+
+/* Backed-by logo placeholder styling */
+.backed-by-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.5rem 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 0.5rem;
+  background: rgba(255, 255, 255, 0.02);
+  transition: border-color 0.3s ease, background-color 0.3s ease;
+}
+.backed-by-logo:hover {
+  border-color: rgba(212, 175, 55, 0.2);
+  background: rgba(212, 175, 55, 0.03);
+}
+
+/* Press logo underline sweep */
+@keyframes press-underline-sweep {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+.press-logo-item {
+  position: relative;
+  padding-bottom: 4px;
+}
+.press-logo-item::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #D4AF37, transparent);
+  overflow: hidden;
+}
+.press-logo-item::before {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: #D4AF37;
+  animation: press-underline-sweep 3s ease-in-out infinite;
+}
+
+/* Reduced motion for new Round 9-A animations */
+@media (prefers-reduced-motion: reduce) {
+  .gold-border-sweep::before,
+  .text-gold-shimmer,
+  .press-logo-marquee,
+  .hero-glow-pulse,
+  .cta-gold-sweep::after,
+  .press-logo-item::before {
+    animation: none !important;
+  }
+}
+
+/* ============================================================ */
+/*  ROUND 9-F — Premium Micro-interactions & Animations          */
+/* ============================================================ */
+
+/* Gold glow hover — subtle gold box-shadow glow on hover with smooth transition */
+.gold-glow-hover {
+  transition: box-shadow 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+              border-color 0.35s ease;
+}
+.gold-glow-hover:hover {
+  box-shadow:
+    0 0 24px rgba(212, 175, 55, 0.15),
+    0 0 1px rgba(212, 175, 55, 0.4);
+  border-color: rgba(212, 175, 55, 0.3);
+}
+
+/* Gold shimmer loading state — gold-colored shimmer for loading states */
+@keyframes shimmer-gold-move {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+.shimmer-gold {
+  background: linear-gradient(
+    110deg,
+    rgba(212, 175, 55, 0) 30%,
+    rgba(212, 175, 55, 0.35) 50%,
+    rgba(212, 175, 55, 0) 70%
+  );
+  background-size: 200% 100%;
+  animation: shimmer-gold-move 2.4s linear infinite;
+}
+
+/* Float subtle — very subtle floating animation (2px up/down) */
+@keyframes float-subtle {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-2px); }
+}
+.float-subtle {
+  animation: float-subtle 3s ease-in-out infinite;
+}
+
+/* Pulse gold — gold pulsing glow effect for important elements */
+@keyframes pulse-gold-glow {
+  0%, 100% {
+    box-shadow: 0 0 8px rgba(212, 175, 55, 0.2),
+                0 0 1px rgba(212, 175, 55, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(212, 175, 55, 0.35),
+                0 0 1px rgba(212, 175, 55, 0.6);
+  }
+}
+.pulse-gold {
+  animation: pulse-gold-glow 2.5s ease-in-out infinite;
+}
+
+/* Slide in right — slide in from right with fade */
+@keyframes slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+.slide-in-right {
+  animation: slide-in-right 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Scale in — scale from 0.95 to 1 with fade */
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.scale-in {
+  animation: scale-in 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Animated border glow for alert cards */
+@keyframes border-glow-pulse {
+  0%, 100% {
+    border-color: rgba(212, 175, 55, 0.25);
+    box-shadow: 0 0 12px rgba(212, 175, 55, 0.08),
+                inset 0 0 12px rgba(212, 175, 55, 0.02);
+  }
+  50% {
+    border-color: rgba(212, 175, 55, 0.55);
+    box-shadow: 0 0 28px rgba(212, 175, 55, 0.2),
+                inset 0 0 20px rgba(212, 175, 55, 0.05);
+  }
+}
+.border-glow-pulse {
+  animation: border-glow-pulse 3s ease-in-out infinite;
+}
+
+/* Gold gradient left border on active sidebar item */
+@keyframes sidebar-indicator-glow {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
+.nav-active-indicator-gold {
+  position: relative;
+  border-left: 3px solid transparent;
+  border-image: linear-gradient(180deg, #ffd700, #D4AF37, #b8860b) 1;
+  border-radius: 0;
+}
+.nav-active-indicator-glow::before {
+  content: '';
+  position: absolute;
+  left: -3px;
+  top: 15%;
+  bottom: 15%;
+  width: 3px;
+  background: linear-gradient(180deg, rgba(255, 215, 0, 0.9), rgba(212, 175, 55, 0.6));
+  border-radius: 0 2px 2px 0;
+  box-shadow: 0 0 8px rgba(212, 175, 55, 0.4);
+  animation: sidebar-indicator-glow 3s ease-in-out infinite;
+}
+
+/* Online indicator dot animation */
+@keyframes online-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(0, 200, 150, 0.5); }
+  50% { box-shadow: 0 0 0 4px rgba(0, 200, 150, 0); }
+}
+.online-dot-pulse {
+  animation: online-pulse 2s ease-in-out infinite;
+}
+
+/* Need help card gold border animation */
+@keyframes help-card-border {
+  0%, 100% {
+    border-color: rgba(212, 175, 55, 0.15);
+    box-shadow: 0 0 0 rgba(212, 175, 55, 0);
+  }
+  50% {
+    border-color: rgba(212, 175, 55, 0.35);
+    box-shadow: 0 0 16px rgba(212, 175, 55, 0.08);
+  }
+}
+.help-card-glow {
+  animation: help-card-border 4s ease-in-out infinite;
+}
+
+/* Investor row hover gold left border */
+.investor-row-hover {
+  position: relative;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+  border-left: 2px solid transparent;
+}
+.investor-row-hover:hover {
+  background-color: rgba(212, 175, 55, 0.04);
+  border-left-color: rgba(212, 175, 55, 0.5);
+}
+
+/* Animated status badge */
+@keyframes badge-pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.65; }
+}
+.status-badge-animated {
+  animation: badge-pulse-soft 2.5s ease-in-out infinite;
+}
+
+/* Gold ring on investor avatar */
+.investor-avatar-ring {
+  box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.3);
+  transition: box-shadow 0.3s ease, transform 0.2s ease;
+}
+.investor-avatar-ring:hover {
+  box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.7),
+              0 0 12px rgba(212, 175, 55, 0.2);
+  transform: scale(1.08);
+}
+
+/* Allocation card gold glow on hover */
+.allocation-card-glow {
+  transition: box-shadow 0.3s ease, border-color 0.3s ease, transform 0.3s ease;
+}
+.allocation-card-glow:hover {
+  box-shadow: 0 0 20px rgba(212, 175, 55, 0.12),
+              0 0 1px rgba(212, 175, 55, 0.3);
+  border-color: rgba(212, 175, 55, 0.25);
+  transform: translateY(-1px);
+}
+
+/* Save button gold gradient sweep */
+@keyframes save-sweep {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+.save-btn-gold-sweep {
+  position: relative;
+  overflow: hidden;
+}
+.save-btn-gold-sweep::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    120deg,
+    transparent 25%,
+    rgba(255, 255, 255, 0.2) 50%,
+    transparent 75%
+  );
+  background-size: 200% 100%;
+  animation: none;
+  pointer-events: none;
+}
+.save-btn-gold-sweep:hover::after {
+  animation: save-sweep 0.8s ease-in-out;
+}
+
+/* Allocation weight change transition */
+.allocation-weight-transition {
+  transition: width 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Reduced motion for Round 9-F animations */
+@media (prefers-reduced-motion: reduce) {
+  .shimmer-gold,
+  .float-subtle,
+  .pulse-gold,
+  .slide-in-right,
+  .scale-in,
+  .border-glow-pulse,
+  .nav-active-indicator-glow::before,
+  .online-dot-pulse,
+  .help-card-glow,
+  .status-badge-animated,
+  .save-btn-gold-sweep::after {
+    animation: none !important;
+  }
+  .gold-glow-hover,
+  .investor-row-hover,
+  .investor-avatar-ring,
+  .allocation-card-glow {
     transition: none !important;
   }
 }

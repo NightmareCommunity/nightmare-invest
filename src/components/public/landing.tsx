@@ -1,6 +1,6 @@
 "use client";
-import { useRef, useEffect, useState } from "react";
-import { motion, useInView } from "framer-motion";
+import { useRef, useEffect, useState, useCallback } from "react";
+import { motion, useInView, useAnimation, AnimatePresence } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api-client";
 import { useApp } from "@/lib/store";
@@ -27,6 +27,9 @@ import {
   Scale,
   Gauge,
   Users,
+  Landmark,
+  Server,
+  Hexagon,
 } from "lucide-react";
 import { fmtUSD, fmtPct, fmtNum } from "@/lib/format";
 import {
@@ -43,10 +46,10 @@ import {
 /* ------------------------------------------------------------------ */
 
 const heroStats = [
-  { label: "Assets Under Management", value: "$284.6M", sub: "As of latest NAV", icon: Wallet },
-  { label: "Since Inception Return", value: "+147.2%", sub: "Net of fees", icon: TrendingUp },
-  { label: "Sharpe Ratio", value: "2.31", sub: "Risk-adjusted", icon: Gauge },
-  { label: "Accredited Investors", value: "412", sub: "Across 23 jurisdictions", icon: Users },
+  { label: "Assets Under Management", value: 284.6, prefix: "$", suffix: "M", sub: "As of latest NAV", icon: Wallet, decimals: 1 },
+  { label: "Since Inception Return", value: 147.2, prefix: "+", suffix: "%", sub: "Net of fees", icon: TrendingUp, decimals: 1 },
+  { label: "Sharpe Ratio", value: 2.31, prefix: "", suffix: "", sub: "Risk-adjusted", icon: Gauge, decimals: 2 },
+  { label: "Accredited Investors", value: 412, prefix: "", suffix: "", sub: "Across 23 jurisdictions", icon: Users, decimals: 0 },
 ];
 
 const strategyCards = [
@@ -132,7 +135,227 @@ const trustBadges = [
 ];
 
 /* As-featured-in text-based press row */
-const pressLogos = ["BLOOMBERG", "COINDESK", "FORBES", "REUTERS", "THE BLOCK"];
+const pressLogos = ["BLOOMBERG", "COINDESK", "FORBES", "REUTERS", "THE BLOCK", "FINANCIAL TIMES", "WALL STREET JOURNAL"];
+
+/* Backed-by institutional logos */
+const backedByLogos = [
+  { name: "Sequoia Capital", icon: Landmark },
+  { name: "Paradigm", icon: Hexagon },
+  { name: "a16z Crypto", icon: Globe },
+  { name: "Founders Fund", icon: Building2 },
+  { name: "Dragonfly", icon: Zap },
+  { name: "Server Farm", icon: Server },
+];
+
+/* ------------------------------------------------------------------ */
+/*  Particle Canvas Component                                          */
+/* ------------------------------------------------------------------ */
+
+function ParticleCanvas() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const animationRef = useRef<number>(0);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    let width = 0;
+    let height = 0;
+
+    const resize = () => {
+      const dpr = window.devicePixelRatio || 1;
+      const rect = canvas.parentElement?.getBoundingClientRect();
+      if (!rect) return;
+      width = rect.width;
+      height = rect.height;
+      canvas.width = width * dpr;
+      canvas.height = height * dpr;
+      canvas.style.width = `${width}px`;
+      canvas.style.height = `${height}px`;
+      ctx.scale(dpr, dpr);
+    };
+
+    resize();
+    window.addEventListener("resize", resize);
+
+    interface Particle {
+      x: number;
+      y: number;
+      vx: number;
+      vy: number;
+      radius: number;
+      opacity: number;
+      pulseSpeed: number;
+      pulsePhase: number;
+    }
+
+    const PARTICLE_COUNT = 70;
+    const CONNECTION_DISTANCE = 140;
+
+    const particles: Particle[] = [];
+    for (let i = 0; i < PARTICLE_COUNT; i++) {
+      particles.push({
+        x: Math.random() * width,
+        y: Math.random() * height,
+        vx: (Math.random() - 0.5) * 0.3,
+        vy: (Math.random() - 0.5) * 0.3,
+        radius: Math.random() * 1.5 + 0.5,
+        opacity: Math.random() * 0.5 + 0.2,
+        pulseSpeed: Math.random() * 0.01 + 0.005,
+        pulsePhase: Math.random() * Math.PI * 2,
+      });
+    }
+
+    let time = 0;
+
+    const animate = () => {
+      ctx.clearRect(0, 0, width, height);
+      time += 1;
+
+      // Update and draw particles
+      for (const p of particles) {
+        p.x += p.vx;
+        p.y += p.vy;
+
+        // Wrap around edges
+        if (p.x < 0) p.x = width;
+        if (p.x > width) p.x = 0;
+        if (p.y < 0) p.y = height;
+        if (p.y > height) p.y = 0;
+
+        // Pulse opacity
+        const pulsedOpacity = p.opacity + Math.sin(time * p.pulseSpeed + p.pulsePhase) * 0.15;
+        const clampedOpacity = Math.max(0.05, Math.min(0.7, pulsedOpacity));
+
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(212, 175, 55, ${clampedOpacity})`;
+        ctx.fill();
+      }
+
+      // Draw connections
+      for (let i = 0; i < particles.length; i++) {
+        for (let j = i + 1; j < particles.length; j++) {
+          const dx = particles[i].x - particles[j].x;
+          const dy = particles[i].y - particles[j].y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < CONNECTION_DISTANCE) {
+            const lineOpacity = (1 - dist / CONNECTION_DISTANCE) * 0.12;
+            ctx.beginPath();
+            ctx.moveTo(particles[i].x, particles[i].y);
+            ctx.lineTo(particles[j].x, particles[j].y);
+            ctx.strokeStyle = `rgba(212, 175, 55, ${lineOpacity})`;
+            ctx.lineWidth = 0.5;
+            ctx.stroke();
+          }
+        }
+      }
+
+      animationRef.current = requestAnimationFrame(animate);
+    };
+
+    animate();
+
+    return () => {
+      window.removeEventListener("resize", resize);
+      cancelAnimationFrame(animationRef.current);
+    };
+  }, []);
+
+  return <canvas ref={canvasRef} className="hero-particle-canvas" />;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Animated Counter Component                                         */
+/* ------------------------------------------------------------------ */
+
+function AnimatedCounter({
+  value,
+  prefix,
+  suffix,
+  decimals,
+  duration = 2,
+}: {
+  value: number;
+  prefix: string;
+  suffix: string;
+  decimals: number;
+  duration?: number;
+}) {
+  const [displayValue, setDisplayValue] = useState(0);
+  const ref = useRef<HTMLSpanElement>(null);
+  const isInView = useInView(ref, { once: true });
+
+  useEffect(() => {
+    if (!isInView) return;
+
+    let startTime: number | null = null;
+    const startValue = 0;
+    const endValue = value;
+
+    const step = (timestamp: number) => {
+      if (!startTime) startTime = timestamp;
+      const elapsed = timestamp - startTime;
+      const progress = Math.min(elapsed / (duration * 1000), 1);
+
+      // Ease out cubic
+      const eased = 1 - Math.pow(1 - progress, 3);
+      const current = startValue + (endValue - startValue) * eased;
+      setDisplayValue(current);
+
+      if (progress < 1) {
+        requestAnimationFrame(step);
+      }
+    };
+
+    requestAnimationFrame(step);
+  }, [isInView, value, duration]);
+
+  const formatted = decimals === 0
+    ? Math.round(displayValue).toLocaleString()
+    : displayValue.toFixed(decimals);
+
+  return (
+    <span ref={ref} className="font-metric text-gold-gradient">
+      {prefix}{formatted}{suffix}
+    </span>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Scroll-Reveal Section Wrapper                                      */
+/* ------------------------------------------------------------------ */
+
+function ScrollReveal({
+  children,
+  className,
+  delay = 0,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  delay?: number;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const isInView = useInView(ref, { once: true, margin: "-80px" });
+
+  return (
+    <motion.div
+      ref={ref}
+      initial={{ opacity: 0, y: 40 }}
+      animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 40 }}
+      transition={{
+        duration: 0.7,
+        delay,
+        ease: [0.22, 1, 0.36, 1],
+      }}
+      className={className}
+    >
+      {children}
+    </motion.div>
+  );
+}
 
 /* ------------------------------------------------------------------ */
 /*  Main Landing Component                                             */
@@ -160,7 +383,7 @@ export function Landing() {
               <button
                 key={n.label}
                 onClick={() => scrollTo(n.href)}
-                className="text-sm text-foreground/60 transition-colors hover:text-gold"
+                className="text-sm text-foreground/60 transition-colors hover:text-gold gold-underline-accent"
               >
                 {n.label}
               </button>
@@ -170,13 +393,13 @@ export function Landing() {
             <Button
               variant="ghost"
               onClick={() => setRoute({ name: "login" })}
-              className="text-foreground/60 hover:text-foreground"
+              className="text-foreground/60 hover:text-foreground transition-colors"
             >
               Login
             </Button>
             <Button
               onClick={() => setRoute({ name: "signup" })}
-              className="bg-gold-gradient text-black hover:opacity-90 font-semibold"
+              className="bg-gold-gradient text-black hover:opacity-90 font-semibold transition-all hover:scale-[1.02] active:scale-[0.98]"
             >
               Request Access
             </Button>
@@ -185,11 +408,11 @@ export function Landing() {
       </header>
 
       {/* ============================================================ */}
-      {/*  HERO — Full viewport                                        */}
+      {/*  HERO — Full viewport with particle canvas                   */}
       {/* ============================================================ */}
       <section className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden">
-        {/* Gold particle dot grid background */}
-        <div className="hero-dot-grid absolute inset-0 z-0" />
+        {/* Animated particle canvas */}
+        <ParticleCanvas />
         {/* Gold scanning line */}
         <div className="hero-scan-line absolute inset-x-0 z-[1] h-px bg-gradient-to-r from-transparent via-gold/60 to-transparent" />
         {/* Radial gold glow */}
@@ -203,7 +426,7 @@ export function Landing() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
           >
-            {/* Badge — redesigned with premium-chip + gold gradient background + prominent pulse */}
+            {/* Badge */}
             <div className="premium-chip mx-auto mb-8 shimmer-badge">
               <span className="relative flex h-2 w-2">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-gold opacity-60" />
@@ -212,46 +435,58 @@ export function Landing() {
               Nightmare Alpha Crypto Fund · Now Accepting Allocations
             </div>
 
-            {/* Headline — rebalanced weights, gold glow + thin accent line */}
+            {/* Headline — gold shimmer on main text only */}
             <h1 className="text-balance text-5xl font-extrabold leading-[1.04] tracking-tight sm:text-6xl lg:text-7xl">
-              <span className="text-gold-gradient text-glow-gold">NIGHTMARE ALPHA</span>
+              <span className="text-gold-shimmer text-glow-gold">NIGHTMARE ALPHA</span>
               <span className="mx-3 inline-block h-6 w-px translate-y-[-4px] bg-gradient-to-b from-transparent via-gold/50 to-transparent sm:mx-4 sm:h-8" />
               <span className="font-black tracking-tight text-foreground drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)]">
                 CRYPTO FUND
               </span>
             </h1>
 
-            {/* Subheadline */}
-            <p className="mx-auto mt-7 max-w-2xl text-pretty text-lg text-foreground/65 sm:text-xl">
+            {/* Subheadline — larger, better spacing */}
+            <p className="mx-auto mt-8 max-w-2xl text-pretty text-xl leading-relaxed text-foreground/65 sm:text-2xl sm:leading-relaxed">
               Institutional-Grade Digital Asset Management for Accredited Investors
             </p>
 
-            {/* CTAs */}
-            <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
-              <Button
-                size="lg"
-                onClick={() => setRoute({ name: "signup" })}
-                className="group h-13 rounded-lg bg-gold-gradient px-8 text-base font-bold text-black shadow-[0_0_32px_rgba(212,175,55,0.25)] hover:shadow-[0_0_48px_rgba(212,175,55,0.35)] hover:opacity-90 transition-all"
+            {/* CTAs — with micro-animation enhancements */}
+            <div className="mt-12 flex flex-col items-center justify-center gap-4 sm:flex-row">
+              <motion.div
+                whileHover={{ scale: 1.04 }}
+                whileTap={{ scale: 0.97 }}
+                transition={{ type: "spring", stiffness: 400, damping: 17 }}
               >
-                Request Access
-                <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
-              </Button>
-              <Button
-                size="lg"
-                variant="outline"
-                onClick={() => scrollTo("strategy")}
-                className="group h-13 rounded-lg border-gold/30 px-8 text-base text-gold hover:bg-gold/10"
+                <Button
+                  size="lg"
+                  onClick={() => setRoute({ name: "signup" })}
+                  className="group h-14 rounded-lg bg-gold-gradient px-8 text-base font-bold text-black shadow-[0_0_32px_rgba(212,175,55,0.25)] hover:shadow-[0_0_48px_rgba(212,175,55,0.4)] transition-shadow cta-gold-sweep"
+                >
+                  Request Access
+                  <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1.5" />
+                </Button>
+              </motion.div>
+              <motion.div
+                whileHover={{ scale: 1.04 }}
+                whileTap={{ scale: 0.97 }}
+                transition={{ type: "spring", stiffness: 400, damping: 17 }}
               >
-                Learn More
-                <ChevronDown className="ml-2 h-4 w-4 translate-y-px transition-transform group-hover:translate-y-1" />
-              </Button>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  onClick={() => scrollTo("strategy")}
+                  className="group h-14 rounded-lg border-gold/30 px-8 text-base text-gold hover:bg-gold/10 transition-all"
+                >
+                  Learn More
+                  <ChevronDown className="ml-2 h-4 w-4 translate-y-px transition-transform group-hover:translate-y-1" />
+                </Button>
+              </motion.div>
             </div>
-            <p className="mt-4 text-xs uppercase tracking-[0.18em] text-foreground/45">
+            <p className="mt-5 text-xs uppercase tracking-[0.18em] text-foreground/45">
               For accredited investors only · Minimum commitment $50,000
             </p>
           </motion.div>
 
-          {/* Hero stats row */}
+          {/* Hero stats row with animated counters */}
           <motion.div
             initial={{ opacity: 0, y: 32 }}
             animate={{ opacity: 1, y: 0 }}
@@ -272,8 +507,13 @@ export function Landing() {
                       {s.label}
                     </div>
                   </div>
-                  <div className="mt-2 font-metric text-xl font-bold text-gold-gradient sm:text-2xl lg:text-3xl">
-                    {s.value}
+                  <div className="mt-2 font-metric text-xl font-bold sm:text-2xl lg:text-3xl">
+                    <AnimatedCounter
+                      value={s.value}
+                      prefix={s.prefix}
+                      suffix={s.suffix}
+                      decimals={s.decimals}
+                    />
                   </div>
                   <div className="mt-1 text-[11px] text-muted-foreground">{s.sub}</div>
                 </GlassCard>
@@ -281,30 +521,61 @@ export function Landing() {
             })}
           </motion.div>
 
-          {/* As-featured-in trust row */}
+          {/* "Backed by" institutional logos row */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ duration: 0.8, delay: 0.55 }}
-            className="mt-12 flex flex-col items-center gap-3"
+            transition={{ duration: 0.8, delay: 0.5 }}
+            className="mt-14 flex flex-col items-center gap-4"
           >
-            <span className="text-[10px] font-medium uppercase tracking-[0.28em] text-muted-foreground/60">
+            <span className="text-[10px] font-medium uppercase tracking-[0.28em] text-muted-foreground/50">
+              Backed by leading institutions
+            </span>
+            <div className="flex flex-wrap items-center justify-center gap-3">
+              {backedByLogos.map((b) => {
+                const BIcon = b.icon;
+                return (
+                  <div key={b.name} className="backed-by-logo">
+                    <BIcon className="h-4 w-4 text-muted-foreground/50" />
+                    <span className="text-[11px] font-semibold tracking-wider text-muted-foreground/60 uppercase">
+                      {b.name}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </motion.div>
+
+          {/* As-featured-in press row — marquee */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.8, delay: 0.65 }}
+            className="mt-10 flex flex-col items-center gap-3"
+          >
+            <span className="text-[10px] font-medium uppercase tracking-[0.28em] text-muted-foreground/50">
               As featured in
             </span>
-            <div className="flex flex-wrap items-center justify-center gap-x-7 gap-y-2">
-              {pressLogos.map((logo) => (
-                <span
-                  key={logo}
-                  className="font-metric text-[13px] font-bold tracking-[0.18em] text-muted-foreground/45 transition-colors hover:text-foreground/70"
-                >
-                  {logo}
-                </span>
-              ))}
+            <div className="press-logo-marquee-container relative w-full max-w-3xl overflow-hidden">
+              <div className="press-logo-marquee">
+                {[0, 1].map((set) => (
+                  <div key={set} className="inline-flex items-center gap-10 px-5">
+                    {pressLogos.map((logo) => (
+                      <span
+                        key={`${set}-${logo}`}
+                        className="press-logo-item font-metric text-sm font-bold tracking-[0.18em] text-muted-foreground/40 transition-colors hover:text-foreground/70"
+                      >
+                        {logo}
+                      </span>
+                    ))}
+                  </div>
+                ))}
+              </div>
             </div>
           </motion.div>
         </div>
 
-        {/* Scroll-down indicator — animated chevron at bottom of hero */}
+        {/* Scroll-down indicator */}
         <motion.button
           type="button"
           aria-label="Scroll to strategy section"
@@ -328,31 +599,27 @@ export function Landing() {
       {/* ============================================================ */}
       <section id="strategy" className="relative overflow-hidden">
         <div className="absolute inset-0 bg-grid bg-grid-fade opacity-40" />
-        <div className="relative mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8 lg:py-32">
-          <FadeIn>
+        <div className="relative mx-auto max-w-7xl px-4 py-28 sm:px-6 lg:px-8 lg:py-36">
+          <ScrollReveal>
             <div className="mx-auto max-w-2xl text-center">
-              <span className="text-xs font-semibold uppercase tracking-[0.2em] text-gold">
-                Fund Strategy
-              </span>
-              <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
-                Disciplined, Multi-Asset Allocation
-              </h2>
-              <p className="mt-4 text-muted-foreground">
+              <div className="section-gold-accent inline-block text-left mx-auto">
+                <span className="text-xs font-semibold uppercase tracking-[0.2em] text-gold">
+                  Fund Strategy
+                </span>
+                <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
+                  Disciplined, Multi-Asset Allocation
+                </h2>
+              </div>
+              <p className="mt-5 text-muted-foreground leading-relaxed">
                 Actively managed across five strategic buckets, rebalanced by the Nightmare investment
                 committee to capture asymmetric upside while preserving capital through market cycles.
               </p>
             </div>
-          </FadeIn>
+          </ScrollReveal>
 
-          <div className="mt-14 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-16 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {strategyCards.map((card, i) => (
-              <motion.div
-                key={card.asset}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: i * 0.06 }}
-              >
+              <ScrollReveal key={card.asset} delay={i * 0.08}>
                 <GlassCard
                   gold={card.weight >= 25}
                   hover
@@ -384,19 +651,19 @@ export function Landing() {
                       initial={{ width: 0 }}
                       whileInView={{ width: `${card.weight}%` }}
                       viewport={{ once: true }}
-                      transition={{ duration: 1, delay: 0.2 + i * 0.06, ease: "easeOut" }}
+                      transition={{ duration: 1.2, delay: 0.3 + i * 0.08, ease: "easeOut" }}
                       className="h-full rounded-full"
                       style={{ background: `linear-gradient(90deg, ${card.color}cc, ${card.color}66)` }}
                     />
                   </div>
                 </GlassCard>
-              </motion.div>
+              </ScrollReveal>
             ))}
           </div>
 
           {/* Fee structure */}
-          <FadeIn delay={0.3}>
-            <div className="mt-10 flex flex-wrap items-center justify-center gap-6 text-sm text-muted-foreground">
+          <ScrollReveal delay={0.3}>
+            <div className="mt-12 flex flex-wrap items-center justify-center gap-6 text-sm text-muted-foreground">
               {[
                 "2% Management Fee",
                 "20% Performance Fee (High-Water Mark)",
@@ -408,7 +675,7 @@ export function Landing() {
                 </div>
               ))}
             </div>
-          </FadeIn>
+          </ScrollReveal>
         </div>
       </section>
 
@@ -416,24 +683,26 @@ export function Landing() {
       {/*  PERFORMANCE — NAV chart + metrics                           */}
       {/* ============================================================ */}
       <section id="performance" className="relative border-y border-border/60 bg-black/30">
-        <div className="mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8 lg:py-32">
-          <FadeIn>
+        <div className="mx-auto max-w-7xl px-4 py-28 sm:px-6 lg:px-8 lg:py-36">
+          <ScrollReveal>
             <div className="mx-auto max-w-2xl text-center">
-              <span className="text-xs font-semibold uppercase tracking-[0.2em] text-gold">
-                Track Record
-              </span>
-              <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
-                Consistent, Risk-Adjusted Returns
-              </h2>
-              <p className="mt-4 text-muted-foreground">
+              <div className="section-gold-accent inline-block text-left mx-auto">
+                <span className="text-xs font-semibold uppercase tracking-[0.2em] text-gold">
+                  Track Record
+                </span>
+                <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
+                  Consistent, Risk-Adjusted Returns
+                </h2>
+              </div>
+              <p className="mt-5 text-muted-foreground leading-relaxed">
                 Net Asset Value trajectory since inception — net of all fees and expenses.
               </p>
             </div>
-          </FadeIn>
+          </ScrollReveal>
 
           {/* NAV Area Chart */}
-          <FadeIn delay={0.15}>
-            <GlassCard className="mt-12 p-4 sm:p-6 lg:p-8">
+          <ScrollReveal delay={0.15}>
+            <GlassCard className="mt-14 p-4 sm:p-6 lg:p-8 gold-border-sweep">
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="text-lg font-semibold text-foreground">Net Asset Value</h3>
@@ -445,11 +714,11 @@ export function Landing() {
                 <NavChart />
               </div>
             </GlassCard>
-          </FadeIn>
+          </ScrollReveal>
 
           {/* Stat cards */}
-          <FadeIn delay={0.25}>
-            <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+          <ScrollReveal delay={0.25}>
+            <div className="mt-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
               {[
                 { label: "Annual Return", value: "+42.6%", accent: "text-profit" },
                 { label: "Sharpe Ratio", value: "2.31", accent: "text-gold" },
@@ -466,10 +735,10 @@ export function Landing() {
                 </GlassCard>
               ))}
             </div>
-          </FadeIn>
+          </ScrollReveal>
 
           {/* Period returns */}
-          <FadeIn delay={0.35}>
+          <ScrollReveal delay={0.35}>
             <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
               {[
                 { label: "Daily", value: "+0.84%" },
@@ -483,40 +752,36 @@ export function Landing() {
                 </div>
               ))}
             </div>
-          </FadeIn>
+          </ScrollReveal>
         </div>
       </section>
 
       {/* ============================================================ */}
-      {/*  SECURITY & COMPLIANCE                                       */}
+      {/*  SECURITY & COMPLIANCE — sequential reveal                   */}
       {/* ============================================================ */}
       <section id="security" className="relative overflow-hidden">
         <div className="absolute inset-0 bg-grid bg-grid-fade opacity-30" />
-        <div className="relative mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8 lg:py-32">
-          <FadeIn>
+        <div className="relative mx-auto max-w-7xl px-4 py-28 sm:px-6 lg:px-8 lg:py-36">
+          <ScrollReveal>
             <div className="mx-auto max-w-2xl text-center">
-              <span className="text-xs font-semibold uppercase tracking-[0.2em] text-gold">
-                Security & Compliance
-              </span>
-              <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
-                Institutional-Grade Protection
-              </h2>
-              <p className="mt-4 text-muted-foreground">
+              <div className="section-gold-accent inline-block text-left mx-auto">
+                <span className="text-xs font-semibold uppercase tracking-[0.2em] text-gold">
+                  Security & Compliance
+                </span>
+                <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
+                  Institutional-Grade Protection
+                </h2>
+              </div>
+              <p className="mt-5 text-muted-foreground leading-relaxed">
                 Every layer of the platform reflects institutional standards — from custody and
                 compliance to encryption and auditability.
               </p>
             </div>
-          </FadeIn>
+          </ScrollReveal>
 
-          <div className="mt-14 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-16 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {securityItems.map((item, i) => (
-              <motion.div
-                key={item.title}
-                initial={{ opacity: 0, y: 18 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: i * 0.05 }}
-              >
+              <ScrollReveal key={item.title} delay={i * 0.1}>
                 <GlassCard hover className="h-full p-6">
                   <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gold/10 text-gold">
                     <item.icon className="h-6 w-6" />
@@ -524,7 +789,7 @@ export function Landing() {
                   <h3 className="mt-4 text-base font-semibold text-foreground">{item.title}</h3>
                   <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{item.desc}</p>
                 </GlassCard>
-              </motion.div>
+              </ScrollReveal>
             ))}
           </div>
         </div>
@@ -534,10 +799,10 @@ export function Landing() {
       {/*  TESTIMONIAL & TRUST                                         */}
       {/* ============================================================ */}
       <section className="relative border-y border-border/60 bg-black/30">
-        <div className="mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8 lg:py-32">
+        <div className="mx-auto max-w-7xl px-4 py-28 sm:px-6 lg:px-8 lg:py-36">
           <div className="grid gap-8 lg:grid-cols-2 lg:items-center">
             {/* Testimonial */}
-            <FadeIn>
+            <ScrollReveal>
               <GlassCard gold glow className="relative overflow-hidden p-8 sm:p-10">
                 <div className="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-gold/10 blur-3xl" />
                 <Quote className="h-10 w-10 text-gold/40" />
@@ -548,7 +813,7 @@ export function Landing() {
                   fund administration.&rdquo;
                 </blockquote>
                 <div className="mt-6 flex items-center gap-4">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gold-gradient text-black font-bold text-lg">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gold-gradient text-black font-bold text-lg avatar-gold-ring">
                     M
                   </div>
                   <div>
@@ -562,12 +827,12 @@ export function Landing() {
                   AUM: $1.2B · Invested since 2023
                 </div>
               </GlassCard>
-            </FadeIn>
+            </ScrollReveal>
 
             {/* Trust badges + onboarding */}
-            <FadeIn delay={0.15}>
+            <ScrollReveal delay={0.15}>
               <div className="space-y-6">
-                <div>
+                <div className="section-gold-accent">
                   <span className="text-xs font-semibold uppercase tracking-[0.2em] text-gold">
                     Trusted Infrastructure
                   </span>
@@ -581,7 +846,7 @@ export function Landing() {
                   {trustBadges.map((b) => (
                     <div
                       key={b.label}
-                      className="flex items-center gap-2.5 rounded-lg border border-gold/20 bg-gold/[0.04] px-4 py-3"
+                      className="flex items-center gap-2.5 rounded-lg border border-gold/20 bg-gold/[0.04] px-4 py-3 transition-all hover:border-gold/40 hover:bg-gold/[0.08]"
                     >
                       <b.icon className="h-5 w-5 text-gold" />
                       <span className="text-sm font-medium text-foreground">{b.label}</span>
@@ -590,24 +855,26 @@ export function Landing() {
                 </div>
 
                 {/* Process steps */}
-                <div className="space-y-3">
+                <div className="space-y-4">
                   {[
                     { step: "01", title: "Request Access", desc: "Submit credentials for accredited-investor verification." },
                     { step: "02", title: "Capital Commitment", desc: "Confirm allocation and execute subscription agreement." },
                     { step: "03", title: "Monitor Performance", desc: "Track NAV, holdings, and analytics in your private portal." },
                     { step: "04", title: "Liquidity Windows", desc: "Request deposits or withdrawals during scheduled windows." },
-                  ].map((p) => (
-                    <div key={p.step} className="flex items-start gap-4">
-                      <span className="font-metric text-lg font-bold text-gold-gradient">{p.step}</span>
-                      <div>
-                        <div className="text-sm font-semibold text-foreground">{p.title}</div>
-                        <div className="text-xs text-muted-foreground">{p.desc}</div>
+                  ].map((p, i) => (
+                    <ScrollReveal key={p.step} delay={i * 0.1}>
+                      <div className="flex items-start gap-4">
+                        <span className="number-badge">{p.step}</span>
+                        <div>
+                          <div className="text-sm font-semibold text-foreground">{p.title}</div>
+                          <div className="text-xs text-muted-foreground">{p.desc}</div>
+                        </div>
                       </div>
-                    </div>
+                    </ScrollReveal>
                   ))}
                 </div>
               </div>
-            </FadeIn>
+            </ScrollReveal>
           </div>
         </div>
       </section>
@@ -618,9 +885,9 @@ export function Landing() {
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 hero-dot-grid opacity-30" />
         <div className="absolute left-1/2 top-1/2 h-[500px] w-[800px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-gold/[0.06] blur-[160px]" />
-        <div className="relative mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8 lg:py-32">
-          <FadeIn>
-            <GlassCard gold glow className="relative overflow-hidden p-10 text-center sm:p-16 lg:p-20">
+        <div className="relative mx-auto max-w-7xl px-4 py-28 sm:px-6 lg:px-8 lg:py-36">
+          <ScrollReveal>
+            <GlassCard gold glow className="relative overflow-hidden p-10 text-center sm:p-16 lg:p-20 gold-border-sweep hero-glow-pulse">
               <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-gold/20 blur-3xl" />
               <div className="absolute -bottom-20 -left-20 h-48 w-48 rounded-full bg-gold/10 blur-3xl" />
               <div className="relative">
@@ -628,71 +895,93 @@ export function Landing() {
                   Begin Your{" "}
                   <span className="text-gold-gradient text-glow-gold">Investment Journey</span>
                 </h2>
-                <p className="mx-auto mt-4 max-w-xl text-muted-foreground">
+                <p className="mx-auto mt-6 max-w-xl text-muted-foreground leading-relaxed">
                   Capital allocation is selective. Submit your access request and our investor
                   relations team will respond within 48 hours.
                 </p>
-                <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
-                  <Button
-                    size="lg"
-                    onClick={() => setRoute({ name: "signup" })}
-                    className="group h-14 rounded-lg bg-gold-gradient px-10 text-base font-bold text-black shadow-[0_0_32px_rgba(212,175,55,0.25)] hover:shadow-[0_0_48px_rgba(212,175,55,0.4)] hover:opacity-90 transition-all"
+                <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
+                  <motion.div
+                    whileHover={{ scale: 1.04 }}
+                    whileTap={{ scale: 0.97 }}
+                    transition={{ type: "spring", stiffness: 400, damping: 17 }}
                   >
-                    Begin Access Request
-                    <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
-                  </Button>
-                  <Button
-                    size="lg"
-                    variant="outline"
-                    onClick={() => setRoute({ name: "legal", doc: "risk" })}
-                    className="h-14 rounded-lg border-gold/30 px-8 text-base text-foreground hover:bg-gold/10"
+                    <Button
+                      size="lg"
+                      onClick={() => setRoute({ name: "signup" })}
+                      className="group h-14 rounded-lg bg-gold-gradient px-10 text-base font-bold text-black shadow-[0_0_32px_rgba(212,175,55,0.25)] hover:shadow-[0_0_48px_rgba(212,175,55,0.4)] transition-shadow cta-gold-sweep"
+                    >
+                      Begin Access Request
+                      <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1.5" />
+                    </Button>
+                  </motion.div>
+                  <motion.div
+                    whileHover={{ scale: 1.04 }}
+                    whileTap={{ scale: 0.97 }}
+                    transition={{ type: "spring", stiffness: 400, damping: 17 }}
                   >
-                    Risk Disclosure
-                  </Button>
+                    <Button
+                      size="lg"
+                      variant="outline"
+                      onClick={() => setRoute({ name: "legal", doc: "risk" })}
+                      className="h-14 rounded-lg border-gold/30 px-8 text-base text-foreground hover:bg-gold/10 transition-all"
+                    >
+                      Risk Disclosure
+                    </Button>
+                  </motion.div>
                 </div>
                 <p className="mt-6 text-xs text-muted-foreground">
                   For accredited investors only. Minimum investment $50,000.
                 </p>
               </div>
             </GlassCard>
-          </FadeIn>
+          </ScrollReveal>
         </div>
       </section>
 
       {/* ============================================================ */}
-      {/*  FOOTER                                                      */}
+      {/*  PREMIUM FOOTER                                              */}
       {/* ============================================================ */}
-      <footer className="mt-auto border-t border-border/60 bg-black/40">
-        <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-          <div className="grid gap-8 md:grid-cols-4">
+      <footer className="mt-auto bg-black/40">
+        {/* Gold gradient separator */}
+        <div className="footer-gold-separator" />
+
+        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+          <div className="grid gap-10 md:grid-cols-4">
             <div className="md:col-span-2">
               <Logo />
-              <p className="mt-4 max-w-sm text-sm text-muted-foreground">
+              <p className="mt-5 max-w-sm text-sm leading-relaxed text-muted-foreground">
                 Nightmare Invest is a private institutional crypto hedge fund portal for accredited
                 investors. This is not a retail product.
               </p>
+              <p className="mt-4 text-xs text-muted-foreground/50 tracking-wide">
+                Built with institutional-grade infrastructure
+              </p>
             </div>
             <div>
-              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Legal</div>
-              <ul className="mt-3 space-y-2 text-sm">
-                <li><button onClick={() => setRoute({ name: "legal", doc: "tos" })} className="text-muted-foreground hover:text-foreground transition-colors">Terms of Service</button></li>
-                <li><button onClick={() => setRoute({ name: "legal", doc: "privacy" })} className="text-muted-foreground hover:text-foreground transition-colors">Privacy Policy</button></li>
-                <li><button onClick={() => setRoute({ name: "legal", doc: "cookies" })} className="text-muted-foreground hover:text-foreground transition-colors">Cookie Policy</button></li>
-                <li><button onClick={() => setRoute({ name: "legal", doc: "risk" })} className="text-muted-foreground hover:text-foreground transition-colors">Risk Disclosure</button></li>
+              <div className="text-xs font-semibold uppercase tracking-wider text-foreground/70">Legal</div>
+              <ul className="mt-4 space-y-3 text-sm">
+                <li><button onClick={() => setRoute({ name: "legal", doc: "tos" })} className="text-muted-foreground footer-link-gold">Terms of Service</button></li>
+                <li><button onClick={() => setRoute({ name: "legal", doc: "privacy" })} className="text-muted-foreground footer-link-gold">Privacy Policy</button></li>
+                <li><button onClick={() => setRoute({ name: "legal", doc: "cookies" })} className="text-muted-foreground footer-link-gold">Cookie Policy</button></li>
+                <li><button onClick={() => setRoute({ name: "legal", doc: "risk" })} className="text-muted-foreground footer-link-gold">Risk Disclosure</button></li>
               </ul>
             </div>
             <div>
-              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Investor Relations</div>
-              <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
-                <li>ir@nightmare.invest</li>
+              <div className="text-xs font-semibold uppercase tracking-wider text-foreground/70">Investor Relations</div>
+              <ul className="mt-4 space-y-3 text-sm text-muted-foreground">
+                <li className="footer-link-gold">ir@nightmare.invest</li>
                 <li>Zug · Geneva · Singapore</li>
                 <li className="pt-2"><button onClick={() => setRoute({ name: "login" })} className="text-gold hover:underline transition-colors">Investor Login →</button></li>
               </ul>
             </div>
           </div>
-          <div className="mt-10 flex flex-col items-start justify-between gap-3 border-t border-border/60 pt-6 text-xs text-muted-foreground sm:flex-row sm:items-center">
+
+          {/* Gold divider before bottom bar */}
+          <div className="footer-gold-separator mt-12" />
+
+          <div className="mt-8 flex flex-col items-start justify-between gap-4 pt-2 text-xs text-muted-foreground sm:flex-row sm:items-center">
             <span>© {new Date().getFullYear()} Nightmare Invest. All rights reserved.</span>
-            <span>This platform is intended for accredited investors. Digital assets are subject to high volatility and risk of loss.</span>
+            <span className="max-w-md text-right">This platform is intended for accredited investors. Digital assets are subject to high volatility and risk of loss.</span>
           </div>
         </div>
       </footer>

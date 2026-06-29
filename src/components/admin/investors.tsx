@@ -91,15 +91,15 @@ export function AdminInvestors() {
 
       <FadeIn delay={0.05}>
         <div className="grid gap-4 sm:grid-cols-3">
-          <GlassCard className="p-4 hover-lift">
+          <GlassCard className="p-4 hover-lift gold-glow-hover">
             <div className="flex items-center gap-2 text-muted-foreground"><Users className="h-4 w-4" /><span className="text-[11px] uppercase tracking-wider">Total Accounts</span></div>
             <div className="mt-1 font-metric text-2xl font-bold text-foreground">{users.length}</div>
           </GlassCard>
-          <GlassCard className="p-4 hover-lift">
+          <GlassCard className="p-4 hover-lift gold-glow-hover">
             <div className="flex items-center gap-2 text-muted-foreground"><ShieldCheck className="h-4 w-4 text-gold" /><span className="text-[11px] uppercase tracking-wider">Administrators</span></div>
             <div className="mt-1 font-metric text-2xl font-bold text-gold">{users.filter((u: any) => u.role === "ADMIN").length}</div>
           </GlassCard>
-          <GlassCard className="p-4 hover-lift">
+          <GlassCard className="p-4 hover-lift gold-glow-hover">
             <div className="flex items-center gap-2 text-muted-foreground"><UserX className="h-4 w-4 text-loss" /><span className="text-[11px] uppercase tracking-wider">Suspended</span></div>
             <div className="mt-1 font-metric text-2xl font-bold text-loss">{users.filter((u: any) => !u.isActive).length}</div>
           </GlassCard>
@@ -125,10 +125,10 @@ export function AdminInvestors() {
               </thead>
               <tbody>
                 {users.map((u: any, idx: number) => (
-                  <tr key={u.id} className="border-b border-border/40 last:border-0 hover:bg-gold/5 row-enter" style={{ animationDelay: `${idx * 40}ms` }}>
+                  <tr key={u.id} className="investor-row-hover border-b border-border/40 last:border-0 row-enter" style={{ animationDelay: `${idx * 40}ms` }}>
                     <td className="py-3 pr-4">
                       <div className="flex items-center gap-2.5">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gold-gradient text-xs font-bold text-black">
+                        <div className="investor-avatar-ring flex h-8 w-8 items-center justify-center rounded-full bg-gold-gradient text-xs font-bold text-black">
                           {u.name.charAt(0).toUpperCase()}
                         </div>
                         <div>
@@ -138,15 +138,15 @@ export function AdminInvestors() {
                       </div>
                     </td>
                     <td className="py-3 pr-4">
-                      <Badge className={u.role === "ADMIN" ? "border-gold/30 bg-gold/10 text-gold" : "border-profit/30 bg-profit/10 text-profit"}>
+                      <Badge className={`status-badge-animated ${u.role === "ADMIN" ? "border-gold/30 bg-gold/10 text-gold" : "border-profit/30 bg-profit/10 text-profit"}`}>
                         {u.role}
                       </Badge>
                     </td>
                     <td className="py-3 pr-4">
                       {u.isActive ? (
-                        <span className="inline-flex items-center gap-1 text-xs text-profit"><UserCheck className="h-3.5 w-3.5" /> Active</span>
+                        <span className="status-badge-animated inline-flex items-center gap-1 text-xs text-profit"><UserCheck className="h-3.5 w-3.5" /> Active</span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 text-xs text-loss"><UserX className="h-3.5 w-3.5" /> Suspended</span>
+                        <span className="status-badge-animated inline-flex items-center gap-1 text-xs text-loss"><UserX className="h-3.5 w-3.5" /> Suspended</span>
                       )}
                     </td>
                     <td className="py-3 pr-4 font-metric text-muted-foreground">{u._count.holdings}</td>

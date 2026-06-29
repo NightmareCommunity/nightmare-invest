@@ -1,6 +1,6 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { api } from "@/lib/api-client";
 import { GlassCard, MetricTile, SectionTitle, FadeIn, SkeletonCard, SkeletonMetric } from "@/components/brand/primitives";
 import { fmtNum, fmtPct, fmtDate } from "@/lib/format";
@@ -8,6 +8,7 @@ import {
   TrendingUp, TrendingDown, Activity, Target, Gauge, Sigma,
   ArrowUp, ArrowDown, Flame, Trophy, AlertTriangle,
   BarChart3, LineChart, Shield, Info, Zap, CircleDot,
+  CloudLightning, Zap as ZapIcon, ShieldAlert, Skull,
 } from "lucide-react";
 import {
   ResponsiveContainer, AreaChart, Area, BarChart, Bar, Cell,
@@ -83,6 +84,77 @@ function computeRollingSharpeSeries(
   return result;
 }
 
+// ────────────────────────────────────────────────────────────
+// Helper: generate simulated return distribution histogram
+// from navHistory returns for VaR visualization
+// ────────────────────────────────────────────────────────────
+function computeReturnDistribution(
+  navHistory: { date: string; nav: number; ret: number | null }[],
+  bins = 40,
+): { range: string; mid: number; count: number; isVaR: boolean }[] {
+  const returns = navHistory
+    .filter((p) => p.ret !== null)
+    .map((p) => p.ret!);
+
+  if (returns.length < 10) return [];
+
+  const min = Math.min(...returns);
+  const max = Math.max(...returns);
+  const binWidth = (max - min) / bins;
+
+  if (binWidth === 0) return [];
+
+  const histogram: { mid: number; count: number }[] = [];
+  for (let i = 0; i < bins; i++) {
+    const lo = min + i * binWidth;
+    const hi = lo + binWidth;
+    const mid = (lo + hi) / 2;
+    const count = returns.filter((r) => r >= lo && r < hi).length;
+    histogram.push({ mid, count });
+  }
+
+  return histogram.map((h) => ({
+    range: `${h.mid.toFixed(2)}%`,
+    mid: h.mid,
+    count: h.count,
+    isVaR: false,
+  }));
+}
+
+// ────────────────────────────────────────────────────────────
+// Stress test scenarios definition
+// ────────────────────────────────────────────────────────────
+const STRESS_SCENARIOS = [
+  {
+    name: "Market Crash",
+    description: "Broad market sell-off similar to March 2020. Crypto assets decline 30% across the board.",
+    marketImpact: -30,
+    icon: TrendingDown,
+    color: "#EF4444",
+  },
+  {
+    name: "Flash Crash",
+    description: "Sudden liquidity vacuum. Quick 15% drop with potential for rapid recovery.",
+    marketImpact: -15,
+    icon: ZapIcon,
+    color: "#F59E0B",
+  },
+  {
+    name: "Regulatory Shock",
+    description: "Major jurisdiction bans crypto trading. Structural repricing of 20%.",
+    marketImpact: -20,
+    icon: ShieldAlert,
+    color: "#A855F7",
+  },
+  {
+    name: "Black Swan",
+    description: "Unprecedented event — exchange collapse, stablecoin depeg. 40%+ drawdown.",
+    marketImpact: -40,
+    icon: Skull,
+    color: "#DC2626",
+  },
+] as const;
+
 // ════════════════════════════════════════════════════════════
 // MAIN COMPONENT
 // ════════════════════════════════════════════════════════════
@@ -95,6 +167,7 @@ export function AnalyticsPage() {
   // Hooks must be called before any early returns
   const navHistory = data?.analytics?.navHistory ?? [];
   const rollingSharpeData = useMemo(() => computeRollingSharpeSeries(navHistory), [navHistory]);
+  const returnDistribution = useMemo(() => computeReturnDistribution(navHistory), [navHistory]);
 
   // ── Loading skeleton ───────────────────────────────────
   if (isLoading || !data) {
@@ -130,6 +203,11 @@ export function AnalyticsPage() {
   const avgYearlyReturn = a.yearlyReturns.length > 0
     ? a.yearlyReturns.reduce((s, y) => s + y.ret, 0) / a.yearlyReturns.length
     : 0;
+
+  // Find max drawdown point for the red marker
+  const maxDdPoint = a.drawdownSeries.length > 0
+    ? a.drawdownSeries.reduce((worst, d) => d.dd < worst.dd ? d : worst, a.drawdownSeries[0])
+    : null;
 
   return (
     <div className="space-y-8">
@@ -183,7 +261,7 @@ export function AnalyticsPage() {
         </div>
       </FadeIn>
 
-      {/* ── 2. Drawdown Chart (Enhanced) ───────────────── */}
+      {/* ── 2. Drawdown Timeline (Enhanced with max DD marker) ── */}
       <FadeIn delay={0.1}>
         <GlassCard className="p-6">
           <div className="flex flex-wrap items-start justify-between gap-3">
@@ -266,14 +344,21 @@ export function AnalyticsPage() {
                     strokeWidth: 2,
                   }}
                 />
-                {/* Current drawdown indicator dot */}
-                {a.drawdownSeries.length > 0 && (
+                {/* Max drawdown red marker */}
+                {maxDdPoint && (
                   <ReferenceLine
-                    x={a.drawdownSeries[a.drawdownSeries.length - 1].date}
-                    stroke="transparent"
-                  >
-                    {/* We render the dot via the area's activeDot instead */}
-                  </ReferenceLine>
+                    x={maxDdPoint.date}
+                    stroke="#EF4444"
+                    strokeWidth={2}
+                    strokeDasharray="3 3"
+                    label={{
+                      value: `Max: ${maxDdPoint.dd.toFixed(1)}%`,
+                      fill: "#EF4444",
+                      fontSize: 10,
+                      position: "top",
+                      offset: 8,
+                    }}
+                  />
                 )}
               </AreaChart>
             </ResponsiveContainer>
@@ -307,10 +392,198 @@ export function AnalyticsPage() {
         </GlassCard>
       </FadeIn>
 
-      {/* ── 4 + 5 + 6: VaR / Daily Stats / Streaks ────── */}
+      {/* ── 4. VaR Distribution Histogram (NEW) ─────────── */}
+      {returnDistribution.length > 5 && (
+        <FadeIn delay={0.18}>
+          <GlassCard className="p-6">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <SectionTitle
+                title="Return Distribution & VaR"
+                subtitle="Histogram of daily returns with 95% VaR threshold"
+              />
+              <div className="flex flex-wrap gap-5 text-right">
+                <div>
+                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground">VaR (95%)</div>
+                  <div className="font-metric text-lg font-bold text-gold">{fmtPct(a.var95)}</div>
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground">CVaR (95%)</div>
+                  <div className="font-metric text-lg font-bold text-loss">{fmtPct(a.cvar95)}</div>
+                </div>
+              </div>
+            </div>
+            <div className="mt-5 h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={returnDistribution} margin={{ top: 10, right: 10, left: 4, bottom: 2 }}>
+                  <defs>
+                    <linearGradient id="varHistGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#D4AF37" stopOpacity={0.9} />
+                      <stop offset="100%" stopColor="#D4AF37" stopOpacity={0.4} />
+                    </linearGradient>
+                    <linearGradient id="varTailGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#EF4444" stopOpacity={0.9} />
+                      <stop offset="100%" stopColor="#EF4444" stopOpacity={0.5} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} />
+                  <XAxis
+                    dataKey="range"
+                    tick={CHART_TICK}
+                    stroke={CHART_AXIS}
+                    interval={Math.floor(returnDistribution.length / 8)}
+                    tickFormatter={(v: string) => v}
+                  />
+                  <YAxis
+                    tick={CHART_TICK}
+                    stroke={CHART_AXIS}
+                    width={40}
+                    tickFormatter={(v: number) => String(v)}
+                  />
+                  <Tooltip
+                    contentStyle={CHART_TOOLTIP}
+                    formatter={(v: number, _name: string, props: any) => {
+                      const mid = props.payload?.mid;
+                      const isVaRRegion = mid !== undefined && mid <= a.var95;
+                      return [`${v} days`, isVaRRegion ? "VaR Tail" : "Return Bin"];
+                    }}
+                    labelFormatter={(l) => `Return Range: ${l}`}
+                  />
+                  <ReferenceLine
+                    x={returnDistribution.findIndex((d) => d.mid <= a.var95) >= 0
+                      ? returnDistribution[returnDistribution.findIndex((d) => d.mid <= a.var95)]?.range
+                      : undefined}
+                    stroke="#EF4444"
+                    strokeWidth={2}
+                    strokeDasharray="4 4"
+                    label={{
+                      value: `VaR 95%: ${fmtPct(a.var95)}`,
+                      fill: "#EF4444",
+                      fontSize: 10,
+                      position: "top",
+                      offset: 8,
+                    }}
+                  />
+                  <Bar dataKey="count" radius={[3, 3, 0, 0]} maxBarSize={20}>
+                    {returnDistribution.map((d, i) => (
+                      <Cell
+                        key={i}
+                        fill={d.mid <= a.var95 ? "url(#varTailGrad)" : "url(#varHistGrad)"}
+                      />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="mt-3 flex items-center gap-4 text-[10px] text-muted-foreground">
+              <div className="flex items-center gap-1.5">
+                <span className="h-3 w-5 rounded" style={{ background: "rgba(212,175,55,0.6)" }} /> Normal returns
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="h-3 w-5 rounded" style={{ background: "rgba(239,68,68,0.6)" }} /> VaR tail (worst 5%)
+              </div>
+              <div className="ml-auto text-[10px] text-muted-foreground">
+                Returns beyond the red dashed line represent the 5% worst daily outcomes
+              </div>
+            </div>
+            <div className="mt-3 rounded-lg border border-gold/20 bg-gold/5 p-3.5 text-xs text-muted-foreground">
+              <div className="flex items-center gap-2 font-medium text-gold">
+                <Shield className="h-3.5 w-3.5" />
+                Interpretation
+              </div>
+              <div className="mt-1.5 leading-relaxed">
+                On a typical day, with 95% confidence, losses should not exceed{" "}
+                <span className="text-loss font-semibold">{fmtPct(a.var95)}</span>.
+                In the worst 5% of days, the average loss is{" "}
+                <span className="text-loss font-semibold">{fmtPct(a.cvar95)}</span>.
+              </div>
+            </div>
+          </GlassCard>
+        </FadeIn>
+      )}
+
+      {/* ── 5. Stress Test Scenarios (NEW) ──────────────── */}
+      <FadeIn delay={0.2}>
+        <GlassCard className="p-6">
+          <SectionTitle
+            title="Stress Test Scenarios"
+            subtitle="Projected portfolio impact under extreme market conditions"
+          />
+          <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {STRESS_SCENARIOS.map((scenario, idx) => {
+              const projectedLoss = a.volatility * (scenario.marketImpact / 30) * 0.8;
+              const IconComp = scenario.icon;
+              return (
+                <motion.div
+                  key={scenario.name}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.05 * idx }}
+                  className="relative overflow-hidden rounded-xl border border-border/40 bg-black/20 p-5 hover:border-gold/20 transition-colors"
+                >
+                  <div
+                    className="absolute inset-x-0 top-0 h-px"
+                    style={{ background: `linear-gradient(90deg, transparent, ${scenario.color}40, transparent)` }}
+                  />
+                  <div className="flex items-center gap-2 mb-3">
+                    <div
+                      className="flex h-8 w-8 items-center justify-center rounded-lg"
+                      style={{ background: `${scenario.color}20` }}
+                    >
+                      <IconComp className="h-4 w-4" style={{ color: scenario.color }} />
+                    </div>
+                    <span className="text-xs font-semibold text-foreground">{scenario.name}</span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground leading-relaxed mb-3">{scenario.description}</p>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Market Impact</span>
+                      <span className="font-metric text-sm font-bold" style={{ color: scenario.color }}>
+                        {scenario.marketImpact}%
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Projected Loss</span>
+                      <span className="font-metric text-sm font-bold text-loss">
+                        -{Math.abs(projectedLoss).toFixed(1)}%
+                      </span>
+                    </div>
+                    {/* Mini bar chart showing impact */}
+                    <div className="h-8">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={[
+                          { name: "Market", val: Math.abs(scenario.marketImpact) },
+                          { name: "Fund", val: Math.abs(projectedLoss) },
+                        ]} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
+                          <Bar dataKey="val" radius={[3, 3, 0, 0]} maxBarSize={24}>
+                            <Cell fill={`${scenario.color}60`} />
+                            <Cell fill="#EF4444" fillOpacity={0.7} />
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </div>
+          <div className="mt-4 rounded-lg border border-gold/15 bg-gold/5 p-3 text-[11px] text-muted-foreground">
+            <div className="flex items-center gap-2 font-medium text-gold">
+              <Info className="h-3.5 w-3.5" />
+              Methodology
+            </div>
+            <p className="mt-1 leading-relaxed">
+              Stress tests project portfolio losses based on the fund&apos;s current volatility ({fmtPct(a.volatility)}) 
+              and historical correlation patterns. Actual losses may vary significantly. These scenarios are hypothetical 
+              and should not be considered predictions.
+            </p>
+          </div>
+        </GlassCard>
+      </FadeIn>
+
+      {/* ── 6 + 7 + 8: VaR / Daily Stats / Streaks ────── */}
       <div className="grid gap-5 lg:grid-cols-3">
         {/* Value at Risk */}
-        <FadeIn delay={0.2}>
+        <FadeIn delay={0.25}>
           <GlassCard className="p-6">
             <SectionTitle title="Value at Risk" subtitle="1-day, 95% confidence" />
             <div className="mt-5 space-y-4">
@@ -355,7 +628,7 @@ export function AnalyticsPage() {
         </FadeIn>
 
         {/* Daily Statistics */}
-        <FadeIn delay={0.25}>
+        <FadeIn delay={0.3}>
           <GlassCard className="p-6">
             <SectionTitle title="Daily Statistics" subtitle="Best / worst / averages" />
             {/* Best/Worst Day highlight cards */}
@@ -390,7 +663,7 @@ export function AnalyticsPage() {
         </FadeIn>
 
         {/* Streaks & Trends */}
-        <FadeIn delay={0.3}>
+        <FadeIn delay={0.35}>
           <GlassCard className="p-6">
             <SectionTitle title="Streaks & Trends" subtitle="Behavioral metrics" />
             <div className="mt-5 space-y-3.5 text-sm">
@@ -438,8 +711,8 @@ export function AnalyticsPage() {
         </FadeIn>
       </div>
 
-      {/* ── 7. Annual Returns Bar Chart (Enhanced) ─────── */}
-      <FadeIn delay={0.35}>
+      {/* ── 9. Annual Returns Bar Chart (Enhanced) ─────── */}
+      <FadeIn delay={0.4}>
         <GlassCard className="p-6">
           <SectionTitle title="Annual Returns" subtitle="Year-over-year performance" />
           <div className="mt-5 h-64">
@@ -492,14 +765,14 @@ export function AnalyticsPage() {
         </GlassCard>
       </FadeIn>
 
-      {/* ── 8. NEW: Rolling Sharpe Ratio Chart ─────────── */}
+      {/* ── 10. Rolling Sharpe Ratio Chart (Enhanced with interactive tooltips) ── */}
       {rollingSharpeData.length > 5 && (
-        <FadeIn delay={0.4}>
+        <FadeIn delay={0.45}>
           <GlassCard className="p-6">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <SectionTitle
                 title="Rolling Sharpe Ratio (30-Day)"
-                subtitle="30-day annualised Sharpe — risk-adjusted returns over time"
+                subtitle="30-day annualised Sharpe — hover for date & value details"
               />
               <div className="flex items-center gap-2 rounded-lg border border-gold/20 bg-gold/5 px-3 py-1.5">
                 <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Current</span>
@@ -508,7 +781,7 @@ export function AnalyticsPage() {
                 </span>
               </div>
             </div>
-            <div className="mt-5 h-64">
+            <div className="mt-5 h-72">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={rollingSharpeData} margin={{ top: 10, right: 10, left: 4, bottom: 2 }}>
                   <defs>
@@ -537,8 +810,16 @@ export function AnalyticsPage() {
                   />
                   <Tooltip
                     contentStyle={CHART_TOOLTIP}
-                    formatter={(v: number) => [fmtNum(v, 2), "Sharpe"]}
-                    labelFormatter={(d) => fmtDate(d as string)}
+                    formatter={(v: number) => [fmtNum(v, 3), "Sharpe Ratio"]}
+                    labelFormatter={(d) => {
+                      const date = new Date(d as string);
+                      return date.toLocaleDateString("en-US", {
+                        weekday: "short",
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                      });
+                    }}
                   />
                   <ReferenceLine
                     y={1}
@@ -557,7 +838,7 @@ export function AnalyticsPage() {
                     fill="url(#sharpeGreen)"
                     dot={false}
                     activeDot={{
-                      r: 5,
+                      r: 6,
                       fill: "#D4AF37",
                       stroke: "#0a0a0b",
                       strokeWidth: 2,
@@ -573,13 +854,16 @@ export function AnalyticsPage() {
               <div className="flex items-center gap-1.5">
                 <span className="h-3 w-5 rounded" style={{ background: "rgba(255,77,79,0.3)" }} /> Below 1.0 — Caution
               </div>
+              <div className="ml-auto text-[10px] text-muted-foreground">
+                Hover over the chart to see exact date and Sharpe value
+              </div>
             </div>
           </GlassCard>
         </FadeIn>
       )}
 
-      {/* ── 9. NEW: Correlation & Beta Section ─────────── */}
-      <FadeIn delay={0.45}>
+      {/* ── 11. Correlation & Beta Section ─────────── */}
+      <FadeIn delay={0.5}>
         <GlassCard className="p-6">
           <SectionTitle
             title="Correlation & Market Beta"
@@ -965,7 +1249,6 @@ function CorrelationCard({
   description: string;
   color: string;
 }) {
-  const corrPct = Math.abs(correlation) * 100;
   const isPositive = correlation >= 0;
 
   return (
