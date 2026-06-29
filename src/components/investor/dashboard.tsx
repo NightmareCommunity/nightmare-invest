@@ -112,29 +112,52 @@ export function InvestorDashboard() {
           1. FUND OVERVIEW BANNER — Full-width gold-accented hero card
           ════════════════════════════════════════════════════════════════ */}
       <FadeIn>
-        <GlassCard gold glow className="relative overflow-hidden">
+        <GlassCard gold glow className="gold-corner-accent relative overflow-hidden">
           {/* Subtle grid background */}
           <div className="pointer-events-none absolute inset-0 hero-dot-grid opacity-30" />
           {/* Gold radial accent */}
           <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-gold/5 blur-3xl" />
+          {/* Decorative SVG corner brackets — institutional frame */}
+          <svg className="pointer-events-none absolute left-3 top-3 h-3 w-3 text-gold/50" viewBox="0 0 12 12" fill="none">
+            <path d="M1 5V1H5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+          </svg>
+          <svg className="pointer-events-none absolute right-3 top-3 h-3 w-3 text-gold/50" viewBox="0 0 12 12" fill="none">
+            <path d="M7 1H11V5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+          </svg>
+          <svg className="pointer-events-none absolute bottom-3 left-3 h-3 w-3 text-gold/50" viewBox="0 0 12 12" fill="none">
+            <path d="M1 7V11H5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+          </svg>
+          <svg className="pointer-events-none absolute bottom-3 right-3 h-3 w-3 text-gold/50" viewBox="0 0 12 12" fill="none">
+            <path d="M7 11H11V7" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+          </svg>
           <div className="relative z-10 p-5 sm:p-6">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               {/* Left: Fund info + NAV */}
               <div className="flex-1">
                 <div className="flex items-center gap-2">
-                  <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${
-                    isLive
-                      ? "bg-emerald-500/10 text-emerald-400"
-                      : connectionStatus === "connecting"
-                        ? "bg-amber-500/10 text-amber-400"
-                        : "bg-red-500/10 text-red-400"
-                  }`}>
-                    <span className={`h-1.5 w-1.5 animate-pulse rounded-full ${
-                      isLive ? "bg-emerald-400" : connectionStatus === "connecting" ? "bg-amber-400" : "bg-red-400"
-                    }`} />
+                  {/* Refined connection badge — thin pill, subtle background, colored dot */}
+                  <span
+                    className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-medium tracking-wide transition-colors ${
+                      isLive
+                        ? "border-profit/25 bg-profit/[0.06] text-profit"
+                        : connectionStatus === "connecting"
+                          ? "border-gold/25 bg-gold/[0.06] text-gold"
+                          : "border-loss/25 bg-loss/[0.06] text-loss"
+                    }`}
+                  >
+                    <span className="relative flex h-1.5 w-1.5">
+                      {(isLive || connectionStatus === "connecting") && (
+                        <span className={`absolute inline-flex h-full w-full animate-ping rounded-full opacity-60 ${
+                          isLive ? "bg-profit" : "bg-gold"
+                        }`} />
+                      )}
+                      <span className={`relative inline-flex h-1.5 w-1.5 rounded-full ${
+                        isLive ? "bg-profit" : connectionStatus === "connecting" ? "bg-gold" : "bg-loss"
+                      }`} />
+                    </span>
                     {isLive ? "LIVE" : connectionStatus === "connecting" ? "CONNECTING" : "OFFLINE"}
                   </span>
-                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Institutional Fund</span>
+                  <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Institutional Fund</span>
                 </div>
                 <h1 className="mt-2 text-xl font-bold tracking-tight text-foreground sm:text-2xl">
                   Nightmare Alpha Crypto Fund
@@ -156,11 +179,11 @@ export function InvestorDashboard() {
                   NAV {fmtUSD(m.nav, { decimals: 4 })} · Updated {timeAgo(portfolio.holding?.updatedAt)} · AUM {fmtUSD(m.aum, { compact: true })}
                 </p>
               </div>
-              {/* Right: Quick actions */}
+              {/* Right: Quick actions — equal-weight buttons with differentiated accents */}
               <div className="flex flex-wrap gap-2 sm:gap-3">
                 <Button
                   size="sm"
-                  className="bg-gold-gradient text-black font-semibold hover:opacity-90 transition-opacity shadow-[0_0_20px_rgba(212,175,55,0.2)]"
+                  className="h-9 bg-gold-gradient text-black font-semibold shadow-[0_0_18px_rgba(212,175,55,0.22)] transition-all hover:shadow-[0_0_26px_rgba(212,175,55,0.32)] hover:opacity-90"
                   onClick={() => setRoute({ name: "transactions" })}
                 >
                   <Plus className="mr-1.5 h-3.5 w-3.5" /> Deposit
@@ -168,7 +191,7 @@ export function InvestorDashboard() {
                 <Button
                   size="sm"
                   variant="outline"
-                  className="border-gold/30 text-gold hover:bg-gold/10"
+                  className="h-9 border-gold/45 bg-gold/[0.04] text-gold font-semibold transition-all hover:border-gold/70 hover:bg-gold/[0.08] hover:shadow-[0_0_14px_rgba(212,175,55,0.18)]"
                   onClick={() => setRoute({ name: "transactions" })}
                 >
                   <Minus className="mr-1.5 h-3.5 w-3.5" /> Withdraw
@@ -176,7 +199,7 @@ export function InvestorDashboard() {
                 <Button
                   size="sm"
                   variant="outline"
-                  className="border-border/60 text-muted-foreground hover:text-foreground hover:bg-white/5"
+                  className="h-9 border-border/60 text-muted-foreground hover:text-foreground hover:bg-white/5"
                   onClick={() => setRoute({ name: "analytics" })}
                 >
                   <Eye className="mr-1.5 h-3.5 w-3.5" /> Analytics
@@ -185,6 +208,8 @@ export function InvestorDashboard() {
             </div>
           </div>
         </GlassCard>
+        {/* Thin gold gradient divider below the banner */}
+        <div className="gold-divider mt-3 opacity-60" />
       </FadeIn>
 
       {/* ════════════════════════════════════════════════════════════════

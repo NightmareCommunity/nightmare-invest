@@ -4,13 +4,14 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useApp, type Route } from "@/lib/store";
 import { Logo } from "@/components/brand/logo";
 import { NotificationCenter } from "@/components/brand/notification-center";
+import { useRealtimeNotifications } from "@/hooks/use-realtime-notifications";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import {
   LayoutDashboard, Wallet, ArrowLeftRight, FileText, Settings,
   Users, TrendingUp, Database, ScrollText, History, Menu, X, LogOut,
   ChevronDown, ShieldCheck, BarChart3, FileCheck2, Megaphone,
-  Star, Calculator, Activity, Mail,
+  Star, Calculator, Activity, Mail, FolderArchive,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { fmtDate } from "@/lib/format";
@@ -32,6 +33,7 @@ const INVESTOR_NAV: NavItem[] = [
   { label: "Inbox", route: { name: "inbox" }, icon: Mail, description: "Messages & announcements from the fund" },
   { label: "Transactions", route: { name: "transactions" }, icon: ArrowLeftRight, description: "Deposits, withdrawals & history" },
   { label: "Reports", route: { name: "reports" }, icon: FileText, description: "Download statements & ledger exports" },
+  { label: "Documents", route: { name: "documents" }, icon: FolderArchive, description: "Statement vault & official correspondence" },
   { label: "Settings", route: { name: "settings" }, icon: Settings, description: "Profile, security & preferences" },
 ];
 
@@ -43,6 +45,7 @@ const ADMIN_NAV: NavItem[] = [
   { label: "Transactions", route: { name: "admin-transactions" }, icon: ArrowLeftRight, description: "Review pending deposits & withdrawals", badge: "pendingAdmin" },
   { label: "KYC Review", route: { name: "admin-kyc" }, icon: FileCheck2, description: "Review investor accreditation documents" },
   { label: "Fund Updates", route: { name: "admin-fund-updates" }, icon: Megaphone, description: "Publish news & updates for investors" },
+  { label: "Documents", route: { name: "admin-documents" }, icon: FolderArchive, description: "Generate statements & manage investor documents" },
   { label: "Communications", route: { name: "admin-communications" }, icon: Mail, description: "Message investors & broadcast announcements" },
   { label: "System Health", route: { name: "admin-system-health" }, icon: Activity, description: "Infrastructure monitoring & diagnostics" },
   { label: "Ledger", route: { name: "admin-ledger" }, icon: ScrollText, description: "Fund ledger entries & CSV export" },
@@ -55,6 +58,10 @@ export function PortalShell({ children, admin = false }: { children: ReactNode; 
   const setRoute = useApp((s) => s.setRoute);
   const logout = useApp((s) => s.logout);
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  // Real-time WebSocket notifications (toasts + badge refresh). Active
+  // whenever the shell is mounted (i.e. user is logged in).
+  useRealtimeNotifications();
 
   const nav = admin ? ADMIN_NAV : INVESTOR_NAV;
   const current = route.name;

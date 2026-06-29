@@ -13,6 +13,7 @@ export type Route =
   | { name: "analytics" }
   | { name: "transactions" }
   | { name: "reports" }
+  | { name: "documents" }
   | { name: "settings" }
   // admin
   | { name: "admin-dashboard" }
@@ -24,6 +25,7 @@ export type Route =
   | { name: "admin-ledger" }
   | { name: "admin-audit" }
   | { name: "admin-fund-updates" }
+  | { name: "admin-documents" }
   | { name: "admin-system-health" }
   | { name: "admin-communications" }
   // investor tools

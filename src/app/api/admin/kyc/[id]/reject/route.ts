@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { json, error, parseBody, safeHandler } from "@/lib/api";
+import { notifyUser } from "@/lib/realtime";
 
 async function reject(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const admin = await requireAdmin();
@@ -48,6 +49,14 @@ async function reject(req: NextRequest, ctx: { params: Promise<{ id: string }> }
     resourceId: id,
     metadata: { userId: doc.userId, type: doc.type, notes },
   });
+
+  // Real-time notification to the investor (only when overall KYC status moves to REJECTED)
+  if (!hasApprovedOfSameType && doc.user.kycStatus === "PENDING") {
+    await notifyUser(doc.userId, "kyc_rejected", {
+      reason: notes,
+      documentType: doc.type,
+    });
+  }
 
   return json({ document: updated });
 }

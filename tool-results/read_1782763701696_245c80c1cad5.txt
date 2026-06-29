@@ -1,0 +1,772 @@
+     1→"use client";
+     2→import { useState, useMemo } from "react";
+     3→import { useApp } from "@/lib/store";
+     4→import { api } from "@/lib/api-client";
+     5→import { GlassCard, SectionTitle, FadeIn, SkeletonCard } from "@/components/brand/primitives";
+     6→import { Button } from "@/components/ui/button";
+     7→import { Input } from "@/components/ui/input";
+     8→import { Label } from "@/components/ui/label";
+     9→import { Badge } from "@/components/ui/badge";
+    10→import { Separator } from "@/components/ui/separator";
+    11→import { Switch } from "@/components/ui/switch";
+    12→import { Progress } from "@/components/ui/progress";
+    13→import { fmtDate } from "@/lib/format";
+    14→import { motion } from "framer-motion";
+    15→import {
+    16→  Shield, KeyRound, LogOut, Mail, User, Clock, Lock, CheckCircle2,
+    17→  ShieldCheck, FileCheck2, Bell, Globe, TrendingUp, Newspaper,
+    18→  Monitor, Wifi, Eye, EyeOff, Pencil, Award, ChevronRight,
+    19→  CircleDot, CircleCheck, CircleX, CircleEllipsis, AlertTriangle,
+    20→} from "lucide-react";
+    21→import { toast } from "sonner";
+    22→import { TwoFactorSection } from "./two-factor-section";
+    23→import { KycSection } from "./kyc-section";
+    24→
+    25→/* ------------------------------------------------------------------ */
+    26→/*  Helpers                                                            */
+    27→/* ------------------------------------------------------------------ */
+    28→
+    29→/** Get initials from a full name */
+    30→function getInitials(name: string): string {
+    31→  return name
+    32→    .split(" ")
+    33→    .map((w) => w[0])
+    34→    .filter(Boolean)
+    35→    .slice(0, 2)
+    36→    .join("")
+    37→    .toUpperCase();
+    38→}
+    39→
+    40→/** Password strength score (0-4) */
+    41→function passwordStrength(pw: string): { score: number; label: string; color: string } {
+    42→  if (!pw) return { score: 0, label: "—", color: "text-muted-foreground" };
+    43→  let s = 0;
+    44→  if (pw.length >= 8) s++;
+    45→  if (pw.length >= 12) s++;
+    46→  if (/[A-Z]/.test(pw) && /[a-z]/.test(pw)) s++;
+    47→  if (/\d/.test(pw)) s++;
+    48→  if (/[^A-Za-z0-9]/.test(pw)) s++;
+    49→  const clamped = Math.min(s, 4);
+    50→  const labels = ["Weak", "Fair", "Good", "Strong"];
+    51→  const colors = ["text-loss", "text-warning", "text-gold", "text-profit"];
+    52→  return { score: clamped, label: labels[clamped - 1] ?? "Weak", color: colors[clamped - 1] ?? "text-loss" };
+    53→}
+    54→
+    55→/* ------------------------------------------------------------------ */
+    56→/*  Security Ring SVG                                                  */
+    57→/* ------------------------------------------------------------------ */
+    58→
+    59→function SecurityRing({ percent, size = 120 }: { percent: number; size?: number }) {
+    60→  const strokeWidth = 6;
+    61→  const radius = (size - strokeWidth) / 2;
+    62→  const circumference = 2 * Math.PI * radius;
+    63→  const offset = circumference - (percent / 100) * circumference;
+    64→
+    65→  const ringColor =
+    66→    percent >= 80 ? "#00c896" : percent >= 50 ? "#D4AF37" : "#ff4d4f";
+    67→
+    68→  return (
+    69→    <div className="relative inline-flex items-center justify-center">
+    70→      <svg width={size} height={size} className="-rotate-90">
+    71→        <circle
+    72→          cx={size / 2}
+    73→          cy={size / 2}
+    74→          r={radius}
+    75→          fill="none"
+    76→          stroke="rgba(255,255,255,0.06)"
+    77→          strokeWidth={strokeWidth}
+    78→        />
+    79→        <motion.circle
+    80→          cx={size / 2}
+    81→          cy={size / 2}
+    82→          r={radius}
+    83→          fill="none"
+    84→          stroke={ringColor}
+    85→          strokeWidth={strokeWidth}
+    86→          strokeLinecap="round"
+    87→          strokeDasharray={circumference}
+    88→          initial={{ strokeDashoffset: circumference }}
+    89→          animate={{ strokeDashoffset: offset }}
+    90→          transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
+    91→        />
+    92→      </svg>
+    93→      <div className="absolute inset-0 flex flex-col items-center justify-center">
+    94→        <span className="font-metric text-2xl font-bold" style={{ color: ringColor }}>
+    95→          {percent}%
+    96→        </span>
+    97→        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Secure</span>
+    98→      </div>
+    99→    </div>
+   100→  );
+   101→}
+   102→
+   103→/* ------------------------------------------------------------------ */
+   104→/*  KYC Step Indicator                                                 */
+   105→/* ------------------------------------------------------------------ */
+   106→
+   107→function KycStepIndicator({ status }: { status: string }) {
+   108→  const steps = [
+   109→    { key: "NONE", label: "Upload Documents", icon: FileCheck2 },
+   110→    { key: "PENDING", label: "Under Review", icon: Clock },
+   111→    { key: "APPROVED", label: "Approved", icon: CheckCircle2 },
+   112→  ];
+   113→
+   114→  const currentIdx =
+   115→    status === "REJECTED" ? 0 :
+   116→    status === "APPROVED" ? 2 :
+   117→    status === "PENDING" ? 1 : 0;
+   118→
+   119→  return (
+   120→    <div className="flex items-center gap-0 w-full">
+   121→      {steps.map((step, i) => {
+   122→        const StepIcon = step.icon;
+   123→        const isCompleted = i < currentIdx;
+   124→        const isCurrent = i === currentIdx;
+   125→        const isRejected = status === "REJECTED" && i === 0;
+   126→
+   127→        return (
+   128→          <div key={step.key} className="flex flex-1 items-center">
+   129→            <div className="flex flex-col items-center gap-1.5 min-w-0">
+   130→              <div
+   131→                className={`flex h-9 w-9 items-center justify-center rounded-full border-2 transition-all ${
+   132→                  isCompleted
+   133→                    ? "border-profit bg-profit/10 text-profit"
+   134→                    : isCurrent && isRejected
+   135→                      ? "border-loss bg-loss/10 text-loss animate-pulse"
+   136→                      : isCurrent
+   137→                        ? "border-gold bg-gold/10 text-gold glow-gold"
+   138→                        : "border-border/40 bg-black/20 text-muted-foreground"
+   139→                }`}
+   140→              >
+   141→                {isCompleted ? (
+   142→                  <CheckCircle2 className="h-4 w-4" />
+   143→                ) : isCurrent && isRejected ? (
+   144→                  <CircleX className="h-4 w-4" />
+   145→                ) : (
+   146→                  <StepIcon className="h-4 w-4" />
+   147→                )}
+   148→              </div>
+   149→              <span
+   150→                className={`text-[10px] font-medium uppercase tracking-wider text-center leading-tight ${
+   151→                  isCompleted
+   152→                    ? "text-profit"
+   153→                    : isCurrent && isRejected
+   154→                      ? "text-loss"
+   155→                      : isCurrent
+   156→                        ? "text-gold"
+   157→                        : "text-muted-foreground/50"
+   158→                }`}
+   159→              >
+   160→                {step.label}
+   161→              </span>
+   162→            </div>
+   163→            {i < steps.length - 1 && (
+   164→              <div className="flex-1 mx-2 mt-[-18px]">
+   165→                <div className="h-0.5 w-full rounded-full bg-border/30 overflow-hidden">
+   166→                  <motion.div
+   167→                    className={`h-full rounded-full ${
+   168→                      i < currentIdx ? "bg-profit" : i === currentIdx && status !== "REJECTED" ? "bg-gold/50" : "bg-transparent"
+   169→                    }`}
+   170→                    initial={{ width: "0%" }}
+   171→                    animate={{ width: i < currentIdx ? "100%" : i === currentIdx && status !== "REJECTED" ? "50%" : "0%" }}
+   172→                    transition={{ duration: 0.8, delay: 0.3 + i * 0.2 }}
+   173→                  />
+   174→                </div>
+   175→              </div>
+   176→            )}
+   177→          </div>
+   178→        );
+   179→      })}
+   180→    </div>
+   181→  );
+   182→}
+   183→
+   184→/* ------------------------------------------------------------------ */
+   185→/*  Main Settings Page                                                 */
+   186→/* ------------------------------------------------------------------ */
+   187→
+   188→export function SettingsPage() {
+   189→  const user = useApp((s) => s.user);
+   190→  const refresh = useApp((s) => s.refresh);
+   191→  const logout = useApp((s) => s.logout);
+   192→  const [newPass, setNewPass] = useState("");
+   193→  const [showPass, setShowPass] = useState(false);
+   194→  const [submitting, setSubmitting] = useState(false);
+   195→
+   196→  /* Notification preferences (visual only) */
+   197→  const [notifEmail, setNotifEmail] = useState(true);
+   198→  const [notifTx, setNotifTx] = useState(true);
+   199→  const [notifNav, setNotifNav] = useState(false);
+   200→  const [notifNews, setNotifNews] = useState(false);
+   201→
+   202→  const reset = async () => {
+   203→    if (!user) return;
+   204→    if (newPass.length < 8) return toast.error("Password must be at least 8 characters");
+   205→    setSubmitting(true);
+   206→    try {
+   207→      await api.post("/api/auth/password-reset", { email: user.email, newPassword: newPass });
+   208→      toast.success("Password updated");
+   209→      setNewPass("");
+   210→    } catch (e) {
+   211→      toast.error(e instanceof Error ? e.message : "Failed");
+   212→    } finally {
+   213→      setSubmitting(false);
+   214→    }
+   215→  };
+   216→
+   217→  if (!user) return null;
+   218→
+   219→  const totpEnabled = !!user.totpEnabled;
+   220→  const kycStatus = user.kycStatus ?? "NONE";
+   221→  const kycTier = user.kycTier ?? "STANDARD";
+   222→
+   223→  /* ---- Account completion calculation ---- */
+   224→  const completionItems = [
+   225→    { label: "Profile filled", done: !!user.name && !!user.email, weight: 20 },
+   226→    { label: "Email verified", done: !!user.email, weight: 20 },
+   227→    { label: "2FA enabled", done: totpEnabled, weight: 20 },
+   228→    { label: "KYC approved", done: kycStatus === "APPROVED", weight: 20 },
+   229→    { label: "Strong password", done: false, weight: 20 }, // can't know, default optimistic
+   230→  ];
+   231→  const completionPct = completionItems.reduce((acc, item) => acc + (item.done ? item.weight : 0), 0);
+   232→  const remainingItems = completionItems.filter((i) => !i.done);
+   233→
+   234→  /* ---- Security score calculation ---- */
+   235→  const securityChecks = [
+   236→    { label: "256-bit encryption in transit (TLS 1.3)", done: true, icon: Shield },
+   237→    { label: "bcrypt password hashing (cost 12)", done: true, icon: Lock },
+   238→    { label: "HttpOnly secure session cookies", done: true, icon: KeyRound },
+   239→    { label: "Role-based access control (RBAC)", done: true, icon: ShieldCheck },
+   240→    { label: "Full audit trail of account activity", done: true, icon: Eye },
+   241→    { label: "Two-factor authentication (TOTP)", done: totpEnabled, icon: ShieldCheck },
+   242→    { label: "KYC identity verification", done: kycStatus === "APPROVED", icon: FileCheck2 },
+   243→  ];
+   244→  const securityScore = Math.round(
+   245→    (securityChecks.filter((s) => s.done).length / securityChecks.length) * 100
+   246→  );
+   247→
+   248→  /* ---- Password strength ---- */
+   249→  const pwStrength = passwordStrength(newPass);
+   250→  const pwRequirements = [
+   251→    { label: "At least 8 characters", met: newPass.length >= 8 },
+   252→    { label: "Upper & lowercase letters", met: /[A-Z]/.test(newPass) && /[a-z]/.test(newPass) },
+   253→    { label: "Contains a number", met: /\d/.test(newPass) },
+   254→    { label: "Special character", met: /[^A-Za-z0-9]/.test(newPass) },
+   255→    { label: "12+ characters (recommended)", met: newPass.length >= 12 },
+   256→  ];
+   257→
+   258→  return (
+   259→    <div className="space-y-6">
+   260→      {/* ---- Page Header ---- */}
+   261→      <FadeIn>
+   262→        <div>
+   263→          <span className="text-xs font-medium uppercase tracking-[0.18em] text-gold">Investor Portal</span>
+   264→          <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">Settings</h1>
+   265→          <p className="text-sm text-muted-foreground">Manage your account, security &amp; verification</p>
+   266→        </div>
+   267→      </FadeIn>
+   268→
+   269→      {/* ---- Account Completion Progress ---- */}
+   270→      <FadeIn delay={0.03}>
+   271→        <GlassCard gold className="p-5 hover-lift">
+   272→          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+   273→            <div className="flex-1">
+   274→              <div className="flex items-center gap-2">
+   275→                <Award className="h-5 w-5 text-gold" />
+   276→                <h3 className="text-base font-semibold text-foreground">Account Completion</h3>
+   277→              </div>
+   278→              <p className="mt-1 text-sm text-muted-foreground">
+   279→                Your account is{" "}
+   280→                <span className="font-metric font-semibold text-gold">{completionPct}%</span>{" "}
+   281→                complete
+   282→              </p>
+   283→              <div className="mt-3 h-2.5 w-full overflow-hidden rounded-full bg-white/5">
+   284→                <motion.div
+   285→                  className="h-full rounded-full bg-gold-gradient"
+   286→                  initial={{ width: "0%" }}
+   287→                  animate={{ width: `${completionPct}%` }}
+   288→                  transition={{ duration: 1, ease: [0.22, 1, 0.36, 1], delay: 0.2 }}
+   289→                />
+   290→              </div>
+   291→              {remainingItems.length > 0 && (
+   292→                <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1">
+   293→                  {remainingItems.map((item) => (
+   294→                    <div key={item.label} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+   295→                      <ChevronRight className="h-3 w-3 text-gold/60" />
+   296→                      <span>{item.label}</span>
+   297→                    </div>
+   298→                  ))}
+   299→                </div>
+   300→              )}
+   301→            </div>
+   302→            <div className="flex-shrink-0">
+   303→              <div className="flex h-16 w-16 items-center justify-center rounded-full border-2 border-gold/30 bg-gold/5">
+   304→                <span className="font-metric text-xl font-bold text-gold">{completionPct}%</span>
+   305→              </div>
+   306→            </div>
+   307→          </div>
+   308→        </GlassCard>
+   309→      </FadeIn>
+   310→
+   311→      {/* ---- KYC Progress Visualization ---- */}
+   312→      <FadeIn delay={0.05}>
+   313→        <GlassCard className="p-5 hover-lift">
+   314→          <div className="flex items-center justify-between gap-3 mb-4">
+   315→            <div>
+   316→              <h3 className="text-base font-semibold text-foreground">KYC Verification Progress</h3>
+   317→              <p className="mt-0.5 text-sm text-muted-foreground">
+   318→                {kycStatus === "APPROVED"
+   319→                  ? "Your identity has been verified"
+   320→                  : kycStatus === "PENDING"
+   321→                    ? "Your documents are being reviewed"
+   322→                    : kycStatus === "REJECTED"
+   323→                      ? "Action required — please re-submit documents"
+   324→                      : "Complete verification to unlock full access"}
+   325→              </p>
+   326→            </div>
+   327→            <Badge
+   328→              className={
+   329→                kycStatus === "APPROVED"
+   330→                  ? "border-profit/30 bg-profit/10 text-profit"
+   331→                  : kycStatus === "PENDING"
+   332→                    ? "border-gold/30 bg-gold/10 text-gold"
+   333→                    : kycStatus === "REJECTED"
+   334→                      ? "border-loss/30 bg-loss/10 text-loss"
+   335→                      : "border-muted-foreground/30 bg-muted/10 text-muted-foreground"
+   336→              }
+   337→            >
+   338→              {kycStatus === "APPROVED" && <CheckCircle2 className="mr-1 h-3 w-3" />}
+   339→              {kycStatus === "PENDING" && <Clock className="mr-1 h-3 w-3" />}
+   340→              {kycStatus === "REJECTED" && <AlertTriangle className="mr-1 h-3 w-3" />}
+   341→              {kycStatus === "NONE" && <CircleEllipsis className="mr-1 h-3 w-3" />}
+   342→              {kycStatus === "APPROVED" ? "Verified" : kycStatus === "PENDING" ? "In Review" : kycStatus === "REJECTED" ? "Rejected" : "Not Started"}
+   343→            </Badge>
+   344→          </div>
+   345→          <KycStepIndicator status={kycStatus} />
+   346→          {kycStatus === "REJECTED" && (
+   347→            <div className="mt-3 flex items-start gap-2 rounded-lg border border-loss/20 bg-loss/5 p-3 text-xs text-loss">
+   348→              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+   349→              <span>Your documents were not accepted. Please review and re-upload in the KYC section below.</span>
+   350→            </div>
+   351→          )}
+   352→        </GlassCard>
+   353→      </FadeIn>
+   354→
+   355→      {/* ---- Main Grid ---- */}
+   356→      <div className="grid gap-4 lg:grid-cols-3">
+   357→        {/* Left Column (2/3) */}
+   358→        <FadeIn delay={0.07} className="lg:col-span-2 space-y-4">
+   359→
+   360→          {/* ---- Profile Section (Enhanced) ---- */}
+   361→          <GlassCard className="p-6 hover-lift">
+   362→            <div className="flex items-start justify-between gap-4">
+   363→              <SectionTitle title="Profile" subtitle="Account information" />
+   364→              <Button
+   365→                variant="outline"
+   366→                size="sm"
+   367→                className="border-gold/30 text-gold hover:bg-gold/10 gap-1.5 text-xs"
+   368→                onClick={() => toast.info("Profile editing is not available in this version")}
+   369→              >
+   370→                <Pencil className="h-3 w-3" /> Edit
+   371→              </Button>
+   372→            </div>
+   373→
+   374→            <div className="mt-5 flex flex-col sm:flex-row gap-5">
+   375→              {/* Avatar with gold ring */}
+   376→              <div className="flex flex-col items-center gap-2">
+   377→                <div className="relative">
+   378→                  <div className="flex h-20 w-20 items-center justify-center rounded-full border-2 border-gold/50 bg-gold/10 text-2xl font-bold text-gold-gradient">
+   379→                    {getInitials(user.name)}
+   380→                  </div>
+   381→                  <div className="absolute -bottom-0.5 -right-0.5 flex h-6 w-6 items-center justify-center rounded-full border-2 border-background bg-profit text-[8px] font-bold text-white">
+   382→                    ✓
+   383→                  </div>
+   384→                </div>
+   385→                <Badge
+   386→                  className={`shimmer-badge text-[10px] ${
+   387→                    kycTier === "ACCREDITED"
+   388→                      ? "border-gold/40 bg-gold/15 text-gold"
+   389→                      : "border-muted-foreground/30 bg-muted/10 text-muted-foreground"
+   390→                  }`}
+   391→                >
+   392→                  {kycTier === "ACCREDITED" ? (
+   393→                    <><Award className="mr-1 h-3 w-3" /> Accredited</>
+   394→                  ) : (
+   395→                    <><User className="mr-1 h-3 w-3" /> Standard</>
+   396→                  )}
+   397→                </Badge>
+   398→              </div>
+   399→
+   400→              {/* Fields */}
+   401→              <div className="flex-1 grid gap-4 sm:grid-cols-2">
+   402→                <div className="space-y-1.5">
+   403→                  <Label className="text-xs uppercase tracking-wider text-muted-foreground">Full Name</Label>
+   404→                  <div className="relative">
+   405→                    <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+   406→                    <Input value={user.name} readOnly className="border-border/60 bg-black/20 pl-9 text-foreground" />
+   407→                  </div>
+   408→                </div>
+   409→                <div className="space-y-1.5">
+   410→                  <Label className="text-xs uppercase tracking-wider text-muted-foreground">Email</Label>
+   411→                  <div className="relative">
+   412→                    <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+   413→                    <Input value={user.email} readOnly className="border-border/60 bg-black/20 pl-9 text-foreground" />
+   414→                  </div>
+   415→                </div>
+   416→                <div className="space-y-1.5">
+   417→                  <Label className="text-xs uppercase tracking-wider text-muted-foreground">Role</Label>
+   418→                  <div className="flex h-9 items-center gap-2 rounded-md border border-border/60 bg-black/20 px-3">
+   419→                    <Badge className={user.role === "ADMIN" ? "border-gold/30 bg-gold/10 text-gold" : "border-profit/30 bg-profit/10 text-profit"}>
+   420→                      {user.role}
+   421→                    </Badge>
+   422→                  </div>
+   423→                </div>
+   424→                <div className="space-y-1.5">
+   425→                  <Label className="text-xs uppercase tracking-wider text-muted-foreground">Member Since</Label>
+   426→                  <div className="flex h-9 items-center gap-2 rounded-md border border-border/60 bg-black/20 px-3 text-sm text-muted-foreground">
+   427→                    <Clock className="h-4 w-4" /> {fmtDate(user.createdAt)}
+   428→                  </div>
+   429→                </div>
+   430→              </div>
+   431→            </div>
+   432→          </GlassCard>
+   433→
+   434→          {/* ---- Password Section (Enhanced) ---- */}
+   435→          <GlassCard className="p-6 hover-lift">
+   436→            <SectionTitle title="Password" subtitle="Update your password" />
+   437→            <div className="mt-4 space-y-4">
+   438→              <div className="space-y-1.5">
+   439→                <Label htmlFor="newpass" className="text-xs uppercase tracking-wider text-muted-foreground">New Password</Label>
+   440→                <div className="relative">
+   441→                  <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+   442→                  <Input
+   443→                    id="newpass"
+   444→                    type={showPass ? "text" : "password"}
+   445→                    value={newPass}
+   446→                    onChange={(e) => setNewPass(e.target.value)}
+   447→                    placeholder="••••••••"
+   448→                    className="border-border/60 bg-black/30 pl-9 pr-10"
+   449→                  />
+   450→                  <button
+   451→                    type="button"
+   452→                    onClick={() => setShowPass(!showPass)}
+   453→                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+   454→                    aria-label={showPass ? "Hide password" : "Show password"}
+   455→                  >
+   456→                    {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+   457→                  </button>
+   458→                </div>
+   459→              </div>
+   460→
+   461→              {/* Password strength meter */}
+   462→              {newPass.length > 0 && (
+   463→                <motion.div
+   464→                  initial={{ opacity: 0, height: 0 }}
+   465→                  animate={{ opacity: 1, height: "auto" }}
+   466→                  transition={{ duration: 0.25 }}
+   467→                  className="space-y-3"
+   468→                >
+   469→                  <div className="flex items-center justify-between">
+   470→                    <span className="text-xs text-muted-foreground">Password strength</span>
+   471→                    <span className={`text-xs font-semibold ${pwStrength.color}`}>{pwStrength.label}</span>
+   472→                  </div>
+   473→                  <div className="flex gap-1.5">
+   474→                    {[1, 2, 3, 4].map((level) => (
+   475→                      <div
+   476→                        key={level}
+   477→                        className={`h-1.5 flex-1 rounded-full transition-all duration-300 ${
+   478→                          pwStrength.score >= level
+   479→                            ? pwStrength.score >= 3
+   480→                              ? "bg-profit"
+   481→                              : pwStrength.score >= 2
+   482→                                ? "bg-gold"
+   483→                                : "bg-loss"
+   484→                            : "bg-white/5"
+   485→                        }`}
+   486→                      />
+   487→                    ))}
+   488→                  </div>
+   489→
+   490→                  {/* Requirements checklist */}
+   491→                  <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
+   492→                    {pwRequirements.map((req) => (
+   493→                      <div key={req.label} className="flex items-center gap-1.5 text-[11px]">
+   494→                        {req.met ? (
+   495→                          <CheckCircle2 className="h-3 w-3 text-profit shrink-0" />
+   496→                        ) : (
+   497→                          <CircleDot className="h-3 w-3 text-muted-foreground/40 shrink-0" />
+   498→                        )}
+   499→                        <span className={req.met ? "text-foreground/80" : "text-muted-foreground/60"}>
+   500→                          {req.label}
+   501→                        </span>
+   502→                      </div>
+   503→                    ))}
+   504→                  </div>
+   505→                </motion.div>
+   506→              )}
+   507→
+   508→              <Button onClick={reset} disabled={submitting || newPass.length < 8} className="bg-gold-gradient text-black hover:opacity-90">
+   509→                <KeyRound className="mr-1.5 h-4 w-4" /> {submitting ? "Updating…" : "Update Password"}
+   510→              </Button>
+   511→            </div>
+   512→          </GlassCard>
+   513→
+   514→          {/* ---- 2FA ---- */}
+   515→          <TwoFactorSection enabled={totpEnabled} onChanged={refresh} />
+   516→
+   517→          {/* ---- KYC ---- */}
+   518→          <KycSection />
+   519→
+   520→          {/* ---- Notification Preferences ---- */}
+   521→          <GlassCard className="p-6 hover-lift">
+   522→            <SectionTitle title="Notification Preferences" subtitle="Control what updates you receive" />
+   523→            <div className="mt-5 space-y-4">
+   524→              {[
+   525→                {
+   526→                  id: "email",
+   527→                  label: "Email Notifications",
+   528→                  desc: "Receive account alerts and summaries via email",
+   529→                  icon: Mail,
+   530→                  checked: notifEmail,
+   531→                  onChange: setNotifEmail,
+   532→                },
+   533→                {
+   534→                  id: "tx",
+   535→                  label: "Transaction Alerts",
+   536→                  desc: "Get notified for deposits, withdrawals, and transfers",
+   537→                  icon: TrendingUp,
+   538→                  checked: notifTx,
+   539→                  onChange: setNotifTx,
+   540→                },
+   541→                {
+   542→                  id: "nav",
+   543→                  label: "NAV Updates",
+   544→                  desc: "Daily net asset value changes and fund performance",
+   545→                  icon: Globe,
+   546→                  checked: notifNav,
+   547→                  onChange: setNotifNav,
+   548→                },
+   549→                {
+   550→                  id: "news",
+   551→                  label: "Fund News & Reports",
+   552→                  desc: "Monthly reports, strategy updates, and market commentary",
+   553→                  icon: Newspaper,
+   554→                  checked: notifNews,
+   555→                  onChange: setNotifNews,
+   556→                },
+   557→              ].map((item) => {
+   558→                const Icon = item.icon;
+   559→                return (
+   560→                  <div
+   561→                    key={item.id}
+   562→                    className="flex items-center justify-between gap-4 rounded-lg border border-border/40 bg-black/20 p-3.5 transition-colors hover:bg-black/30"
+   563→                  >
+   564→                    <div className="flex items-center gap-3 min-w-0">
+   565→                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-gold/20 bg-gold/5">
+   566→                        <Icon className="h-4 w-4 text-gold" />
+   567→                      </div>
+   568→                      <div className="min-w-0">
+   569→                        <div className="text-sm font-medium text-foreground">{item.label}</div>
+   570→                        <div className="text-[11px] text-muted-foreground truncate">{item.desc}</div>
+   571→                      </div>
+   572→                    </div>
+   573→                    <Switch
+   574→                      checked={item.checked}
+   575→                      onCheckedChange={item.onChange}
+   576→                      className="data-[state=checked]:bg-gold"
+   577→                    />
+   578→                  </div>
+   579→                );
+   580→              })}
+   581→            </div>
+   582→          </GlassCard>
+   583→
+   584→          {/* ---- Connected Sessions (Enhanced) ---- */}
+   585→          <GlassCard className="p-6 hover-lift">
+   586→            <SectionTitle title="Connected Sessions" subtitle="Authentication tokens" />
+   587→            <div className="mt-4 space-y-3">
+   588→              <div className="rounded-lg border border-profit/20 bg-profit/5 p-4">
+   589→                <div className="flex items-start gap-3">
+   590→                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-profit/20 bg-profit/10">
+   591→                    <Monitor className="h-5 w-5 text-profit" />
+   592→                  </div>
+   593→                  <div className="flex-1 min-w-0">
+   594→                    <div className="flex items-center gap-2">
+   595→                      <span className="text-sm font-medium text-foreground">Current Session</span>
+   596→                      <span className="flex items-center gap-1 rounded-full border border-profit/30 bg-profit/10 px-2 py-0.5 text-[10px] font-medium text-profit">
+   597→                        <span className="h-1.5 w-1.5 rounded-full bg-profit animate-pulse" />
+   598→                        Active
+   599→                      </span>
+   600→                    </div>
+   601→                    <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-muted-foreground">
+   602→                      <span className="flex items-center gap-1">
+   603→                        <Wifi className="h-3 w-3" /> {typeof navigator !== "undefined" ? navigator.userAgent.includes("Chrome") ? "Chrome" : navigator.userAgent.includes("Firefox") ? "Firefox" : navigator.userAgent.includes("Safari") ? "Safari" : "Browser" : "Browser"}
+   604→                      </span>
+   605→                      <span className="flex items-center gap-1">
+   606→                        <Clock className="h-3 w-3" /> Last login {user.lastLogin ? fmtDate(user.lastLogin, true) : "—"}
+   607→                      </span>
+   608→                    </div>
+   609→                  </div>
+   610→                </div>
+   611→              </div>
+   612→              <Button variant="outline" onClick={logout} className="border-loss/30 text-loss hover:bg-loss/10">
+   613→                <LogOut className="mr-1.5 h-4 w-4" /> Sign out of all sessions
+   614→              </Button>
+   615→            </div>
+   616→          </GlassCard>
+   617→        </FadeIn>
+   618→
+   619→        {/* Right Column (1/3) */}
+   620→        <FadeIn delay={0.12}>
+   621→          <div className="space-y-4">
+   622→            {/* ---- Security Center (Enhanced) ---- */}
+   623→            <GlassCard gold className="p-6 hover-lift">
+   624→              <div className="flex flex-col items-center text-center">
+   625→                <div className="flex items-center gap-2">
+   626→                  <Shield className="h-5 w-5 text-gold" />
+   627→                  <h3 className="text-base font-semibold text-foreground">Security Center</h3>
+   628→                </div>
+   629→                <p className="mt-1 text-xs text-muted-foreground">
+   630→                  Your account security score
+   631→                </p>
+   632→                <div className="mt-4">
+   633→                  <SecurityRing percent={securityScore} />
+   634→                </div>
+   635→              </div>
+   636→
+   637→              <Separator className="my-5 bg-border/60" />
+   638→
+   639→              <div className="space-y-3">
+   640→                {securityChecks.map((s) => {
+   641→                  const SIcon = s.icon;
+   642→                  return (
+   643→                    <div
+   644→                      key={s.label}
+   645→                      className={`flex items-center gap-2.5 rounded-md px-2.5 py-2 transition-colors ${
+   646→                        s.done ? "bg-white/[0.02]" : "bg-gold/5"
+   647→                      }`}
+   648→                    >
+   649→                      <div
+   650→                        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md border ${
+   651→                          s.done
+   652→                            ? "border-profit/20 bg-profit/10"
+   653→                            : "border-gold/20 bg-gold/5"
+   654→                        }`}
+   655→                      >
+   656→                        {s.done ? (
+   657→                          <CheckCircle2 className="h-3.5 w-3.5 text-profit" />
+   658→                        ) : (
+   659→                          <SIcon className="h-3.5 w-3.5 text-gold/70" />
+   660→                        )}
+   661→                      </div>
+   662→                      <span className={`text-xs leading-tight ${s.done ? "text-foreground/80" : "text-muted-foreground"}`}>
+   663→                        {s.label}
+   664→                      </span>
+   665→                    </div>
+   666→                  );
+   667→                })}
+   668→              </div>
+   669→
+   670→              {/* Strengthen suggestions */}
+   671→              {securityChecks.some((s) => !s.done) && (
+   672→                <div className="mt-4 rounded-lg border border-gold/20 bg-gold/5 p-3">
+   673→                  <div className="text-xs font-semibold text-gold mb-1.5">Strengthen your account</div>
+   674→                  <ul className="space-y-1">
+   675→                    {securityChecks
+   676→                      .filter((s) => !s.done)
+   677→                      .map((s) => (
+   678→                        <li key={s.label} className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+   679→                          <ChevronRight className="h-3 w-3 text-gold/50" />
+   680→                          {s.label}
+   681→                        </li>
+   682→                      ))}
+   683→                  </ul>
+   684→                </div>
+   685→              )}
+   686→            </GlassCard>
+   687→
+   688→            {/* ---- Quick Status Cards ---- */}
+   689→            <GlassCard className="p-5 hover-lift">
+   690→              <div className="flex items-center gap-3">
+   691→                <div className={`flex h-9 w-9 items-center justify-center rounded-lg border ${
+   692→                  totpEnabled ? "border-profit/20 bg-profit/10" : "border-gold/20 bg-gold/5"
+   693→                }`}>
+   694→                  <ShieldCheck className={`h-4 w-4 ${totpEnabled ? "text-profit" : "text-gold"}`} />
+   695→                </div>
+   696→                <div className="flex-1 min-w-0">
+   697→                  <div className="text-sm font-medium text-foreground">2FA Status</div>
+   698→                  <div className="text-xs text-muted-foreground">
+   699→                    {totpEnabled ? "Authenticator app enabled" : "Not configured — recommended"}
+   700→                  </div>
+   701→                </div>
+   702→                <div className={`h-2.5 w-2.5 rounded-full ${totpEnabled ? "bg-profit" : "bg-gold animate-pulse"}`} />
+   703→              </div>
+   704→            </GlassCard>
+   705→
+   706→            <GlassCard className="p-5 hover-lift">
+   707→              <div className="flex items-center gap-3">
+   708→                <div className={`flex h-9 w-9 items-center justify-center rounded-lg border ${
+   709→                  kycStatus === "APPROVED"
+   710→                    ? "border-profit/20 bg-profit/10"
+   711→                    : kycStatus === "PENDING"
+   712→                      ? "border-gold/20 bg-gold/5"
+   713→                      : kycStatus === "REJECTED"
+   714→                        ? "border-loss/20 bg-loss/5"
+   715→                        : "border-muted-foreground/20 bg-muted/5"
+   716→                }`}>
+   717→                  <FileCheck2 className={`h-4 w-4 ${
+   718→                    kycStatus === "APPROVED" ? "text-profit"
+   719→                      : kycStatus === "PENDING" ? "text-gold"
+   720→                        : kycStatus === "REJECTED" ? "text-loss"
+   721→                          : "text-muted-foreground"
+   722→                  }`} />
+   723→                </div>
+   724→                <div className="flex-1 min-w-0">
+   725→                  <div className="text-sm font-medium text-foreground">KYC Status</div>
+   726→                  <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
+   727→                    <Badge
+   728→                      variant="outline"
+   729→                      className={
+   730→                        kycStatus === "APPROVED" ? "border-profit/30 text-profit"
+   731→                        : kycStatus === "PENDING" ? "border-gold/30 text-gold"
+   732→                        : kycStatus === "REJECTED" ? "border-loss/30 text-loss"
+   733→                        : "border-muted-foreground/30 text-muted-foreground"
+   734→                      }
+   735→                    >
+   736→                      {kycStatus}
+   737→                    </Badge>
+   738→                    <span>· Tier {kycTier}</span>
+   739→                  </div>
+   740→                </div>
+   741→                <div className={`h-2.5 w-2.5 rounded-full ${
+   742→                  kycStatus === "APPROVED" ? "bg-profit"
+   743→                    : kycStatus === "PENDING" ? "bg-gold animate-pulse"
+   744→                      : kycStatus === "REJECTED" ? "bg-loss"
+   745→                        : "bg-muted-foreground/40"
+   746→                }`} />
+   747→              </div>
+   748→            </GlassCard>
+   749→
+   750→            <GlassCard className="p-5 hover-lift">
+   751→              <div className="flex items-center gap-3">
+   752→                <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-gold/20 bg-gold/5">
+   753→                  <Bell className="h-4 w-4 text-gold" />
+   754→                </div>
+   755→                <div className="flex-1 min-w-0">
+   756→                  <div className="text-sm font-medium text-foreground">Notifications</div>
+   757→                  <div className="text-xs text-muted-foreground">
+   758→                    {[notifEmail, notifTx, notifNav, notifNews].filter(Boolean).length} of 4 enabled
+   759→                  </div>
+   760→                </div>
+   761→                <div className={`h-2.5 w-2.5 rounded-full ${
+   762→                  [notifEmail, notifTx, notifNav, notifNews].filter(Boolean).length >= 2 ? "bg-profit" : "bg-gold"
+   763→                }`} />
+   764→              </div>
+   765→            </GlassCard>
+   766→          </div>
+   767→        </FadeIn>
+   768→      </div>
+   769→    </div>
+   770→  );
+   771→}
+   772→

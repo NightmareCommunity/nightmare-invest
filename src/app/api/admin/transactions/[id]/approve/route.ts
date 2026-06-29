@@ -4,6 +4,7 @@ import { requireAdmin } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { accountKey } from "@/lib/analytics";
 import { json, error, parseBody, safeHandler } from "@/lib/api";
+import { notifyUser } from "@/lib/realtime";
 
 async function processApproval(req: NextRequest, ctx: { params: Promise<{ id: string }> }, action: "APPROVED" | "REJECTED") {
   const admin = await requireAdmin();
@@ -102,6 +103,14 @@ async function processApproval(req: NextRequest, ctx: { params: Promise<{ id: st
     resourceType: "Transaction",
     resourceId: id,
     metadata: { amount: txn.amount, type: txn.type, userId: txn.userId, ledgerId: result.ledger.id },
+  });
+
+  // Real-time notification to the investor
+  await notifyUser(txn.userId, "transaction_approved", {
+    transactionId: txn.id,
+    type: txn.type,
+    amount: txn.amount,
+    fundName: txn.fund.name,
   });
 
   return json({ transaction: result.updated, ledger: result.ledger });

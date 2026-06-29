@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 import { json } from "@/lib/api";
 import { audit } from "@/lib/audit";
+import { notifyAll } from "@/lib/realtime";
 
 export async function POST(req: NextRequest) {
   const admin = await requireAdmin();
@@ -29,6 +30,15 @@ export async function POST(req: NextRequest) {
     resourceType: "FundUpdate",
     resourceId: update.id,
     metadata: { title: update.title, category: update.category },
+  });
+
+  // Real-time broadcast notification to all connected investors
+  await notifyAll("fund_update", {
+    updateId: update.id,
+    title: update.title,
+    category: update.category,
+    priority: update.priority,
+    pinned: update.pinned,
   });
 
   return json(update);

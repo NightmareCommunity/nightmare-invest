@@ -1,0 +1,21 @@
+NIGHTMARE INVEST — TRADE CONFIRMATION
+=========================================
+Investor:    Alexander Whitmore (investor@nightmare.invest)
+Account ID:  CMQZGPXQ
+Fund:        Nightmare Alpha Crypto Fund
+
+Transaction Details:
+  Type:        DEPOSIT
+  Amount:      $250,000.00 USD
+  Status:      APPROVED
+  Settled:     2026-06-15 14:32 UTC
+  Reference:   TC-2026-06-72352
+
+Allocation:
+  Units Credited:    1428.5714
+  NAV at Execution:  $175.0000
+
+This confirmation is generated electronically and serves as your official
+record of the executed transaction. Please retain for your records.
+
+Nightmare Invest LLC — Operations Team

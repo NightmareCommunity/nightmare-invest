@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Bell, CheckCircle, XCircle, TrendingUp, Info } from "lucide-react";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
@@ -53,7 +53,7 @@ export function NotificationCenter() {
   const [open, setOpen] = useState(false);
   const queryClient = useQueryClient();
 
-  const { data } = useQuery<NotificationsResponse>({
+  const { data, refetch } = useQuery<NotificationsResponse>({
     queryKey: ["notifications"],
     queryFn: () => api.get<NotificationsResponse>("/api/notifications"),
     refetchInterval: 30_000,
@@ -62,6 +62,17 @@ export function NotificationCenter() {
 
   const notifications = data?.notifications ?? [];
   const unreadCount = data?.unreadCount ?? 0;
+
+  // Listen for real-time notifications from useRealtimeNotifications hook
+  // and immediately refetch the list + invalidate badge count.
+  useEffect(() => {
+    const handler = () => {
+      refetch();
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+    };
+    window.addEventListener("notifications-updated", handler);
+    return () => window.removeEventListener("notifications-updated", handler);
+  }, [refetch, queryClient]);
 
   const markAllRead = useCallback(async () => {
     try {

@@ -1,0 +1,641 @@
+     1→     1→"use client";
+     2→     2→
+     3→     3→import { useState, useRef } from "react";
+     4→     4→import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+     5→     5→import { api } from "@/lib/api-client";
+     6→     6→import {
+     7→     7→  GlassCard, SectionTitle, FadeIn, SkeletonCard, SkeletonTable, EmptyState,
+     8→     8→} from "@/components/brand/primitives";
+     9→     9→import { fmtDate, timeAgo } from "@/lib/format";
+    10→    10→import {
+    11→    11→  FileText, Download, Receipt, FileSpreadsheet, ScrollText, FileCheck2,
+    12→    12→  Trash2, Upload, Plus, Search, Filter, FilePlus2, Loader2, ShieldAlert, Users,
+    13→    13→} from "lucide-react";
+    14→    14→import { Button } from "@/components/ui/button";
+    15→    15→import { Input } from "@/components/ui/input";
+    16→    16→import { Label } from "@/components/ui/label";
+    17→    17→import { Textarea } from "@/components/ui/textarea";
+    18→    18→import { Badge } from "@/components/ui/badge";
+    19→    19→import {
+    20→    20→  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+    21→    21→} from "@/components/ui/select";
+    22→    22→import {
+    23→    23→  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+    24→    24→  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+    25→    25→} from "@/components/ui/alert-dialog";
+    26→    26→import { cn } from "@/lib/utils";
+    27→    27→import { toast } from "sonner";
+    28→    28→
+    29→    29→/* ──────────────────────────────────────────────────────────────────────────────
+    30→    30→   ADMIN DOCUMENTS — Generate statements & manage investor documents
+    31→    31→   ────────────────────────────────────────────────────────────────────────────── */
+    32→    32→
+    33→    33→interface UserBrief { id: string; name: string; email: string; role: string; }
+    34→    34→interface UsersResponse { users: UserBrief[]; }
+    35→    35→
+    36→    36→interface DocumentItem {
+    37→    37→  id: string;
+    38→    38→  userId: string;
+    39→    39→  title: string;
+    40→    40→  type: string;
+    41→    41→  period: string | null;
+    42→    42→  description: string | null;
+    43→    43→  fileName: string;
+    44→    44→  mimeType: string;
+    45→    45→  sizeBytes: number;
+    46→    46→  isRead: boolean;
+    47→    47→  createdAt: string;
+    48→    48→  user: { id: string; name: string; email: string };
+    49→    49→}
+    50→    50→
+    51→    51→interface DocumentsResponse {
+    52→    52→  documents: DocumentItem[];
+    53→    53→  pagination: { page: number; limit: number; total: number; pages: number };
+    54→    54→}
+    55→    55→
+    56→    56→const TYPE_META: Record<string, { label: string; icon: typeof FileText; cls: string }> = {
+    57→    57→  MONTHLY_STATEMENT: { label: "Statement", icon: FileText, cls: "border-gold/30 bg-gold/10 text-gold" },
+    58→    58→  QUARTERLY_REPORT: { label: "Quarterly", icon: ScrollText, cls: "border-info/30 bg-info/10 text-info" },
+    59→    59→  TAX_STATEMENT: { label: "Tax", icon: FileSpreadsheet, cls: "border-amber-400/30 bg-amber-400/10 text-amber-400" },
+    60→    60→  TRADE_CONFIRMATION: { label: "Trade", icon: Receipt, cls: "border-profit/30 bg-profit/10 text-profit" },
+    61→    61→  ACCOUNT_STATEMENT: { label: "Account", icon: FileCheck2, cls: "border-info/30 bg-info/10 text-info" },
+    62→    62→  CUSTOM: { label: "Other", icon: FileText, cls: "border-border bg-muted/40 text-muted-foreground" },
+    63→    63→};
+    64→    64→
+    65→    65→const UPLOAD_TYPES = [
+    66→    66→  "MONTHLY_STATEMENT", "QUARTERLY_REPORT", "TAX_STATEMENT",
+    67→    67→  "TRADE_CONFIRMATION", "ACCOUNT_STATEMENT", "CUSTOM",
+    68→    68→];
+    69→    69→
+    70→    70→const MONTHS = [
+    71→    71→  "January", "February", "March", "April", "May", "June",
+    72→    72→  "July", "August", "September", "October", "November", "December",
+    73→    73→];
+    74→    74→
+    75→    75→function formatSize(bytes: number): string {
+    76→    76→  if (bytes < 1024) return `${bytes} B`;
+    77→    77→  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    78→    78→  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    79→    79→}
+    80→    80→
+    81→    81→export function AdminDocuments() {
+    82→    82→  const queryClient = useQueryClient();
+    83→    83→
+    84→    84→  // Generate statement form state
+    85→    85→  const [genInvestorId, setGenInvestorId] = useState("");
+    86→    86→  const [genMonth, setGenMonth] = useState(new Date().getMonth());
+    87→    87→  const [genYear, setGenYear] = useState(new Date().getFullYear());
+    88→    88→
+    89→    89→  // Upload form state
+    90→    90→  const [upInvestorId, setUpInvestorId] = useState("");
+    91→    91→  const [upTitle, setUpTitle] = useState("");
+    92→    92→  const [upType, setUpType] = useState("CUSTOM");
+    93→    93→  const [upDescription, setUpDescription] = useState("");
+    94→    94→  const [upFile, setUpFile] = useState<File | null>(null);
+    95→    95→  const [dragActive, setDragActive] = useState(false);
+    96→    96→  const fileInputRef = useRef<HTMLInputElement>(null);
+    97→    97→
+    98→    98→  // Table state
+    99→    99→  const [page, setPage] = useState(1);
+   100→   100→  const [search, setSearch] = useState("");
+   101→   101→  const [typeFilter, setTypeFilter] = useState<string>("all");
+   102→   102→
+   103→   103→  // Delete state
+   104→   104→  const [deleteTarget, setDeleteTarget] = useState<DocumentItem | null>(null);
+   105→   105→
+   106→   106→  // ─── Fetch users (investors only) ───
+   107→   107→  const { data: usersData } = useQuery<UsersResponse>({
+   108→   108→    queryKey: ["admin-users-list"],
+   109→   109→    queryFn: () => api.get("/api/admin/users"),
+   110→   110→    retry: 1,
+   111→   111→  });
+   112→   112→  const investors = (usersData?.users || []).filter((u) => u.role !== "ADMIN");
+   113→   113→
+   114→   114→  // ─── Fetch all documents ───
+   115→   115→  const { data: docsData, isLoading: docsLoading } = useQuery<DocumentsResponse>({
+   116→   116→    queryKey: ["admin-documents", page, typeFilter],
+   117→   117→    queryFn: () => {
+   118→   118→      const params = new URLSearchParams({ page: String(page), limit: "20" });
+   119→   119→      if (typeFilter !== "all") params.set("type", typeFilter);
+   120→   120→      return api.get(`/api/admin/documents?${params}`);
+   121→   121→    },
+   122→   122→    retry: 1,
+   123→   123→  });
+   124→   124→
+   125→   125→  const allDocs = docsData?.documents ?? [];
+   126→   126→
+   127→   127→  // Apply client-side search filter (across current page — server pagination handles the rest)
+   128→   128→  const filteredDocs = search
+   129→   129→    ? allDocs.filter(
+   130→   130→        (d) =>
+   131→   131→          d.title.toLowerCase().includes(search.toLowerCase()) ||
+   132→   132→          d.user?.name?.toLowerCase().includes(search.toLowerCase()) ||
+   133→   133→          d.user?.email?.toLowerCase().includes(search.toLowerCase())
+   134→   134→      )
+   135→   135→    : allDocs;
+   136→   136→
+   137→   137→  // ─── Generate statement mutation ───
+   138→   138→  const generateStatement = useMutation({
+   139→   139→    mutationFn: (data: { userId: string; periodStart: string; periodEnd: string }) =>
+   140→   140→      api.post<{ documentId: string; fileName: string }>("/api/admin/statements/generate", data),
+   141→   141→    onSuccess: (resp) => {
+   142→   142→      toast.success(`Statement generated: ${resp.fileName}`);
+   143→   143→      queryClient.invalidateQueries({ queryKey: ["admin-documents"] });
+   144→   144→    },
+   145→   145→    onError: (err: Error) => toast.error(err.message || "Failed to generate statement"),
+   146→   146→  });
+   147→   147→
+   148→   148→  const handleGenerate = () => {
+   149→   149→    if (!genInvestorId) {
+   150→   150→      toast.error("Please select an investor");
+   151→   151→      return;
+   152→   152→    }
+   153→   153→    const periodStart = new Date(genYear, genMonth, 1);
+   154→   154→    const periodEnd = new Date(genYear, genMonth + 1, 0, 23, 59, 59);
+   155→   155→    generateStatement.mutate({
+   156→   156→      userId: genInvestorId,
+   157→   157→      periodStart: periodStart.toISOString(),
+   158→   158→      periodEnd: periodEnd.toISOString(),
+   159→   159→    });
+   160→   160→  };
+   161→   161→
+   162→   162→  // ─── Upload document mutation ───
+   163→   163→  const uploadDocument = useMutation({
+   164→   164→    mutationFn: async () => {
+   165→   165→      if (!upInvestorId) throw new Error("Please select an investor");
+   166→   166→      if (!upTitle.trim()) throw new Error("Title is required");
+   167→   167→      if (!upFile) throw new Error("Please select a file");
+   168→   168→      const form = new FormData();
+   169→   169→      form.append("file", upFile);
+   170→   170→      form.append("userId", upInvestorId);
+   171→   171→      form.append("title", upTitle.trim());
+   172→   172→      form.append("type", upType);
+   173→   173→      if (upDescription.trim()) form.append("description", upDescription.trim());
+   174→   174→      return api.upload<{ document: DocumentItem }>("/api/admin/documents/upload", form);
+   175→   175→    },
+   176→   176→    onSuccess: () => {
+   177→   177→      toast.success("Document uploaded successfully");
+   178→   178→      // Reset form
+   179→   179→      setUpTitle("");
+   180→   180→      setUpDescription("");
+   181→   181→      setUpFile(null);
+   182→   182→      setUpType("CUSTOM");
+   183→   183→      if (fileInputRef.current) fileInputRef.current.value = "";
+   184→   184→      queryClient.invalidateQueries({ queryKey: ["admin-documents"] });
+   185→   185→    },
+   186→   186→    onError: (err: Error) => toast.error(err.message || "Upload failed"),
+   187→   187→  });
+   188→   188→
+   189→   189→  // ─── Delete document mutation ───
+   190→   190→  const deleteDocument = useMutation({
+   191→   191→    mutationFn: (id: string) => api.del(`/api/admin/documents/${id}`),
+   192→   192→    onSuccess: () => {
+   193→   193→      toast.success("Document deleted");
+   194→   194→      setDeleteTarget(null);
+   195→   195→      queryClient.invalidateQueries({ queryKey: ["admin-documents"] });
+   196→   196→    },
+   197→   197→    onError: (err: Error) => toast.error(err.message || "Delete failed"),
+   198→   198→  });
+   199→   199→
+   200→   200→  const handleFileChange = (file: File | null) => {
+   201→   201→    if (!file) return;
+   202→   202→    if (file.size > 25 * 1024 * 1024) {
+   203→   203→      toast.error("File too large. Max 25MB.");
+   204→   204→      return;
+   205→   205→    }
+   206→   206→    setUpFile(file);
+   207→   207→    if (!upTitle.trim()) {
+   208→   208→      // Auto-fill title from filename (without extension)
+   209→   209→      const name = file.name.replace(/\.[^/.]+$/, "");
+   210→   210→      setUpTitle(name);
+   211→   211→    }
+   212→   212→  };
+   213→   213→
+   214→   214→  const handleDownload = (doc: DocumentItem) => {
+   215→   215→    window.open(`/api/documents/${doc.id}/download`, "_blank");
+   216→   216→  };
+   217→   217→
+   218→   218→  const totalDocuments = docsData?.pagination.total ?? 0;
+   219→   219→  const currentYear = new Date().getFullYear();
+   220→   220→
+   221→   221→  return (
+   222→   222→    <div className="space-y-6">
+   223→   223→      {/* Header */}
+   224→   224→      <FadeIn>
+   225→   225→        <div>
+   226→   226→          <span className="text-xs font-medium uppercase tracking-[0.18em] text-gold">Admin Console</span>
+   227→   227→          <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">Document Management</h1>
+   228→   228→          <p className="text-sm text-muted-foreground">Generate statements &amp; manage investor documents</p>
+   229→   229→        </div>
+   230→   230→      </FadeIn>
+   231→   231→
+   232→   232→      {/* Action Cards */}
+   233→   233→      <FadeIn delay={0.05}>
+   234→   234→        <div className="grid gap-4 lg:grid-cols-2">
+   235→   235→          {/* Generate Statement Card */}
+   236→   236→          <GlassCard gold className="p-6">
+   237→   237→            <div className="mb-4 flex items-center gap-3">
+   238→   238→              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gold/10">
+   239→   239→                <FilePlus2 className="h-5 w-5 text-gold" />
+   240→   240→              </div>
+   241→   241→              <div>
+   242→   242→                <h2 className="text-sm font-semibold text-foreground">Generate Monthly Statement</h2>
+   243→   243→                <p className="text-[11px] text-muted-foreground">Create an official PDF statement for an investor</p>
+   244→   244→              </div>
+   245→   245→            </div>
+   246→   246→
+   247→   247→            <div className="space-y-4">
+   248→   248→              {/* Investor selector */}
+   249→   249→              <div className="space-y-1.5">
+   250→   250→                <Label className="text-xs font-medium text-muted-foreground">Investor</Label>
+   251→   251→                <Select value={genInvestorId} onValueChange={setGenInvestorId}>
+   252→   252→                  <SelectTrigger className="border-border/60 bg-black/30">
+   253→   253→                    <SelectValue placeholder="Select investor..." />
+   254→   254→                  </SelectTrigger>
+   255→   255→                  <SelectContent className="glass-strong border-gold/20 max-h-72">
+   256→   256→                    {investors.map((u) => (
+   257→   257→                      <SelectItem key={u.id} value={u.id}>
+   258→   258→                        <div className="flex items-center gap-2">
+   259→   259→                          <Users className="h-3 w-3 text-muted-foreground" />
+   260→   260→                          <span>{u.name}</span>
+   261→   261→                          <span className="text-muted-foreground text-[11px]">({u.email})</span>
+   262→   262→                        </div>
+   263→   263→                      </SelectItem>
+   264→   264→                    ))}
+   265→   265→                  </SelectContent>
+   266→   266→                </Select>
+   267→   267→              </div>
+   268→   268→
+   269→   269→              {/* Period selector */}
+   270→   270→              <div className="grid grid-cols-2 gap-3">
+   271→   271→                <div className="space-y-1.5">
+   272→   272→                  <Label className="text-xs font-medium text-muted-foreground">Month</Label>
+   273→   273→                  <Select value={String(genMonth)} onValueChange={(v) => setGenMonth(Number(v))}>
+   274→   274→                    <SelectTrigger className="border-border/60 bg-black/30">
+   275→   275→                      <SelectValue />
+   276→   276→                    </SelectTrigger>
+   277→   277→                    <SelectContent className="glass-strong border-gold/20 max-h-72">
+   278→   278→                      {MONTHS.map((m, i) => (
+   279→   279→                        <SelectItem key={m} value={String(i)}>{m}</SelectItem>
+   280→   280→                      ))}
+   281→   281→                    </SelectContent>
+   282→   282→                  </Select>
+   283→   283→                </div>
+   284→   284→                <div className="space-y-1.5">
+   285→   285→                  <Label className="text-xs font-medium text-muted-foreground">Year</Label>
+   286→   286→                  <Select value={String(genYear)} onValueChange={(v) => setGenYear(Number(v))}>
+   287→   287→                    <SelectTrigger className="border-border/60 bg-black/30">
+   288→   288→                      <SelectValue />
+   289→   289→                    </SelectTrigger>
+   290→   290→                    <SelectContent className="glass-strong border-gold/20">
+   291→   291→                      {Array.from({ length: 6 }, (_, i) => currentYear - i).map((y) => (
+   292→   292→                        <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+   293→   293→                      ))}
+   294→   294→                    </SelectContent>
+   295→   295→                  </Select>
+   296→   296→                </div>
+   297→   297→              </div>
+   298→   298→
+   299→   299→              <Button
+   300→   300→                onClick={handleGenerate}
+   301→   301→                disabled={generateStatement.isPending}
+   302→   302→                className="w-full bg-gold-gradient text-black font-semibold hover:opacity-90 press-scale"
+   303→   303→              >
+   304→   304→                {generateStatement.isPending ? (
+   305→   305→                  <span className="flex items-center gap-2">
+   306→   306→                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+   307→   307→                    Generating PDF...
+   308→   308→                  </span>
+   309→   309→                ) : (
+   310→   310→                  <span className="flex items-center gap-2">
+   311→   311→                    <FilePlus2 className="h-3.5 w-3.5" />
+   312→   312→                    Generate Statement
+   313→   313→                  </span>
+   314→   314→                )}
+   315→   315→              </Button>
+   316→   316→            </div>
+   317→   317→          </GlassCard>
+   318→   318→
+   319→   319→          {/* Upload Document Card */}
+   320→   320→          <GlassCard className="p-6">
+   321→   321→            <div className="mb-4 flex items-center gap-3">
+   322→   322→              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted/30">
+   323→   323→                <Upload className="h-5 w-5 text-muted-foreground" />
+   324→   324→              </div>
+   325→   325→              <div>
+   326→   326→                <h2 className="text-sm font-semibold text-foreground">Upload Custom Document</h2>
+   327→   327→                <p className="text-[11px] text-muted-foreground">Attach a file to an investor&apos;s vault</p>
+   328→   328→              </div>
+   329→   329→            </div>
+   330→   330→
+   331→   331→            <div className="space-y-4">
+   332→   332→              {/* Investor */}
+   333→   333→              <div className="space-y-1.5">
+   334→   334→                <Label className="text-xs font-medium text-muted-foreground">Investor</Label>
+   335→   335→                <Select value={upInvestorId} onValueChange={setUpInvestorId}>
+   336→   336→                  <SelectTrigger className="border-border/60 bg-black/30">
+   337→   337→                    <SelectValue placeholder="Select investor..." />
+   338→   338→                  </SelectTrigger>
+   339→   339→                  <SelectContent className="glass-strong border-gold/20 max-h-72">
+   340→   340→                    {investors.map((u) => (
+   341→   341→                      <SelectItem key={u.id} value={u.id}>
+   342→   342→                        <div className="flex items-center gap-2">
+   343→   343→                          <Users className="h-3 w-3 text-muted-foreground" />
+   344→   344→                          <span>{u.name}</span>
+   345→   345→                          <span className="text-muted-foreground text-[11px]">({u.email})</span>
+   346→   346→                        </div>
+   347→   347→                      </SelectItem>
+   348→   348→                    ))}
+   349→   349→                  </SelectContent>
+   350→   350→                </Select>
+   351→   351→              </div>
+   352→   352→
+   353→   353→              {/* Title + Type */}
+   354→   354→              <div className="grid grid-cols-2 gap-3">
+   355→   355→                <div className="space-y-1.5">
+   356→   356→                  <Label className="text-xs font-medium text-muted-foreground">Title</Label>
+   357→   357→                  <Input
+   358→   358→                    value={upTitle}
+   359→   359→                    onChange={(e) => setUpTitle(e.target.value)}
+   360→   360→                    placeholder="Document title..."
+   361→   361→                    className="border-border/60 bg-black/30"
+   362→   362→                  />
+   363→   363→                </div>
+   364→   364→                <div className="space-y-1.5">
+   365→   365→                  <Label className="text-xs font-medium text-muted-foreground">Type</Label>
+   366→   366→                  <Select value={upType} onValueChange={setUpType}>
+   367→   367→                    <SelectTrigger className="border-border/60 bg-black/30">
+   368→   368→                      <SelectValue />
+   369→   369→                    </SelectTrigger>
+   370→   370→                    <SelectContent className="glass-strong border-gold/20">
+   371→   371→                      {UPLOAD_TYPES.map((t) => (
+   372→   372→                        <SelectItem key={t} value={t}>{TYPE_META[t]?.label ?? t}</SelectItem>
+   373→   373→                      ))}
+   374→   374→                    </SelectContent>
+   375→   375→                  </Select>
+   376→   376→                </div>
+   377→   377→              </div>
+   378→   378→
+   379→   379→              {/* Description */}
+   380→   380→              <div className="space-y-1.5">
+   381→   381→                <Label className="text-xs font-medium text-muted-foreground">Description (optional)</Label>
+   382→   382→                <Textarea
+   383→   383→                  value={upDescription}
+   384→   384→                  onChange={(e) => setUpDescription(e.target.value)}
+   385→   385→                  placeholder="Brief description of this document..."
+   386→   386→                  className="min-h-[60px] border-border/60 bg-black/30 resize-y text-xs"
+   387→   387→                />
+   388→   388→              </div>
+   389→   389→
+   390→   390→              {/* File drop zone */}
+   391→   391→              <div
+   392→   392→                onDragEnter={(e) => { e.preventDefault(); setDragActive(true); }}
+   393→   393→                onDragLeave={(e) => { e.preventDefault(); setDragActive(false); }}
+   394→   394→                onDragOver={(e) => { e.preventDefault(); }}
+   395→   395→                onDrop={(e) => {
+   396→   396→                  e.preventDefault();
+   397→   397→                  setDragActive(false);
+   398→   398→                  const f = e.dataTransfer.files?.[0];
+   399→   399→                  if (f) handleFileChange(f);
+   400→   400→                }}
+   401→   401→                onClick={() => fileInputRef.current?.click()}
+   402→   402→                className={cn(
+   403→   403→                  "flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed p-6 text-center transition-colors",
+   404→   404→                  dragActive
+   405→   405→                    ? "border-gold/60 bg-gold/5"
+   406→   406→                    : "border-border/60 bg-black/20 hover:border-gold/30 hover:bg-gold/[0.02]"
+   407→   407→                )}
+   408→   408→              >
+   409→   409→                <input
+   410→   410→                  ref={fileInputRef}
+   411→   411→                  type="file"
+   412→   412→                  className="hidden"
+   413→   413→                  accept=".pdf,.png,.jpg,.jpeg,.webp,.txt,.docx,.xlsx"
+   414→   414→                  onChange={(e) => handleFileChange(e.target.files?.[0] ?? null)}
+   415→   415→                />
+   416→   416→                {upFile ? (
+   417→   417→                  <>
+   418→   418→                    <FileCheck2 className="h-6 w-6 text-gold" />
+   419→   419→                    <div className="text-xs font-medium text-foreground">{upFile.name}</div>
+   420→   420→                    <div className="text-[10px] text-muted-foreground">{formatSize(upFile.size)}</div>
+   421→   421→                  </>
+   422→   422→                ) : (
+   423→   423→                  <>
+   424→   424→                    <Upload className="h-6 w-6 text-muted-foreground" />
+   425→   425→                    <div className="text-xs font-medium text-foreground">Drop file here or click to browse</div>
+   426→   426→                    <div className="text-[10px] text-muted-foreground">PDF, PNG, JPEG, WebP, TXT, DOCX, XLSX — max 25MB</div>
+   427→   427→                  </>
+   428→   428→                )}
+   429→   429→              </div>
+   430→   430→
+   431→   431→              <Button
+   432→   432→                onClick={() => uploadDocument.mutate()}
+   433→   433→                disabled={uploadDocument.isPending}
+   434→   434→                className="w-full bg-gold-gradient text-black font-semibold hover:opacity-90 press-scale"
+   435→   435→              >
+   436→   436→                {uploadDocument.isPending ? (
+   437→   437→                  <span className="flex items-center gap-2">
+   438→   438→                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+   439→   439→                    Uploading...
+   440→   440→                  </span>
+   441→   441→                ) : (
+   442→   442→                  <span className="flex items-center gap-2">
+   443→   443→                    <Plus className="h-3.5 w-3.5" />
+   444→   444→                    Upload Document
+   445→   445→                  </span>
+   446→   446→                )}
+   447→   447→              </Button>
+   448→   448→            </div>
+   449→   449→          </GlassCard>
+   450→   450→        </div>
+   451→   451→      </FadeIn>
+   452→   452→
+   453→   453→      {/* Documents Table */}
+   454→   454→      <FadeIn delay={0.1}>
+   455→   455→        <GlassCard className="p-5">
+   456→   456→          {/* Filters row */}
+   457→   457→          <div className="mb-4 flex flex-wrap items-center gap-3">
+   458→   458→            <div className="relative flex-1 min-w-[200px]">
+   459→   459→              <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+   460→   460→              <Input
+   461→   461→                value={search}
+   462→   462→                onChange={(e) => setSearch(e.target.value)}
+   463→   463→                placeholder="Search by investor or title..."
+   464→   464→                className="border-border/60 bg-black/30 pl-9 h-8 text-xs"
+   465→   465→              />
+   466→   466→            </div>
+   467→   467→            <div className="flex items-center gap-2">
+   468→   468→              <Filter className="h-3.5 w-3.5 text-muted-foreground" />
+   469→   469→              <Select value={typeFilter} onValueChange={(v) => { setTypeFilter(v); setPage(1); }}>
+   470→   470→                <SelectTrigger className="w-40 h-8 border-border/60 bg-black/30 text-xs">
+   471→   471→                  <SelectValue />
+   472→   472→                </SelectTrigger>
+   473→   473→                <SelectContent className="glass-strong border-gold/20">
+   474→   474→                  <SelectItem value="all">All Types</SelectItem>
+   475→   475→                  {UPLOAD_TYPES.map((t) => (
+   476→   476→                    <SelectItem key={t} value={t}>{TYPE_META[t]?.label ?? t}</SelectItem>
+   477→   477→                  ))}
+   478→   478→                </SelectContent>
+   479→   479→              </Select>
+   480→   480→            </div>
+   481→   481→            <div className="ml-auto text-[11px] text-muted-foreground">
+   482→   482→              {totalDocuments} documents
+   483→   483→            </div>
+   484→   484→          </div>
+   485→   485→
+   486→   486→          {/* Table content */}
+   487→   487→          {docsLoading ? (
+   488→   488→            <SkeletonTable rows={6} cols={7} />
+   489→   489→          ) : filteredDocs.length === 0 ? (
+   490→   490→            <EmptyState
+   491→   491→              icon={<FileText className="h-6 w-6" />}
+   492→   492→              title="No documents found"
+   493→   493→              description="Generate a statement or upload a custom document to get started."
+   494→   494→            />
+   495→   495→          ) : (
+   496→   496→            <div className="overflow-x-auto scroll-luxury">
+   497→   497→              <table className="w-full text-sm">
+   498→   498→                <thead>
+   499→   499→                  <tr className="border-b border-border/40 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+   500→   500→                    <th className="pb-3 pr-4">Date</th>
+   501→   501→                    <th className="pb-3 pr-4">Investor</th>
+   502→   502→                    <th className="pb-3 pr-4">Type</th>
+   503→   503→                    <th className="pb-3 pr-4">Title</th>
+   504→   504→                    <th className="pb-3 pr-4">Period</th>
+   505→   505→                    <th className="pb-3 pr-4">Size</th>
+   506→   506→                    <th className="pb-3 text-right">Actions</th>
+   507→   507→                  </tr>
+   508→   508→                </thead>
+   509→   509→                <tbody>
+   510→   510→                  {filteredDocs.map((doc, idx) => {
+   511→   511→                    const meta = TYPE_META[doc.type] ?? TYPE_META.CUSTOM;
+   512→   512→                    const Icon = meta.icon;
+   513→   513→                    return (
+   514→   514→                      <tr
+   515→   515→                        key={doc.id}
+   516→   516→                        className="group border-b border-border/20 transition-colors hover:bg-gold/[0.03]"
+   517→   517→                        style={{ animationDelay: `${idx * 25}ms` }}
+   518→   518→                      >
+   519→   519→                        <td className="py-3 pr-4 align-top">
+   520→   520→                          <div className="text-xs text-foreground">{fmtDate(doc.createdAt)}</div>
+   521→   521→                          <div className="text-[10px] text-muted-foreground">{timeAgo(doc.createdAt)}</div>
+   522→   522→                        </td>
+   523→   523→                        <td className="py-3 pr-4 align-top">
+   524→   524→                          <div className="text-xs font-medium text-foreground">{doc.user?.name ?? "—"}</div>
+   525→   525→                          <div className="text-[10px] text-muted-foreground">{doc.user?.email}</div>
+   526→   526→                        </td>
+   527→   527→                        <td className="py-3 pr-4 align-top">
+   528→   528→                          <span className={cn("inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-medium", meta.cls)}>
+   529→   529→                            <Icon className="h-3 w-3" />
+   530→   530→                            {meta.label}
+   531→   531→                          </span>
+   532→   532→                        </td>
+   533→   533→                        <td className="py-3 pr-4 align-top">
+   534→   534→                          <div className="max-w-[200px] truncate text-xs font-medium text-foreground">{doc.title}</div>
+   535→   535→                          {doc.description && (
+   536→   536→                            <div className="mt-0.5 max-w-[200px] truncate text-[10px] text-muted-foreground">{doc.description}</div>
+   537→   537→                          )}
+   538→   538→                        </td>
+   539→   539→                        <td className="py-3 pr-4 align-top">
+   540→   540→                          <span className="text-[11px] text-muted-foreground">{doc.period ?? "—"}</span>
+   541→   541→                        </td>
+   542→   542→                        <td className="py-3 pr-4 align-top">
+   543→   543→                          <span className="text-[11px] text-muted-foreground">{formatSize(doc.sizeBytes)}</span>
+   544→   544→                        </td>
+   545→   545→                        <td className="py-3 align-top">
+   546→   546→                          <div className="flex items-center justify-end gap-1">
+   547→   547→                            <Button
+   548→   548→                              size="sm"
+   549→   549→                              variant="ghost"
+   550→   550→                              onClick={() => handleDownload(doc)}
+   551→   551→                              className="h-7 px-2 text-muted-foreground hover:bg-gold/10 hover:text-gold"
+   552→   552→                              title="Download"
+   553→   553→                            >
+   554→   554→                              <Download className="h-3.5 w-3.5" />
+   555→   555→                            </Button>
+   556→   556→                            <Button
+   557→   557→                              size="sm"
+   558→   558→                              variant="ghost"
+   559→   559→                              onClick={() => setDeleteTarget(doc)}
+   560→   560→                              className="h-7 px-2 text-muted-foreground hover:bg-loss/10 hover:text-loss"
+   561→   561→                              title="Delete"
+   562→   562→                            >
+   563→   563→                              <Trash2 className="h-3.5 w-3.5" />
+   564→   564→                            </Button>
+   565→   565→                          </div>
+   566→   566→                        </td>
+   567→   567→                      </tr>
+   568→   568→                    );
+   569→   569→                  })}
+   570→   570→                </tbody>
+   571→   571→              </table>
+   572→   572→            </div>
+   573→   573→          )}
+   574→   574→
+   575→   575→          {/* Pagination */}
+   576→   576→          {docsData && docsData.pagination.pages > 1 && (
+   577→   577→            <div className="mt-4 flex items-center justify-center gap-2">
+   578→   578→              <Button
+   579→   579→                variant="outline"
+   580→   580→                size="sm"
+   581→   581→                disabled={page <= 1}
+   582→   582→                onClick={() => setPage((p) => Math.max(1, p - 1))}
+   583→   583→                className="h-7 border-border/60 text-xs"
+   584→   584→              >
+   585→   585→                Previous
+   586→   586→              </Button>
+   587→   587→              <span className="text-xs text-muted-foreground">
+   588→   588→                Page {page} of {docsData.pagination.pages}
+   589→   589→              </span>
+   590→   590→              <Button
+   591→   591→                variant="outline"
+   592→   592→                size="sm"
+   593→   593→                disabled={page >= docsData.pagination.pages}
+   594→   594→                onClick={() => setPage((p) => p + 1)}
+   595→   595→                className="h-7 border-border/60 text-xs"
+   596→   596→              >
+   597→   597→                Next
+   598→   598→              </Button>
+   599→   599→            </div>
+   600→   600→          )}
+   601→   601→        </GlassCard>
+   602→   602→      </FadeIn>
+   603→   603→
+   604→   604→      {/* Delete confirmation dialog */}
+   605→   605→      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+   606→   606→        <AlertDialogContent className="glass-strong border-gold/20">
+   607→   607→          <AlertDialogHeader>
+   608→   608→            <AlertDialogTitle className="flex items-center gap-2 text-foreground">
+   609→   609→              <ShieldAlert className="h-5 w-5 text-loss" />
+   610→   610→              Delete Document
+   611→   611→            </AlertDialogTitle>
+   612→   612→            <AlertDialogDescription>
+   613→   613→              You are about to permanently delete <strong className="text-foreground">{deleteTarget?.title}</strong> for{" "}
+   614→   614→              <strong className="text-foreground">{deleteTarget?.user?.name}</strong>. This will remove the file from disk
+   615→   615→              and the database record. This action cannot be undone.
+   616→   616→            </AlertDialogDescription>
+   617→   617→          </AlertDialogHeader>
+   618→   618→          <AlertDialogFooter>
+   619→   619→            <AlertDialogCancel className="border-border/60 text-muted-foreground">Cancel</AlertDialogCancel>
+   620→   620→            <AlertDialogAction
+   621→   621→              onClick={() => deleteTarget && deleteDocument.mutate(deleteTarget.id)}
+   622→   622→              disabled={deleteDocument.isPending}
+   623→   623→              className="bg-loss text-white hover:bg-loss/90"
+   624→   624→            >
+   625→   625→              {deleteDocument.isPending ? (
+   626→   626→                <span className="flex items-center gap-2">
+   627→   627→                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> Deleting...
+   628→   628→                </span>
+   629→   629→              ) : (
+   630→   630→                <span className="flex items-center gap-2">
+   631→   631→                  <Trash2 className="h-3.5 w-3.5" /> Delete
+   632→   632→                </span>
+   633→   633→              )}
+   634→   634→            </AlertDialogAction>
+   635→   635→          </AlertDialogFooter>
+   636→   636→        </AlertDialogContent>
+   637→   637→      </AlertDialog>
+   638→   638→    </div>
+   639→   639→  );
+   640→   640→}
+   641→   641→

@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { json, error, parseBody, safeHandler } from "@/lib/api";
+import { notifyUser } from "@/lib/realtime";
 
 // POST /api/admin/kyc/[id]/approve — approve a single document & optionally bump user's KYC tier
 async function approve(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
@@ -55,6 +56,13 @@ async function approve(req: NextRequest, ctx: { params: Promise<{ id: string }> 
     resourceId: id,
     metadata: { userId: doc.userId, type: doc.type, tier: tier ?? null, fullyVerified },
   });
+
+  // Real-time notification to the investor (only on full verification)
+  if (fullyVerified) {
+    await notifyUser(doc.userId, "kyc_approved", {
+      tier: tier ?? null,
+    });
+  }
 
   return json({ document: updated, fullyVerified });
 }

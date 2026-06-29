@@ -1,6 +1,7 @@
 import { safeHandler, json, error, parseBody } from "@/lib/api";
 import { requireAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { notifyUser, notifyAll } from "@/lib/realtime";
 
 export const GET = safeHandler(async (req: Request) => {
   const admin = await requireAdmin();
@@ -89,6 +90,15 @@ export const POST = safeHandler(async (req: Request) => {
       },
     });
 
+    // Real-time broadcast notification to all connected investors
+    await notifyAll("new_message", {
+      messageId: msg.id,
+      subject: msg.subject,
+      priority: msg.priority,
+      isBroadcast: true,
+      senderName: admin.name,
+    });
+
     return json({ message: msg, broadcast: true }, 201);
   } else {
     // Create individual message
@@ -121,6 +131,15 @@ export const POST = safeHandler(async (req: Request) => {
         resourceId: msg.id,
         metadata: JSON.stringify({ recipientId: body.recipientId, subject: body.subject, priority }),
       },
+    });
+
+    // Real-time notification to the recipient only
+    await notifyUser(recipient.id, "new_message", {
+      messageId: msg.id,
+      subject: msg.subject,
+      priority: msg.priority,
+      isBroadcast: false,
+      senderName: admin.name,
     });
 
     return json({ message: msg, broadcast: false }, 201);

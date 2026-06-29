@@ -57,17 +57,27 @@ function passwordStrength(pw: string): { score: number; label: string; color: st
 /* ------------------------------------------------------------------ */
 
 function SecurityRing({ percent, size = 120 }: { percent: number; size?: number }) {
-  const strokeWidth = 6;
+  const strokeWidth = 8;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (percent / 100) * circumference;
 
   const ringColor =
     percent >= 80 ? "#00c896" : percent >= 50 ? "#D4AF37" : "#ff4d4f";
+  const glowId = `ring-glow-${size}`;
 
   return (
     <div className="relative inline-flex items-center justify-center">
       <svg width={size} height={size} className="-rotate-90">
+        <defs>
+          <filter id={glowId} x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="3" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+        </defs>
         <circle
           cx={size / 2}
           cy={size / 2}
@@ -87,14 +97,52 @@ function SecurityRing({ percent, size = 120 }: { percent: number; size?: number 
           strokeDasharray={circumference}
           initial={{ strokeDashoffset: circumference }}
           animate={{ strokeDashoffset: offset }}
-          transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
+          transition={{ duration: 1.4, ease: [0.22, 1, 0.36, 1] }}
+          filter={`url(#${glowId})`}
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="font-metric text-2xl font-bold" style={{ color: ringColor }}>
+        <span className="font-metric text-2xl font-bold" style={{ color: ringColor, textShadow: `0 0 12px ${ringColor}66` }}>
           {percent}%
         </span>
         <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Secure</span>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Section Header — numbered, accent-lined, iconified                  */
+/* ------------------------------------------------------------------ */
+
+function SettingsSectionHeader({
+  num,
+  title,
+  subtitle,
+  icon,
+  action,
+}: {
+  num: string;
+  title: string;
+  subtitle?: string;
+  icon?: React.ReactNode;
+  action?: React.ReactNode;
+}) {
+  return (
+    <div className="relative">
+      <div className="gold-divider mb-4 opacity-60" />
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex items-start gap-3">
+          <span className="number-badge mt-0.5 shrink-0">{num}</span>
+          <div>
+            <div className="flex items-center gap-2">
+              {icon && <span className="text-gold/85">{icon}</span>}
+              <h2 className="text-base font-semibold tracking-tight text-foreground sm:text-lg">{title}</h2>
+            </div>
+            {subtitle && <p className="mt-0.5 text-sm text-muted-foreground">{subtitle}</p>}
+          </div>
+        </div>
+        {action}
       </div>
     </div>
   );
@@ -358,23 +406,28 @@ export function SettingsPage() {
         <FadeIn delay={0.07} className="lg:col-span-2 space-y-4">
 
           {/* ---- Profile Section (Enhanced) ---- */}
-          <GlassCard className="p-6 hover-lift">
-            <div className="flex items-start justify-between gap-4">
-              <SectionTitle title="Profile" subtitle="Account information" />
-              <Button
-                variant="outline"
-                size="sm"
-                className="border-gold/30 text-gold hover:bg-gold/10 gap-1.5 text-xs"
-                onClick={() => toast.info("Profile editing is not available in this version")}
-              >
-                <Pencil className="h-3 w-3" /> Edit
-              </Button>
-            </div>
+          <GlassCard className="glass-card-hover p-6">
+            <SettingsSectionHeader
+              num="01"
+              title="Profile"
+              subtitle="Account information"
+              icon={<User className="h-4 w-4" />}
+              action={
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="border-gold/30 text-gold hover:bg-gold/10 gap-1.5 text-xs"
+                  onClick={() => toast.info("Profile editing is not available in this version")}
+                >
+                  <Pencil className="h-3 w-3" /> Edit
+                </Button>
+              }
+            />
 
             <div className="mt-5 flex flex-col sm:flex-row gap-5">
-              {/* Avatar with gold ring */}
+              {/* Avatar with rotating gold ring */}
               <div className="flex flex-col items-center gap-2">
-                <div className="relative">
+                <div className="relative avatar-gold-ring">
                   <div className="flex h-20 w-20 items-center justify-center rounded-full border-2 border-gold/50 bg-gold/10 text-2xl font-bold text-gold-gradient">
                     {getInitials(user.name)}
                   </div>
@@ -432,8 +485,13 @@ export function SettingsPage() {
           </GlassCard>
 
           {/* ---- Password Section (Enhanced) ---- */}
-          <GlassCard className="p-6 hover-lift">
-            <SectionTitle title="Password" subtitle="Update your password" />
+          <GlassCard className="glass-card-hover p-6">
+            <SettingsSectionHeader
+              num="02"
+              title="Password"
+              subtitle="Update your password"
+              icon={<KeyRound className="h-4 w-4" />}
+            />
             <div className="mt-4 space-y-4">
               <div className="space-y-1.5">
                 <Label htmlFor="newpass" className="text-xs uppercase tracking-wider text-muted-foreground">New Password</Label>
@@ -518,8 +576,13 @@ export function SettingsPage() {
           <KycSection />
 
           {/* ---- Notification Preferences ---- */}
-          <GlassCard className="p-6 hover-lift">
-            <SectionTitle title="Notification Preferences" subtitle="Control what updates you receive" />
+          <GlassCard className="glass-card-hover p-6">
+            <SettingsSectionHeader
+              num="03"
+              title="Notification Preferences"
+              subtitle="Control what updates you receive"
+              icon={<Bell className="h-4 w-4" />}
+            />
             <div className="mt-5 space-y-4">
               {[
                 {
@@ -573,7 +636,7 @@ export function SettingsPage() {
                     <Switch
                       checked={item.checked}
                       onCheckedChange={item.onChange}
-                      className="data-[state=checked]:bg-gold"
+                      className="switch-gold-glow data-[state=checked]:bg-gold"
                     />
                   </div>
                 );
@@ -582,8 +645,13 @@ export function SettingsPage() {
           </GlassCard>
 
           {/* ---- Connected Sessions (Enhanced) ---- */}
-          <GlassCard className="p-6 hover-lift">
-            <SectionTitle title="Connected Sessions" subtitle="Authentication tokens" />
+          <GlassCard className="glass-card-hover p-6">
+            <SettingsSectionHeader
+              num="04"
+              title="Connected Sessions"
+              subtitle="Authentication tokens"
+              icon={<Monitor className="h-4 w-4" />}
+            />
             <div className="mt-4 space-y-3">
               <div className="rounded-lg border border-profit/20 bg-profit/5 p-4">
                 <div className="flex items-start gap-3">
@@ -620,13 +688,16 @@ export function SettingsPage() {
         <FadeIn delay={0.12}>
           <div className="space-y-4">
             {/* ---- Security Center (Enhanced) ---- */}
-            <GlassCard gold className="p-6 hover-lift">
-              <div className="flex flex-col items-center text-center">
+            <GlassCard gold className="glass-card-hover p-6">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="number-badge">05</span>
                 <div className="flex items-center gap-2">
-                  <Shield className="h-5 w-5 text-gold" />
+                  <Shield className="h-4 w-4 text-gold" />
                   <h3 className="text-base font-semibold text-foreground">Security Center</h3>
                 </div>
-                <p className="mt-1 text-xs text-muted-foreground">
+              </div>
+              <div className="flex flex-col items-center text-center">
+                <p className="text-xs text-muted-foreground">
                   Your account security score
                 </p>
                 <div className="mt-4">

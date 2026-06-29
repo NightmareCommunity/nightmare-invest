@@ -6,7 +6,7 @@ import { fmtUSD, fmtPct, fmtNum, fmtDate, timeAgo } from "@/lib/format";
 import { useCountUp } from "@/hooks/use-count-up";
 import { useApp } from "@/lib/store";
 import {
-  Users, DollarSign, ArrowDownToLine, ArrowUpFromLine, TrendingUp, Activity,
+  Users, DollarSign, ArrowDownToLine, ArrowUpFromLine, TrendingUp, TrendingDown, Activity,
   Wallet, Database, ShieldCheck, Clock, Server, Cpu, CheckCircle2,
   AlertTriangle, ChevronRight, CircleDot, Zap, Eye,
 } from "lucide-react";
@@ -177,6 +177,7 @@ export function AdminDashboard() {
             deltaLabel="vs last month"
             sparkline={navTrend.slice(-8).map((p: any) => p.aum ?? p.nav ?? 0)}
             glow
+            cornerAccent
           />
           <EnhancedMetric
             label="Active Investors"
@@ -189,6 +190,7 @@ export function AdminDashboard() {
             sub={`${data.totalUsers} total accounts`}
             delta={totalInvestors > 0 ? ((data.activeInvestors / totalInvestors) * 100 - 80) : undefined}
             deltaLabel="activation rate"
+            cornerAccent
           />
           <EnhancedMetric
             label="Pending Deposits"
@@ -200,6 +202,7 @@ export function AdminDashboard() {
             iconColor={data.pendingDeposits > 0 ? "text-warning" : "text-muted-foreground"}
             sub="Awaiting review"
             pulse={data.pendingDeposits > 0}
+            cornerAccent
           />
           <EnhancedMetric
             label="Pending Withdrawals"
@@ -211,15 +214,19 @@ export function AdminDashboard() {
             iconColor={data.pendingWithdrawals > 0 ? "text-loss" : "text-muted-foreground"}
             sub="Awaiting review"
             pulse={data.pendingWithdrawals > 0}
+            cornerAccent
           />
         </div>
       </FadeIn>
+
+      {/* Section divider */}
+      <div className="gold-divider opacity-40" />
 
       {/* ═══════════════════ 2. AUM & NAV TREND + 3. CAPITAL FLOWS ═══════════════════ */}
       <div className="grid gap-4 lg:grid-cols-3">
         {/* AUM & NAV Trend Chart */}
         <FadeIn delay={0.1} className="lg:col-span-2">
-          <GlassCard className="p-5 glow-gold">
+          <GlassCard className="p-5 glow-gold gold-corner-accent">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">AUM & NAV Trend</h3>
@@ -263,7 +270,7 @@ export function AdminDashboard() {
                       <stop offset="100%" stopColor="#FFD700" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                  <CartesianGrid strokeDasharray="4 6" stroke="rgba(255,255,255,0.06)" vertical={false} />
                   <XAxis
                     dataKey="date"
                     tickFormatter={(d) => new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
@@ -361,8 +368,8 @@ export function AdminDashboard() {
                       return [<span key="val" className="font-metric text-gold">{fmtUSD(v, { compact: true })}</span>, "Net"];
                     }}
                   />
-                  <Bar dataKey="deposits" fill="url(#depositBar)" radius={[3, 3, 0, 0]} barSize={18} />
-                  <Bar dataKey="withdrawals" fill="url(#withdrawalBar)" radius={[3, 3, 0, 0]} barSize={18} />
+                  <Bar dataKey="deposits" fill="url(#depositBar)" radius={[3, 3, 0, 0]} barSize={22} />
+                  <Bar dataKey="withdrawals" fill="url(#withdrawalBar)" radius={[3, 3, 0, 0]} barSize={22} />
                   <Line type="monotone" dataKey="net" stroke="#D4AF37" strokeWidth={2.5} dot={{ r: 3, fill: "#D4AF37", stroke: "#0a0a0b", strokeWidth: 1.5 }} />
                 </ComposedChart>
               </ResponsiveContainer>
@@ -378,7 +385,7 @@ export function AdminDashboard() {
               </div>
               <button
                 onClick={() => setRoute({ name: "admin-transactions" })}
-                className="group w-full rounded-lg border border-gold/30 bg-gold/10 px-4 py-2.5 text-xs font-semibold text-gold transition-all hover:bg-gold/20 hover:border-gold/50 hover:shadow-[0_0_16px_rgba(212,175,55,0.15)]"
+                className="group w-full rounded-lg bg-gold-gradient px-4 py-2.5 text-xs font-bold text-black shadow-[0_0_18px_rgba(212,175,55,0.25)] transition-all hover:shadow-[0_0_28px_rgba(212,175,55,0.4)] hover:brightness-105"
               >
                 Review pending transactions
                 <ChevronRight className="ml-1 inline h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
@@ -391,18 +398,18 @@ export function AdminDashboard() {
       {/* ═══════════════════ 5. PENDING TRANSACTIONS ALERT ═══════════════════ */}
       {pendingCount > 0 && (
         <FadeIn delay={0.18}>
-          <GlassCard gold glow className="p-5">
+          <GlassCard gold glow className="gold-corner-accent p-5">
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div className="flex items-center gap-4">
                 <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-warning/15">
-                  <span className="relative flex h-3 w-3">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-warning opacity-60" />
-                    <span className="relative inline-flex h-3 w-3 rounded-full bg-warning" />
+                  <span className="relative flex h-3.5 w-3.5">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-warning opacity-70" />
+                    <span className="relative inline-flex h-3.5 w-3.5 rounded-full bg-warning shadow-[0_0_10px_rgba(245,166,35,0.7)]" />
                   </span>
                 </div>
                 <div>
                   <h3 className="text-sm font-semibold uppercase tracking-wider text-foreground">Pending Transactions Require Action</h3>
-                  <p className="mt-0.5 text-sm text-muted-foreground">
+                  <p className="mt-0.5 text-sm text-foreground/70">
                     <span className="font-metric font-semibold text-warning">{data.pendingDeposits}</span> deposits and{" "}
                     <span className="font-metric font-semibold text-warning">{data.pendingWithdrawals}</span> withdrawals awaiting review
                   </p>
@@ -411,14 +418,14 @@ export function AdminDashboard() {
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => setRoute({ name: "admin-transactions" })}
-                  className="rounded-lg bg-gold/15 border border-gold/30 px-4 py-2 text-xs font-semibold text-gold transition-all hover:bg-gold/25 hover:border-gold/50 hover:shadow-[0_0_16px_rgba(212,175,55,0.15)]"
+                  className="rounded-lg bg-gold-gradient px-4 py-2 text-xs font-bold text-black shadow-[0_0_16px_rgba(212,175,55,0.28)] transition-all hover:shadow-[0_0_24px_rgba(212,175,55,0.4)] hover:brightness-105"
                 >
                   <Eye className="mr-1.5 inline h-3.5 w-3.5" />
-                  Review All
+                  Review Now
                 </button>
                 <button
                   onClick={() => setRoute({ name: "admin-transactions" })}
-                  className="rounded-lg bg-profit/15 border border-profit/30 px-4 py-2 text-xs font-semibold text-profit transition-all hover:bg-profit/25 hover:border-profit/50"
+                  className="rounded-lg border border-profit/30 bg-profit/15 px-4 py-2 text-xs font-semibold text-profit transition-all hover:bg-profit/25 hover:border-profit/50"
                 >
                   <CheckCircle2 className="mr-1.5 inline h-3.5 w-3.5" />
                   Quick Approve
@@ -500,6 +507,7 @@ export function AdminDashboard() {
       )}
 
       {/* ═══════════════════ 6. RECENT ADMIN ACTIVITY + 7. INVESTOR BREAKDOWN ═══════════════════ */}
+      <div className="gold-divider opacity-30" />
       <div className="grid gap-4 lg:grid-cols-2">
         {/* Recent Admin Activity */}
         <FadeIn delay={0.25}>
@@ -675,6 +683,7 @@ export function AdminDashboard() {
       </div>
 
       {/* ═══════════════════ 8. SYSTEM HEALTH ═══════════════════ */}
+      <div className="gold-divider opacity-30" />
       <FadeIn delay={0.35}>
         <GlassCard className="p-5">
           <div className="flex items-center justify-between">
@@ -742,6 +751,7 @@ function EnhancedMetric({
   sparkline,
   glow,
   pulse,
+  cornerAccent,
 }: {
   label: string;
   value: number;
@@ -756,6 +766,7 @@ function EnhancedMetric({
   sparkline?: number[];
   glow?: boolean;
   pulse?: boolean;
+  cornerAccent?: boolean;
 }) {
   const animated = useCountUp(value, 1000);
   const display = prefix === "$" ? fmtUSD(animated, { compact: animated > 1e6 }) : `${prefix}${fmtNum(animated, 0)}`;
@@ -772,6 +783,8 @@ function EnhancedMetric({
     accent === "profit" ? "glow-profit" :
     "";
 
+  const TrendIcon = delta != null ? (delta >= 0 ? TrendingUp : TrendingDown) : null;
+
   return (
     <MetricTile
       label={label}
@@ -781,7 +794,8 @@ function EnhancedMetric({
           {sub && <span>{sub}</span>}
           {delta != null && (
             <span className={`inline-flex items-center gap-0.5 text-[10px] font-semibold ${delta >= 0 ? "text-profit" : "text-loss"}`}>
-              {delta >= 0 ? "↑" : "↓"} {Math.abs(delta).toFixed(1)}% {deltaLabel}
+              {TrendIcon && <TrendIcon className="h-3 w-3" />}
+              {Math.abs(delta).toFixed(1)}% {deltaLabel}
             </span>
           )}
         </div>
@@ -799,7 +813,7 @@ function EnhancedMetric({
       }
       accent={accent === "warning" ? "gold" : accent}
       sparkline={sparkline}
-      className={glow ? glowClass : ""}
+      className={[glow ? glowClass : "", cornerAccent ? "gold-corner-accent" : ""].filter(Boolean).join(" ")}
     />
   );
 }

@@ -219,6 +219,285 @@ export async function POST(req: NextRequest) {
       metadata: { note: "Initial fund + demo data seeded" },
     });
 
+    // 13. Seed documents vault (3 monthly PDF statements + 1 tax + 1 trade confirmation)
+    const existingDocs = await db.document.count({ where: { userId: demo.id } });
+    if (existingDocs === 0) {
+      const { generateMonthlyStatement, savePdfToDisk, saveUploadedFileToDisk } = await import("@/lib/pdf");
+      const adminUserForDocs = await db.user.findFirst({ where: { role: "ADMIN" } });
+
+      // Helper to fetch historical data and build a StatementData object for a given month
+      const buildStatement = async (year: number, month: number) => {
+        const periodStart = new Date(year, month, 1);
+        const periodEnd = new Date(year, month + 1, 0, 23, 59, 59);
+        const navPoints = await db.nAVPoint.findMany({
+          where: { fundId: fund.id, date: { gte: periodStart, lte: periodEnd } },
+          orderBy: { date: "asc" },
+        });
+        const preNav = await db.nAVPoint.findFirst({
+          where: { fundId: fund.id, date: { lt: periodStart } },
+          orderBy: { date: "desc" },
+        });
+        const navStart = preNav?.nav ?? navPoints[0]?.nav ?? fund.inceptionNav;
+        const navEnd = navPoints[navPoints.length - 1]?.nav ?? fund.inceptionNav;
+        const aum = navPoints[navPoints.length - 1]?.aum ?? 0;
+
+        const holding = await db.holding.findUnique({
+          where: { userId_fundId: { userId: demo.id, fundId: fund.id } },
+        });
+        const unitsEnd = holding?.units ?? 1000;
+        const avgCost = holding?.avgPrice ?? navStart;
+
+        // All transactions for the demo user in this period (any status)
+        const txns = await db.transaction.findMany({
+          where: { userId: demo.id, createdAt: { gte: periodStart, lte: periodEnd } },
+          orderBy: { createdAt: "asc" },
+        });
+
+        const periodReturnPct = navStart > 0 ? ((navEnd - navStart) / navStart) * 100 : 0;
+        const inceptionReturnPct = fund.inceptionNav > 0 ? ((navEnd - fund.inceptionNav) / fund.inceptionNav) * 100 : 0;
+
+        // Compute Sharpe + drawdown
+        const series = navPoints.map((p) => p.nav);
+        let sharpe = 1.2 + Math.random() * 0.8; // fallback
+        if (series.length > 5) {
+          const rets: number[] = [];
+          for (let i = 1; i < series.length; i++) {
+            if (series[i - 1] > 0) rets.push((series[i] - series[i - 1]) / series[i - 1]);
+          }
+          if (rets.length > 0) {
+            const mean = rets.reduce((a, b) => a + b, 0) / rets.length;
+            const variance = rets.reduce((a, b) => a + (b - mean) ** 2, 0) / rets.length;
+            const std = Math.sqrt(variance);
+            sharpe = std > 0 ? (mean / std) * Math.sqrt(252) : 0;
+          }
+        }
+        let maxDrawdown = 0;
+        if (series.length > 1) {
+          let peak = series[0];
+          for (const v of series) {
+            if (v > peak) peak = v;
+            const dd = peak > 0 ? ((v - peak) / peak) * 100 : 0;
+            if (dd < maxDrawdown) maxDrawdown = dd;
+          }
+        } else {
+          maxDrawdown = -(3 + Math.random() * 5);
+        }
+
+        const currentValue = unitsEnd * navEnd;
+        const unrealizedPnl = currentValue - unitsEnd * avgCost;
+
+        return {
+          investorName: demo.name,
+          investorEmail: demo.email,
+          investorId: demo.id,
+          kycTier: demo.kycTier || "STANDARD",
+          fundName: fund.name,
+          fundDescription: fund.description,
+          periodStart,
+          periodEnd,
+          navStart,
+          navEnd,
+          aum,
+          unitsStart: unitsEnd, // approximation
+          unitsEnd,
+          avgCost,
+          currentValue,
+          unrealizedPnl,
+          periodReturnPct,
+          inceptionReturnPct,
+          sharpe,
+          maxDrawdown,
+          managementFee: "2% annualized",
+          performanceFee: "20% with high-water mark",
+          transactions: txns.map((t) => ({
+            date: t.createdAt,
+            type: t.type,
+            amount: t.amount,
+            status: t.status,
+          })),
+        };
+      };
+
+      // Generate 3 monthly statements: April, May, June 2026
+      const statementMonths = [
+        { year: 2026, month: 3, label: "April 2026", period: "2026-04" },  // April (month=3)
+        { year: 2026, month: 4, label: "May 2026", period: "2026-05" },    // May (month=4)
+        { year: 2026, month: 5, label: "June 2026", period: "2026-06" },   // June (month=5)
+      ];
+      for (const m of statementMonths) {
+        try {
+          const data = await buildStatement(m.year, m.month);
+          const pdfBuffer = await generateMonthlyStatement(data);
+          const fileName = `statement-${demo.id.slice(0, 8)}-${m.period}-seed.pdf`;
+          const filePath = await savePdfToDisk(pdfBuffer, fileName);
+          await db.document.create({
+            data: {
+              userId: demo.id,
+              title: `${m.label} Monthly Statement`,
+              type: "MONTHLY_STATEMENT",
+              period: m.period,
+              description: `Official account statement for ${m.label}.`,
+              fileName,
+              filePath,
+              mimeType: "application/pdf",
+              sizeBytes: pdfBuffer.length,
+              generatedBy: adminUserForDocs?.id ?? null,
+              isRead: false,
+              createdAt: new Date(m.year, m.month + 1, 1, 9, 0, 0),
+            },
+          });
+        } catch (e) {
+          console.error(`Failed to seed statement for ${m.label}`, e);
+        }
+      }
+
+      // Tax statement (placeholder PDF generated from a simple statement payload)
+      try {
+        const taxData = await buildStatement(2026, 5);
+        const taxPdf = await generateMonthlyStatement({
+          ...taxData,
+          periodStart: new Date(2026, 0, 1),
+          periodEnd: new Date(2026, 5, 30, 23, 59, 59),
+          transactions: [],
+        });
+        const taxFileName = `tax-2026-H1-${demo.id.slice(0, 8)}-seed.pdf`;
+        const taxPath = await savePdfToDisk(taxPdf, taxFileName);
+        await db.document.create({
+          data: {
+            userId: demo.id,
+            title: "2026 H1 Tax Statement (Preliminary)",
+            type: "TAX_STATEMENT",
+            period: "2026-H1",
+            description: "Preliminary tax statement covering January–June 2026. Final tax documents will be issued by January 31, 2027.",
+            fileName: taxFileName,
+            filePath: taxPath,
+            mimeType: "application/pdf",
+            sizeBytes: taxPdf.length,
+            generatedBy: adminUserForDocs?.id ?? null,
+            isRead: false,
+            createdAt: new Date(2026, 6, 5, 10, 0, 0),
+          },
+        });
+      } catch (e) {
+        console.error("Failed to seed tax statement", e);
+      }
+
+      // Trade confirmation (small placeholder text file → saved as text/plain)
+      try {
+        const tradeContent = `NIGHTMARE INVEST — TRADE CONFIRMATION
+=========================================
+Investor:    ${demo.name} (${demo.email})
+Account ID:  ${demo.id.slice(0, 8).toUpperCase()}
+Fund:        ${fund.name}
+
+Transaction Details:
+  Type:        DEPOSIT
+  Amount:      $250,000.00 USD
+  Status:      APPROVED
+  Settled:     2026-06-15 14:32 UTC
+  Reference:   TC-2026-06-${Math.floor(Math.random() * 90000 + 10000)}
+
+Allocation:
+  Units Credited:    ${(250000 / 175).toFixed(4)}
+  NAV at Execution:  $175.0000
+
+This confirmation is generated electronically and serves as your official
+record of the executed transaction. Please retain for your records.
+
+Nightmare Invest LLC — Operations Team
+`;
+        const tradeBuffer = Buffer.from(tradeContent, "utf-8");
+        const tradeFileName = `trade-confirm-2026-06-${demo.id.slice(0, 8)}-seed.txt`;
+        const tradePath = await saveUploadedFileToDisk(tradeBuffer, tradeFileName);
+        await db.document.create({
+          data: {
+            userId: demo.id,
+            title: "Trade Confirmation — $250,000 Deposit (June 15, 2026)",
+            type: "TRADE_CONFIRMATION",
+            period: "2026-06",
+            description: "Confirmation of approved deposit transaction settled on June 15, 2026.",
+            fileName: tradeFileName,
+            filePath: tradePath,
+            mimeType: "text/plain",
+            sizeBytes: tradeBuffer.length,
+            generatedBy: adminUserForDocs?.id ?? null,
+            isRead: true,
+            createdAt: new Date(2026, 5, 15, 14, 32, 0),
+          },
+        });
+      } catch (e) {
+        console.error("Failed to seed trade confirmation", e);
+      }
+
+      // Audit the document seeding
+      await audit({
+        actorId: adminUserForDocs?.id,
+        action: "DOCUMENTS_SEEDED",
+        resourceType: "Document",
+        metadata: { note: "Seeded 3 monthly statements + 1 tax + 1 trade confirmation for demo investor" },
+      });
+    }
+
+    // 14. Seed statement requests (2 pending + 1 completed linked to an existing document)
+    // Idempotent — only seeds if no statement requests exist yet for the demo investor.
+    const existingRequests = await db.statementRequest.count({ where: { userId: demo.id } });
+    if (existingRequests === 0) {
+      const adminUserForReqs = await db.user.findFirst({ where: { role: "ADMIN" } });
+      // Find the April 2026 statement to link the completed request to it
+      const aprilDoc = await db.document.findFirst({
+        where: { userId: demo.id, type: "MONTHLY_STATEMENT", period: "2026-04" },
+      });
+
+      // 2 pending requests — April 2026 (monthly) + Q1 2026 (quarterly)
+      await db.statementRequest.create({
+        data: {
+          userId: demo.id,
+          periodStart: new Date(2026, 3, 1),
+          periodEnd: new Date(2026, 3, 30, 23, 59, 59),
+          type: "MONTHLY_STATEMENT",
+          notes: "Need for tax filing — accountant requested duplicate.",
+          status: "PENDING",
+          createdAt: new Date(Date.now() - 1000 * 60 * 60 * 26), // ~26h ago
+        },
+      });
+      await db.statementRequest.create({
+        data: {
+          userId: demo.id,
+          periodStart: new Date(2026, 0, 1),
+          periodEnd: new Date(2026, 2, 31, 23, 59, 59),
+          type: "QUARTERLY_REPORT",
+          notes: "Q1 2026 comprehensive review for LP meeting.",
+          status: "PENDING",
+          createdAt: new Date(Date.now() - 1000 * 60 * 60 * 4), // ~4h ago
+        },
+      });
+
+      // 1 completed request — linked to the April 2026 monthly statement
+      if (aprilDoc) {
+        await db.statementRequest.create({
+          data: {
+            userId: demo.id,
+            periodStart: new Date(2026, 3, 1),
+            periodEnd: new Date(2026, 3, 30, 23, 59, 59),
+            type: "MONTHLY_STATEMENT",
+            notes: "Re-issued at investor's request.",
+            status: "COMPLETED",
+            documentId: aprilDoc.id,
+            processedBy: adminUserForReqs?.id ?? null,
+            createdAt: new Date(2026, 4, 12, 14, 30, 0), // mid-May 2026
+            completedAt: new Date(2026, 4, 12, 16, 0, 0), // ~1.5h later
+          },
+        });
+      }
+
+      await audit({
+        actorId: adminUserForReqs?.id,
+        action: "STATEMENT_REQUESTS_SEEDED",
+        resourceType: "StatementRequest",
+        metadata: { note: "Seeded 2 pending + 1 completed statement request for demo investor" },
+      });
+    }
+
     return json({ ok: true, fund: { id: fund.id, name: fund.name, slug: fund.slug }, demoInvestor: { email: demoEmail, password: "investor123" } });
   } catch (e) {
     console.error(e);

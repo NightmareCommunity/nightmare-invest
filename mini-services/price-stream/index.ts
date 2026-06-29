@@ -1,19 +1,17 @@
-import { createServer } from "http";
+import { createServer, IncomingMessage, ServerResponse } from "http";
 import { Server } from "socket.io";
 
-const PORT = 3003;
-
-const httpServer = createServer();
-const io = new Server(httpServer, {
-  // DO NOT change the path — Caddy uses this to forward to the correct port
-  path: "/",
-  cors: {
-    origin: "*",
-    methods: ["GET", "POST"],
-  },
-  pingTimeout: 60000,
-  pingInterval: 25000,
-});
+// ── Ports ──────────────────────────────────────────────────────────────
+// PORT 3003 — Socket.io server (path "/"). Used by the frontend via
+//   `io("/?XTransformPort=3003")` (Caddy strips the query param and proxies
+//   to localhost:3003). Because Socket.io's `path: "/"` matches every URL,
+//   ALL HTTP requests on this port are intercepted by engine.io — we cannot
+//   attach our own HTTP routes here.
+// PORT 3004 — Internal webhook HTTP server. The Next.js server (port 3000)
+//   POSTs to http://localhost:3004/notify to push real-time notifications
+//   into the Socket.io server. localhost-only; never exposed via Caddy.
+const SOCKET_PORT = 3003;
+const WEBHOOK_PORT = 3004;
 
 // ── Types ──────────────────────────────────────────────────────────────
 interface PriceData {
@@ -139,7 +137,23 @@ async function fetchAndBroadcast() {
 // Fetch every 15 seconds
 setInterval(fetchAndBroadcast, 15_000);
 
-// ── Connection handling ────────────────────────────────────────────────
+// ── Socket.io server (port 3003) ───────────────────────────────────────
+// IMPORTANT: Socket.io's `path: "/"` matches every URL (engine.io uses
+// `url.indexOf(path) === 0`), so it intercepts ALL HTTP requests on this
+// port. Therefore, no custom HTTP routes can be served on port 3003 — they
+// must go on the webhook server (port 3004).
+const ioServer = createServer();
+const io = new Server(ioServer, {
+  // DO NOT change the path — Caddy uses this to forward to the correct port
+  path: "/",
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"],
+  },
+  pingTimeout: 60000,
+  pingInterval: 25000,
+});
+
 io.on("connection", (socket) => {
   console.log(`[price-stream] Client connected: ${socket.id} (total: ${io.engine.clientsCount})`);
 
@@ -152,6 +166,15 @@ io.on("connection", (socket) => {
   }
   socket.emit("fear-greed-update", cachedFearGreed);
 
+  // ── Join a user-specific room so we can target notifications ────────
+  // Client emits: socket.emit("join", userId)
+  socket.on("join", (userId: unknown) => {
+    if (typeof userId === "string" && userId.length > 0) {
+      socket.join(`user:${userId}`);
+      console.log(`[price-stream] Socket ${socket.id} joined room user:${userId}`);
+    }
+  });
+
   socket.on("disconnect", (reason) => {
     console.log(
       `[price-stream] Client disconnected: ${socket.id} reason=${reason} (total: ${io.engine.clientsCount})`
@@ -163,29 +186,106 @@ io.on("connection", (socket) => {
   });
 });
 
-// ── Start server ───────────────────────────────────────────────────────
-httpServer.listen(PORT, () => {
-  console.log(`[price-stream] WebSocket server running on port ${PORT}`);
+// ── Webhook HTTP server (port 3004) ────────────────────────────────────
+// Internal-only — called by the Next.js server to push notifications into
+// the Socket.io server. Not exposed via Caddy (no XTransformPort needed
+// because both servers run on the same host).
+const webhookServer = createServer(
+  async (req: IncomingMessage, res: ServerResponse) => {
+    // ── POST /notify — internal webhook from Next.js ───────────────────
+    if (req.method === "POST" && req.url === "/notify") {
+      let body = "";
+      for await (const chunk of req) body += chunk.toString();
+      try {
+        const parsed = JSON.parse(body) as {
+          userIds: string[] | "all";
+          event: string;
+          payload: unknown;
+        };
+        const { userIds, event, payload } = parsed;
+        const message = { event, payload, timestamp: Date.now() };
+
+        if (userIds === "all") {
+          io.emit("notification", message);
+          console.log(`[price-stream] Broadcast notification: ${event}`);
+          res.writeHead(200, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ ok: true, sent: "all" }));
+          return;
+        }
+        if (Array.isArray(userIds)) {
+          let delivered = 0;
+          for (const uid of userIds) {
+            if (typeof uid === "string" && uid.length > 0) {
+              io.to(`user:${uid}`).emit("notification", message);
+              delivered++;
+            }
+          }
+          console.log(
+            `[price-stream] Notified ${delivered} user(s): ${event}`
+          );
+          res.writeHead(200, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ ok: true, sent: delivered }));
+          return;
+        }
+        res.writeHead(400, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: "userIds must be an array or 'all'" }));
+      } catch (e) {
+        console.error("[price-stream] /notify invalid JSON:", e);
+        res.writeHead(400, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: "Invalid JSON body" }));
+      }
+      return;
+    }
+
+    // ── GET /health — diagnostics ──────────────────────────────────────
+    if (req.method === "GET" && req.url === "/health") {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(
+        JSON.stringify({
+          ok: true,
+          socketPort: SOCKET_PORT,
+          webhookPort: WEBHOOK_PORT,
+          clients: io.engine.clientsCount,
+          pricesCached: cachedPrices.length,
+          fearGreed: cachedFearGreed.fearGreed,
+          fearGreedLabel: cachedFearGreed.fearGreedLabel,
+        })
+      );
+      return;
+    }
+
+    res.writeHead(404, { "Content-Type": "text/plain" });
+    res.end("Not found");
+  }
+);
+
+// ── Start both servers ─────────────────────────────────────────────────
+ioServer.listen(SOCKET_PORT, () => {
+  console.log(`[price-stream] Socket.io server running on port ${SOCKET_PORT}`);
 
   // Initial fetch on startup
   fetchAndBroadcast();
 });
 
-// ── Graceful shutdown ──────────────────────────────────────────────────
-process.on("SIGTERM", () => {
-  console.log("[price-stream] Received SIGTERM, shutting down…");
-  io.disconnectSockets();
-  httpServer.close(() => {
-    console.log("[price-stream] Server closed");
-    process.exit(0);
-  });
+webhookServer.listen(WEBHOOK_PORT, () => {
+  console.log(
+    `[price-stream] Webhook server running on port ${WEBHOOK_PORT} (POST /notify, GET /health)`
+  );
 });
 
-process.on("SIGINT", () => {
-  console.log("[price-stream] Received SIGINT, shutting down…");
+// ── Graceful shutdown ──────────────────────────────────────────────────
+function shutdown(signal: string) {
+  console.log(`[price-stream] Received ${signal}, shutting down…`);
   io.disconnectSockets();
-  httpServer.close(() => {
-    console.log("[price-stream] Server closed");
-    process.exit(0);
+  ioServer.close(() => {
+    console.log("[price-stream] Socket.io server closed");
   });
-});
+  webhookServer.close(() => {
+    console.log("[price-stream] Webhook server closed");
+  });
+  // Force exit after a short delay (both close()s may have already completed)
+  setTimeout(() => process.exit(0), 1000);
+}
+
+process.on("SIGTERM", () => shutdown("SIGTERM"));
+process.on("SIGINT", () => shutdown("SIGINT"));

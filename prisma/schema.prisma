@@ -51,6 +51,9 @@ model User {
   watchlist    WatchlistItem[]
   sentMessages     AdminMessage[] @relation("SentMessages")
   receivedMessages AdminMessage[] @relation("ReceivedMessages")
+  documents        Document[]
+  statementRequests          StatementRequest[] @relation("StatementRequestRequester")
+  processedStatementRequests StatementRequest[] @relation("StatementRequestProcessor")
 }
 
 // ----------------------------- Fund ------------------------------
@@ -263,4 +266,48 @@ model AdminMessage {
   @@index([recipientId])
   @@index([senderId])
   @@index([isBroadcast])
+}
+
+// ------------------------ Documents Vault ------------------------
+// Investor documents: monthly statements, tax forms, trade confirmations, etc.
+model Document {
+  id          String   @id @default(cuid())
+  userId      String   // Owning investor (recipient)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String   // Display title, e.g. "June 2026 Monthly Statement"
+  type        String   // MONTHLY_STATEMENT | QUARTERLY_REPORT | TAX_STATEMENT | TRADE_CONFIRMATION | ACCOUNT_STATEMENT | CUSTOM
+  period      String?  // e.g. "2026-06" or "2026-Q2"
+  description String?
+  fileName    String   // stored filename on disk
+  filePath    String   // absolute or relative path under /download or /upload
+  mimeType    String   // application/pdf, image/png, etc.
+  sizeBytes   Int
+  generatedBy String?  // null = admin uploaded; otherwise admin userId
+  isRead      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([type])
+  @@index([createdAt])
+}
+
+// --------------------- Statement Requests ------------------------
+// Investor-initiated requests for official statements
+model StatementRequest {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation("StatementRequestRequester", fields: [userId], references: [id], onDelete: Cascade)
+  periodStart DateTime
+  periodEnd   DateTime
+  type        String   @default("MONTHLY_STATEMENT") // MONTHLY_STATEMENT | QUARTERLY_REPORT | TAX_STATEMENT | CUSTOM
+  notes       String?
+  status      String   @default("PENDING") // PENDING | COMPLETED | REJECTED
+  documentId  String?  // link to generated Document when COMPLETED
+  processedBy String?
+  processor   User?    @relation("StatementRequestProcessor", fields: [processedBy], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
+  completedAt DateTime?
+
+  @@index([userId])
+  @@index([status])
 }

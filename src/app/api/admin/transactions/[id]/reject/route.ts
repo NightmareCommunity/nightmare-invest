@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { json, error, parseBody, safeHandler } from "@/lib/api";
+import { notifyUser } from "@/lib/realtime";
 
 async function handle(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const admin = await requireAdmin();
@@ -25,6 +26,15 @@ async function handle(req: NextRequest, ctx: { params: Promise<{ id: string }> }
     resourceId: id,
     metadata: { amount: txn.amount, type: txn.type, userId: txn.userId },
   });
+
+  // Real-time notification to the investor
+  await notifyUser(txn.userId, "transaction_rejected", {
+    transactionId: txn.id,
+    type: txn.type,
+    amount: txn.amount,
+    reason: notes ?? null,
+  });
+
   return json({ transaction: updated });
 }
 

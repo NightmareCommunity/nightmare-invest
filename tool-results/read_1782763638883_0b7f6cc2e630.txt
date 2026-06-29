@@ -1,0 +1,602 @@
+     1→# NIGHTMARE INVEST — Project Worklog
+     2→
+     3→## Project Status: ✅ ROUND 3 — PREMIUM STYLING & NEW FEATURES
+     4→**Phase:** Massive UI/UX overhaul + new features (Fund Updates/News system, enhanced dashboards). VLM-verified quality improvements.
+     5→**Premium Rating (VLM-assessed):** 
+     6→- Landing: 4/10 → **8/10** (+4)
+     7→- Investor Dashboard: 4/10 → **7/10** (+3)
+     8→- Portfolio: 3/10 → **6/10** (+3)
+     9→- Analytics: 2/10 → **9/10** (+7)
+    10→- Settings: 2/10 → **8/10** (+6)
+    11→- Admin Dashboard: 6/10 → **7/10** (+1)
+    12→
+    13→**Stack:** Next.js 16 (App Router) + TypeScript + Tailwind 4 + shadcn/ui + Prisma (SQLite) + JWT (access+refresh httpOnly cookies) + Framer Motion + Recharts + TanStack Query + Zustand.
+    14→**Theme:** Dark luxury institutional (matte black #0a0a0b + gold #D4AF37 + glassmorphism + gold glow).
+    15→**Live data:** CoinGecko BTC/ETH/SOL prices (30s cache) + Fear & Greed Index + BTC dominance.
+    16→
+    17→## Round 3 Changes Summary
+    18→
+    19→### QA Testing (via agent-browser + VLM)
+    20→- Full browser QA of all pages (Landing, Investor Dashboard, Portfolio, Analytics, Transactions, Settings, Admin Dashboard)
+    21→- VLM-assessed quality scores for each page
+    22→- Identified: low visual hierarchy, placeholder-like content, inconsistent contrast, missing interactive elements
+    23→
+    24→### Bug Fixes
+    25→- **Prisma chainIndex error**: Bumped schema version to force client regeneration
+    26→- **Prisma engine not connected**: Added `$connect()` call in db.ts createClient()
+    27→- **Database schema version**: Bumped to v6-fund-updates after adding FundUpdate model
+    28→
+    29→### Landing Page — Complete Redesign (4/10 → 8/10)
+    30→- **Hero Section**: Full viewport with gold dot grid background, animated scanning line, bold headline with gold gradient, two CTAs, 4 hero stat cards
+    31→- **Live Ticker Tape**: Marquee-style scrolling crypto prices from CoinGecko, pause on hover
+    32→- **Strategy Section**: 5 allocation cards with icons, animated progress bars
+    33→- **Performance Section**: NAV area chart with gold gradient, stat cards for key metrics
+    34→- **Security & Compliance**: 6-card grid with glass cards
+    35→- **Testimonial & Trust**: Featured quote, trust badges, onboarding steps
+    36→- **Final CTA**: Bold headline with gold gradient glow
+    37→- **New CSS**: `.hero-dot-grid`, `.hero-scan-line`, `@keyframes particle-pulse`
+    38→
+    39→### Investor Dashboard — Major Enhancement (4/10 → 7/10)
+    40→- **Fund Overview Banner**: Full-width gold card with animated NAV counter, daily change, quick action buttons
+    41→- **Enhanced Summary Tiles**: Sparklines, progress rings, P&L glow, mini area charts
+    42→- **Performance Chart**: Benchmark toggle (Fund vs BTC), volume bars, ComposedChart
+    43→- **Live Market Ticker Bar**: Scrolling BTC/ETH/SOL prices, Fear & Greed badge
+    44→- **Holdings + Allocation**: Larger pie, animated segments, USD values, rebalance drift
+    45→- **Fund Analytics Grid**: 12 metrics (was 8) — Beta, Alpha, Info Ratio, Tracking Error
+    46→- **Market Intelligence**: Mini price charts, SVG sentiment gauge with animated needle
+    47→- **Recent Activity Feed**: Timeline-style with animated dots
+    48→- **Quick Actions Panel**: 4 action cards with gold gradient hover
+    49→- **Fund News Section** (NEW): Fetches from `/api/fund/updates`, shows category badges, pinned/important/urgent tags
+    50→
+    51→### Portfolio Page — Enhanced (3/10 → 6/10)
+    52→- **NAV Performance Chart**: Area chart with time range selector (1M/3M/6M/1Y/ALL)
+    53→- **Asset Exposure Chart**: Wider bars with both USD and % weight
+    54→- **Position Detail Card**: Circular ROI gauge (SVG ring), days invested, next NAV update
+    55→- **Allocation Breakdown**: Animated progress bars with drift indicators
+    56→- **Risk Exposure Summary** (NEW): Volatility, Max DD, Sharpe, CAGR with animated bars
+    57→- **Transaction Summary** (NEW): Quick stats + recent activity list
+    58→
+    59→### Analytics Page — Complete Overhaul (2/10 → 9/10)
+    60→- **Enhanced Risk Ratio Tiles**: Background glow effects, interpretation badges (Excellent/Good/Moderate/Poor)
+    61→- **Drawdown Chart**: Stroke 2.5px, vibrant gradient, Max DD & Avg DD reference lines
+    62→- **Monthly Returns Heatmap**: Complete redesign with larger cells, vibrant colors, hover effects, year-total bars
+    63→- **Value at Risk**: Animated fill bars (Framer Motion), VaR vs CVaR comparison
+    64→- **Daily Statistics**: Best/Worst Day highlight cards, glass card stats
+    65→- **Streaks & Trends**: Visual streak dots, rolling Sharpe mini sparkline
+    66→- **Rolling Sharpe Chart** (NEW): 30-day rolling Sharpe with 1.0 reference line
+    67→- **Correlation & Beta** (NEW): BTC/ETH correlation cards, Beta with animated scale
+    68→
+    69→### Settings Page — Enhanced (2/10 → 8/10)
+    70→- **Account Completion Progress** (NEW): Gold gradient progress bar with percentage circle
+    71→- **KYC Progress Visualization** (NEW): 3-step visual indicator with animated connections
+    72→- **Profile Section**: Avatar with gold ring, verified badge, account tier badge
+    73→- **Password Section**: Show/hide toggle, strength meter, requirements checklist
+    74→- **Security Center**: SVG animated circular progress ring showing security score
+    75→- **Notification Preferences** (NEW): 4 toggle switches with gold checked state
+    76→- **Connected Sessions**: Browser detection, green active indicator
+    77→
+    78→### Admin Dashboard — Enhanced (6/10 → 7/10)
+    79→- **Summary Metric Cards**: Colored icon backgrounds, glow effects, delta indicators, sparklines
+    80→- **AUM & NAV Trend Chart**: 3px stroke, brighter gold, enhanced tooltip, NAV indicator dot
+    81→- **Capital Flows**: ComposedChart with deposit/withdrawal bars + net flow line
+    82→- **Fund Performance Metrics**: Interpretation badges, background color tints
+    83→- **Pending Transactions Alert** (NEW): Gold-bordered card with pulsing dot
+    84→- **Recent Admin Activity** (NEW): Timeline from audit logs
+    85→- **Investor Breakdown** (NEW): Tier distribution pie chart, top investors table
+    86→- **System Health** (NEW): DB status, API response time, last NAV update, cache status
+    87→
+    88→### New Feature: Fund Updates/News System
+    89→- **Prisma Model**: `FundUpdate` with id, title, body, category, priority, pinned, authorId
+    90→- **User Model**: Added `fundUpdates` relation
+    91→- **API Endpoints**:
+    92→  - `GET /api/fund/updates` — Public for authenticated users, with category filter
+    93→  - `POST /api/admin/fund-updates` — Admin only, creates new update with audit log
+    94→  - `DELETE /api/admin/fund-updates?id=X` — Admin only, deletes with audit log
+    95→- **Admin Page**: `AdminFundUpdates` component with create dialog, delete, category/priority selectors, pinned toggle
+    96→- **Investor Integration**: `FundNewsSection` component on investor dashboard showing latest updates
+    97→- **Seed Data**: 6 realistic fund updates (performance, strategy, custody, market outlook, regulatory, NAV update)
+    98→- **Admin Nav**: Added "Fund Updates" nav item with Megaphone icon
+    99→
+   100→### CSS Additions
+   101→- `.hero-dot-grid` — Gold radial dot pattern for landing hero
+   102→- `.hero-scan-line` — Vertical scanning line animation
+   103→- `@keyframes particle-pulse` — Opacity pulse for hero dots
+   104→- Additional utility classes for new components
+   105→
+   106→### Files Modified/Created
+   107→- `src/components/public/landing.tsx` — Complete redesign (~400 lines → ~600 lines)
+   108→- `src/components/investor/dashboard.tsx` — Enhanced (433 → ~1026 lines)
+   109→- `src/components/investor/portfolio.tsx` — Enhanced (110 → ~500 lines)
+   110→- `src/components/investor/analytics.tsx` — Enhanced (447 → ~600 lines)
+   111→- `src/components/investor/settings.tsx` — Enhanced (210 → ~400 lines)
+   112→- `src/components/admin/dashboard.tsx` — Enhanced (300 → ~872 lines)
+   113→- `src/components/admin/fund-updates.tsx` — NEW (~200 lines)
+   114→- `src/components/brand/primitives.tsx` — Added children prop to MetricTile
+   115→- `src/components/brand/portal-shell.tsx` — Added Megaphone icon + Fund Updates nav item
+   116→- `src/lib/db.ts` — Added $connect() call, bumped schema version to v6
+   117→- `src/lib/store.ts` — Added admin-fund-updates route type
+   118→- `src/app/page.tsx` — Added AdminFundUpdates import and route
+   119→- `src/app/globals.css` — Appended new CSS utilities
+   120→- `src/app/api/fund/updates/route.ts` — NEW API endpoint
+   121→- `src/app/api/admin/fund-updates/route.ts` — NEW admin API endpoint
+   122→- `src/app/api/seed/route.ts` — Added fund updates seed data
+   123→- `prisma/schema.prisma` — Added FundUpdate model + User relation
+   124→
+   125→## Unresolved Issues & Risks
+   126→1. **Server instability**: Dev server occasionally crashes during compilation of large components (likely Turbopack memory pressure). Works fine after restart. Production build would be more stable.
+   127→2. **Portfolio page placeholder content**: VLM noted "placeholder content" — may need to verify API data is loading correctly after Prisma client refresh
+   128→3. **Admin dashboard**: Could not fully verify in browser due to server crashes, but code compiles and API routes work independently
+   129→4. **No automated tests**: All testing done manually via agent-browser + VLM
+   130→
+   131→## Priority Recommendations for Next Round
+   132→1. **Production build test**: Run `bun run build` to verify all components compile correctly
+   133→2. **WebSocket real-time**: Add Socket.io for live price updates and transaction notifications
+   134→3. **Multi-fund support**: Allow admins to create/manage multiple funds
+   135→4. **Email notifications**: Integrate email service for transaction status updates
+   136→5. **PDF report generation**: Server-side PDF generation for statements
+   137→6. **Advanced charting**: TradingView Lightweight Charts for professional-grade price charts
+   138→7. **Server stability**: Investigate and fix Turbopack crash on large component compilation
+   139→8. **KYC document viewer**: In-browser PDF/image preview for admin KYC review
+   140→
+   141→---
+   142→
+   143→## Round 4 — WebSocket Real-Time Price Streaming
+   144→
+   145→**Task ID:** 2
+   146→**Agent:** fullstack-developer
+   147→**Date:** 2025-01-xx
+   148→
+   149→### What Was Built
+   150→
+   151→A **WebSocket mini-service** using Socket.io that streams real-time crypto price updates to the frontend, replacing polling-only market data with live-streamed data.
+   152→
+   153→#### 1. Mini-Service (`mini-services/price-stream/`)
+   154→- **`package.json`**: Independent bun project with `socket.io` dependency, port 3003, `bun --hot` dev script
+   155→- **`index.ts`**: Socket.io server on port 3003 that:
+   156→  - Fetches BTC/ETH/SOL prices from CoinGecko every 15 seconds
+   157→  - Fetches Fear & Greed Index from Alternative.me
+   158→  - Emits `price-update` events with `{ prices, updatedAt }` payload
+   159→  - Emits `fear-greed-update` events with sentiment data
+   160→  - Sends cached data immediately on client connect (zero-latency first paint)
+   161→  - Handles graceful shutdown (SIGTERM/SIGINT)
+   162→  - Logs connections, disconnections, and price fetches
+   163→  - CORS enabled for all origins
+   164→  - Uses `path: "/"` for Caddy gateway compatibility
+   165→
+   166→#### 2. React Hook (`src/hooks/use-price-stream.ts`)
+   167→- Connects via `io("/?XTransformPort=3003")` (relative path + query param, NOT direct URL)
+   168→- Listens for `price-update` and `fear-greed-update` events
+   169→- Returns `{ prices, lastPriceUpdate, fearGreed, connectionStatus, reconnect }`
+   170→- Exports TypeScript interfaces: `StreamPrice`, `StreamPriceUpdate`, `StreamFearGreedUpdate`, `ConnectionStatus`
+   171→- Auto-reconnects via Socket.io built-in reconnection
+   172→- Cleans up socket on unmount
+   173→- Manual reconnect via `reconnect()` (increments state counter to re-trigger effect)
+   174→
+   175→#### 3. Dashboard Integration (`src/components/investor/dashboard.tsx`)
+   176→- Imported and used `usePriceStream` hook
+   177→- Added **LIVE indicator** in the fund overview banner:
+   178→  - Green pulsing dot + "LIVE" when WebSocket connected with data
+   179→  - Amber pulsing dot + "CONNECTING" during connection
+   180→  - Red pulsing dot + "OFFLINE" when disconnected
+   181→- Added **LIVE/DELAYED indicator** in Market Intelligence section header
+   182→- Created merged data variables:
+   183→  - `livePrices` = stream prices (if available) → fall back to polled API prices
+   184→  - `liveSentiment` = stream fear/greed → fall back to polled API sentiment
+   185→  - `isLive` = `connectionStatus === "connected" && streamPrices.length > 0`
+   186→- Updated all market data consumers to use merged data:
+   187→  - Market Ticker Bar (scrolling prices + F&G badge)
+   188→  - Market Intelligence cards (BTC/ETH/SOL price cards)
+   189→  - Market Sentiment gauge (Fear & Greed + BTC Dominance)
+   190→
+   191→### Files Created
+   192→- `mini-services/price-stream/package.json` — new
+   193→- `mini-services/price-stream/index.ts` — new
+   194→- `src/hooks/use-price-stream.ts` — new
+   195→
+   196→### Files Modified
+   197→- `src/components/investor/dashboard.tsx` — added usePriceStream hook, LIVE indicator, merged data
+   198→- `package.json` — added `socket.io-client` dependency
+   199→
+   200→### Key Architecture Decisions
+   201→- **Fallback pattern**: Stream data is preferred but the dashboard gracefully falls back to polled REST API data when WebSocket is disconnected. This ensures the UI always shows data.
+   202→- **State-based reconnect**: Uses a `reconnectId` state counter instead of a ref to trigger effect re-runs, satisfying React linting rules.
+   203→- **Immediate cache on connect**: Server sends cached prices on connect so clients don't wait 15 seconds for first data.
+   204→
+   205→### Service Status
+   206→- Price-stream service running on port 3003
+   207→- Accessible via Caddy gateway at `/?XTransformPort=3003`
+   208→
+   209→---
+   210→
+   211→## Round 5 — Investor Watchlist & Profit/Loss Calculator
+   212→
+   213→**Task ID:** 3
+   214→**Agent:** fullstack-developer
+   215→**Date:** 2026-06-29
+   216→
+   217→### What Was Built
+   218→
+   219→Two major new features for the investor portal: **Watchlist** (track favorite crypto assets with price alerts) and **Profit/Loss Calculator** (hypothetical P&L projection based on fund performance).
+   220→
+   221→#### 1. WatchlistItem Database Model
+   222→- Added `WatchlistItem` model to Prisma schema with: id, userId, symbol, name, alertPrice, alertDirection (ABOVE/BELOW), notes, createdAt
+   223→- Added `@@unique([userId, symbol])` constraint to prevent duplicate watchlist entries
+   224→- Added `watchlist WatchlistItem[]` relation to User model
+   225→- Bumped Prisma schema version to `v7-watchlist` in db.ts for cache busting
+   226→- Ran `bun run db:push` and `prisma generate` to sync database
+   227→
+   228→#### 2. Watchlist API Endpoints
+   229→- **`GET /api/watchlist`**: Returns user's watchlist items enriched with current market prices and alert trigger status
+   230→- **`POST /api/watchlist`**: Add asset to watchlist (validates symbol, checks duplicates)
+   231→- **`DELETE /api/watchlist?id=xxx`**: Remove asset from watchlist
+   232→- **`PUT /api/watchlist/[id]`**: Update watchlist item (alert price, direction, notes)
+   233→- **`GET /api/watchlist/alerts`**: Check which watchlist items have triggered price alerts
+   234→- All endpoints require authentication (`requireUser()`) and use `safeHandler` wrapper
+   235→
+   236→#### 3. Fund NAV API (Public)
+   237→- **`GET /api/fund/nav`**: Returns NAV history for authenticated users (used by calculator)
+   238→  - Supports `?limit=N` query parameter (max 730 points)
+   239→  - Returns date, nav, aum for each point
+   240→
+   241→#### 4. Watchlist Component (`src/components/investor/watchlist.tsx`)
+   242→- **Header Section**: Gold gradient title "Watchlist", subtitle, "Add Asset" button with gold gradient
+   243→- **Search Bar**: Filter assets by name or symbol
+   244→- **Stats Bar**: Asset count + triggered alert count
+   245→- **Desktop Table**: Sortable by name/price/change, columns: Asset (icon + name), Price, 24h Change (green/red with arrow), Alert Status (pill), Actions (edit/remove)
+   246→- **Mobile Cards**: Responsive card layout for smaller screens
+   247→- **Alert Status Pills**: "No alert" (muted), "Active" (green with alert details), "Triggered" (gold with pulse animation)
+   248→- **Add Asset Dialog**: Coin selector (BTC/ETH/SOL), optional alert price with ABOVE/BELOW toggle, optional notes
+   249→- **Edit Alert Dialog**: Change alert price/direction/notes, remove alert entirely
+   250→- **Empty State**: Illustration with "Add Your First Asset" CTA
+   251→- **Skeleton Loader**: Animated loading placeholders
+   252→- **Visual Polish**: Gold accent borders on triggered alerts, green/red for price changes, FadeIn animations, AnimatePresence for row transitions
+   253→
+   254→#### 5. Profit/Loss Calculator Component (`src/components/investor/calculator.tsx`)
+   255→- **Investment Amount Selection**: Preset buttons ($50K, $100K, $250K, $500K, $1M) + custom input
+   256→- **Time Period Selection**: 1M, 3M, 6M, 1Y, Since Inception
+   257→- **Calculation Engine**: Fetches NAV history from `/api/fund/nav`, calculates actual returns for selected period, falls back to approximate returns if no data
+   258→- **Results Display**:
+   259→  - Initial Investment (gold MetricTile)
+   260→  - Projected Value (green/red MetricTile with animated counter)
+   261→  - Net P&L with percentage (MetricTile)
+   262→- **Growth Chart**: Area chart (Recharts) showing investment growth trajectory with gold reference line at initial investment
+   263→- **Progress Bar**: Visual comparison of investment vs returns with animated fill
+   264→- **Animated Counter**: Smooth cubic-ease-out counter animation (800ms) using requestAnimationFrame + useRef
+   265→- **Risk Disclaimer**: Warning card with amber styling and detailed text
+   266→- **Responsive Layout**: 3-column grid on desktop (1 input + 2 results), stacked on mobile
+   267→
+   268→#### 6. Integration
+   269→- **Store**: Added `{ name: "watchlist" }` and `{ name: "calculator" }` to Route type
+   270→- **Page Router**: Added WatchlistPage and CalculatorPage imports and cases in `renderInvestor()`
+   271→- **Portal Shell**: Added "Watchlist" nav item (Star icon, after Analytics) and "Calculator" nav item (Calculator icon, after Watchlist)
+   272→- **Seed API**: Added 3 default watchlist items for demo investor (BTC above $70K, ETH below $3200, SOL above $200)
+   273→
+   274→### Files Created
+   275→- `src/app/api/watchlist/route.ts` — CRUD endpoints (GET, POST, DELETE)
+   276→- `src/app/api/watchlist/[id]/route.ts` — Update endpoint (PUT)
+   277→- `src/app/api/watchlist/alerts/route.ts` — Alert trigger check endpoint
+   278→- `src/app/api/fund/nav/route.ts` — Public NAV history endpoint
+   279→- `src/components/investor/watchlist.tsx` — Watchlist page component (~750 lines)
+   280→- `src/components/investor/calculator.tsx` — P&L Calculator page component (~490 lines)
+   281→
+   282→### Files Modified
+   283→- `prisma/schema.prisma` — Added WatchlistItem model + User relation
+   284→- `src/lib/db.ts` — Bumped schema version to v7-watchlist
+   285→- `src/lib/store.ts` — Added watchlist and calculator route types
+   286→- `src/app/page.tsx` — Added imports and route cases
+   287→- `src/components/brand/portal-shell.tsx` — Added Star, Calculator icons + 2 nav items
+   288→- `src/app/api/seed/route.ts` — Added watchlist seed data for demo investor
+   289→
+   290→### Key Architecture Decisions
+   291→- **Key-based form reset**: EditAlertDialog uses `key={item.id}` on EditAlertForm to force React remounting, avoiding `setState` in `useEffect` which violates React lint rules
+   292→- **Ref-based animation tracking**: AnimatedCounter uses `useRef` to track previous value, avoiding stale closure issues with `useState` initial values in effects
+   293→- **Fallback returns**: Calculator falls back to approximate annualized returns when NAV history is insufficient (< 2 points)
+   294→- **Server-side enrichment**: Watchlist API enriches items with current market prices and alert trigger status in a single request, avoiding N+1 queries on the client
+   295→- **SortIcon as module-level component**: Moved outside render function to satisfy React static-components lint rule
+   296→
+   297→### Issues Encountered
+   298→- **Prisma client cache**: After adding WatchlistItem model, the dev server's Turbopack cache persisted the old Prisma client without the new model. Required clearing `.next` cache and regenerating Prisma client to resolve.
+   299→- **React lint rules**: Multiple iterations to satisfy `react-hooks/static-components` (SortIcon inside render) and `react-hooks/set-state-in-effect` (form initialization) rules.
+   300→
+   301→---
+   302→
+   303→## Round 6 — Premium UI Polish: Loading Skeletons, Micro-Animations, Empty States
+   304→
+   305→**Task ID:** 5
+   306→**Agent:** ui-polish-agent
+   307→**Date:** 2026-03-05
+   308→
+   309→### What Was Built
+   310→
+   311→Comprehensive UI polish pass across ALL pages: enhanced loading skeletons, reusable empty state component, micro-animation interactions, premium toast styling, and improved page transitions.
+   312→
+   313→#### 1. Skeleton Components (primitives.tsx)
+   314→
+   315→Added three reusable skeleton components to `src/components/brand/primitives.tsx`:
+   316→
+   317→- **`SkeletonCard`**: Simple rounded glass card with shimmer, for chart containers and generic content blocks
+   318→- **`SkeletonMetric`**: Mimics MetricTile layout with staggered label/value/sub shimmer blocks, for metric tiles
+   319→- **`SkeletonTable`**: Renders header row + N body rows with fade-out opacity, for table data
+   320→
+   321→All use the existing `shimmer` CSS class and `glass` background utility.
+   322→
+   323→#### 2. EmptyState Component (primitives.tsx)
+   324→
+   325→Added `EmptyState` component with:
+   326→- Gold-ringed icon circle
+   327→- Title + description
+   328→- Optional action slot (e.g., CTA button)
+   329→- Uses FadeIn primitive for entrance animation
+   330→- Consistent gold/60 icon coloring
+   331→
+   332→Applied to pages: Transactions, Watchlist, Admin Investors, Admin Transactions, Admin KYC, Admin Ledger, Admin Audit, Admin Fund Updates
+   333→
+   334→#### 3. Micro-Animation CSS Classes (globals.css)
+   335→
+   336→Added 6 new CSS utility classes:
+   337→- **`.hover-lift`**: Card lifts -2px on hover with gold-accented shadow
+   338→- **`.press-scale`**: Button scales to 0.97 on active press
+   339→- **`.value-flash`**: Gold-to-inherited color flash animation for value changes
+   340→- **`.row-enter`**: Slide-in-from-left animation for table rows
+   341→- **`.chart-hover-glow`**: Subtle gold glow on chart container hover
+   342→- **`.tooltip-gold`**: Dark glass + gold border tooltip style
+   343→
+   344→#### 4. Premium Toast Styling (globals.css)
+   345→
+   346→Added Sonner toast overrides for dark luxury theme:
+   347→- Dark glass background with gold border
+   348→- Backdrop blur
+   349→- Gold-accented shadow
+   350→- Proper title/description colors
+   351→
+   352→#### 5. Page Transition Enhancement (portal-shell.tsx)
+   353→
+   354→Updated AnimatePresence motion.div:
+   355→- Added subtle scale (0.995 → 1) for depth perception
+   356→- Adjusted y offsets (12 → 0, 0 → -6) for smoother flow
+   357→- Extended duration to 0.3s with cubic-bezier easing [0.22, 1, 0.36, 1]
+   358→
+   359→#### 6. Updated Investor Pages
+   360→
+   361→| Page | Skeleton | EmptyState | Micro-Animations |
+   362→|------|----------|------------|------------------|
+   363→| Dashboard | ✅ SkeletonMetric + SkeletonCard | — | ✅ chart-hover-glow, hover-lift |
+   364→| Portfolio | ✅ SkeletonMetric + SkeletonCard | — | ✅ chart-hover-glow, hover-lift |
+   365→| Analytics | ✅ SkeletonMetric + SkeletonCard | — | ✅ chart-hover-glow |
+   366→| Transactions | ✅ SkeletonMetric + SkeletonTable | ✅ EmptyState | ✅ hover-lift, press-scale, row-enter |
+   367→| Reports | ✅ SkeletonCard + SkeletonTable | — | ✅ hover-lift, press-scale |
+   368→| Settings | ✅ import added | — | ✅ hover-lift on all cards |
+   369→| Watchlist | ✅ SkeletonTable | ✅ EmptyState | ✅ press-scale |
+   370→| Calculator | ✅ import added | — | ✅ chart-hover-glow, hover-lift |
+   371→
+   372→#### 7. Updated Admin Pages
+   373→
+   374→| Page | Skeleton | EmptyState | Micro-Animations |
+   375→|------|----------|------------|------------------|
+   376→| Dashboard | ✅ SkeletonMetric + SkeletonCard | — | ✅ chart-hover-glow, hover-lift |
+   377→| Investors | ✅ SkeletonMetric + SkeletonTable | ✅ EmptyState | ✅ hover-lift, press-scale, row-enter |
+   378→| Transactions | — (already has cards) | ✅ EmptyState | — |
+   379→| Fund | ✅ SkeletonCard | — | ✅ hover-lift |
+   380→| NAV | ✅ import added | — | — |
+   381→| KYC | ✅ import added | ✅ EmptyState | — |
+   382→| Ledger | ✅ import added | ✅ EmptyState | — |
+   383→| Audit | ✅ import added | ✅ EmptyState | — |
+   384→| Fund Updates | ✅ SkeletonCard | ✅ EmptyState | ✅ hover-lift, press-scale |
+   385→
+   386→### Files Modified
+   387→
+   388→- `src/components/brand/primitives.tsx` — Added SkeletonCard, SkeletonMetric, SkeletonTable, EmptyState
+   389→- `src/app/globals.css` — Added micro-animation CSS classes + premium toast styling
+   390→- `src/components/brand/portal-shell.tsx` — Enhanced page transition animation
+   391→- `src/components/investor/dashboard.tsx` — Updated skeleton + fund news skeleton
+   392→- `src/components/investor/portfolio.tsx` — Updated skeleton
+   393→- `src/components/investor/analytics.tsx` — Updated skeleton
+   394→- `src/components/investor/transactions.tsx` — Added loading skeleton + EmptyState + micro-animations
+   395→- `src/components/investor/reports.tsx` — Added loading skeleton + micro-animations
+   396→- `src/components/investor/settings.tsx` — Added hover-lift on cards
+   397→- `src/components/investor/watchlist.tsx` — Updated EmptyState + SkeletonTable
+   398→- `src/components/investor/calculator.tsx` — Added chart-hover-glow + hover-lift
+   399→- `src/components/admin/dashboard.tsx` — Updated skeleton
+   400→- `src/components/admin/investors.tsx` — Added loading skeleton + EmptyState + micro-animations
+   401→- `src/components/admin/transactions.tsx` — Added EmptyState
+   402→- `src/components/admin/fund.tsx` — Added loading skeleton
+   403→- `src/components/admin/nav.tsx` — Added import
+   404→- `src/components/admin/kyc.tsx` — Added EmptyState
+   405→- `src/components/admin/ledger.tsx` — Added EmptyState
+   406→- `src/components/admin/audit.tsx` — Added EmptyState
+   407→- `src/components/admin/fund-updates.tsx` — Added EmptyState + SkeletonCard
+   408→
+   409→### Key Design Decisions
+   410→
+   411→- **SkeletonCard vs raw divs**: Replacing bare `glass shimmer` divs with named skeleton components provides consistency and makes future updates easier
+   412→- **EmptyState component**: Centralizes the empty data UI pattern with a gold-ringed icon, removing duplicated code across pages
+   413→- **row-enter staggered delay**: Uses inline `animationDelay` with 40ms increments for a cascade effect on table row appearance
+   414→- **chart-hover-glow**: Very subtle (0.08 opacity gold glow) to avoid being distracting on data-dense chart containers
+   415→- **press-scale on buttons**: Only 0.97 scale for a tactile feel without being jarring
+   416→
+   417→---
+   418→
+   419→## Round 7 — Enhanced Admin System Health & Communication Tools
+   420→
+   421→**Task ID:** 6
+   422→**Agent:** fullstack-developer
+   423→**Date:** 2026-03-05
+   424→
+   425→### What Was Built
+   426→
+   427→Three major new features for the admin and investor portal: **System Health Dashboard** (real-time infrastructure monitoring), **Admin Communications** (admin-to-investor messaging with broadcast support), and **Investor Inbox** (message viewing for investors).
+   428→
+   429→#### 1. AdminMessage Database Model
+   430→- Added `AdminMessage` model to Prisma schema with: id, senderId, recipientId, subject, body, priority (NORMAL|IMPORTANT|URGENT), isBroadcast, isRead, createdAt
+   431→- Added `sentMessages` and `receivedMessages` relations to User model
+   432→- Created indexes on recipientId, senderId, and isBroadcast for query performance
+   433→- Bumped Prisma schema version to `v8-admin-messages` in db.ts
+   434→- Ran `bun run db:push` and `prisma generate` to sync database
+   435→
+   436→#### 2. System Health API Endpoint
+   437→- **`GET /api/admin/system-health`**: Returns comprehensive system diagnostics
+   438→  - `overallHealth`: "healthy" | "degraded" | "critical" (based on aggregated checks)
+   439→  - `dbStatus` + `dbLatency`: Real Prisma query health check with timing
+   440→  - `apiLatency`: Measured internal API response time
+   441→  - `memoryUsage`: Full process.memoryUsage() stats (rss, heapTotal, heapUsed, external, arrayBuffers)
+   442→  - `uptime`: process.uptime() in seconds
+   443→  - `lastNavUpdate`: Timestamp of latest NAV point
+   444→  - `activeConnections`: Count of users with lastLogin in last 24h
+   445→  - `cacheStatus`: "warm" | "cold" based on MarketPrice data freshness (<5min)
+   446→  - `priceFeedStatus`: "live" | "stale" based on MarketPrice.updatedAt (<2min)
+   447→  - `cachedAssets`: Count of MarketPrice entries
+   448→  - `version` + `environment`: App version and NODE_ENV
+   449→  - `accessExpiry`: JWT access token expiry config
+   450→  - `twoFaRate`: 2FA adoption percentage across active users
+   451→  - `activity`: Recent timeline events (NAV updates, price feed changes, admin audit logs)
+   452→- Uses `safeHandler` and `requireAdmin` for auth/security
+   453→
+   454→#### 3. Admin Messages API Endpoints
+   455→- **`GET /api/admin/messages`**: List sent messages with pagination and filter (all/broadcast/individual)
+   456→- **`POST /api/admin/messages`**: Send message (broadcast to all or direct to specific recipient)
+   457→  - Validates subject, body, and recipient (for non-broadcast)
+   458→  - Creates audit log entries for each message sent
+   459→  - Supports priority levels: NORMAL, IMPORTANT, URGENT
+   460→
+   461→#### 4. Investor Messages API Endpoint
+   462→- **`GET /api/messages`**: List messages for current user (broadcasts + direct messages)
+   463→  - Auto-marks individual unread messages as read on fetch
+   464→  - Returns unreadCount for badge display
+   465→  - Includes sender info for each message
+   466→
+   467→#### 5. System Health Component (`src/components/admin/system-health.tsx`)
+   468→- **Header Section**: Gold-accented "System Health" title, overall health indicator badge (green/amber/red)
+   469→- **Health Cards Grid (2×3)**:
+   470→  1. **Database** — Status indicator, latency in ms, engine type (SQLite)
+   471→  2. **API Server** — Response time, uptime (formatted as Xd Xh Xm), heap usage with progress bar
+   472→  3. **Price Feed** — Live/Stale indicator, data source (CoinGecko), cached asset count
+   473→  4. **Cache** — Warm/Cold status, entry count, TTL
+   474→  5. **NAV Engine** — Last NAV update (relative time), status, next scheduled update
+   475→  6. **Authentication** — Active sessions (24h), JWT expiry, 2FA adoption rate
+   476→- **System Info Bar**: Version, environment, uptime, RSS memory badges
+   477→- **Activity Timeline**: Recent events (NAV updates, price feed status, admin actions) with type icons
+   478→- **Auto-refresh**: Polls health API every 30 seconds, shows "Last checked: Xs ago" with live counter, manual "Refresh Now" button
+   479→- **Visual Polish**: Green glow on healthy, amber pulse on degraded, red pulse on critical, GlassCard for each metric, FadeIn animations, hover-lift effects
+   480→
+   481→#### 6. Admin Communications Component (`src/components/admin/communications.tsx`)
+   482→- **Compose Tab**:
+   483→  - Broadcast toggle switch (megaphone icon, sends to all investors)
+   484→  - Recipient selector (dropdown of non-admin users) when not broadcasting
+   485→  - Subject input, body textarea, priority selector (Normal/Important/Urgent with colored dots)
+   486→  - Send button with loading state and gold gradient
+   487→  - Clear button to reset form
+   488→- **Sent Messages Tab**:
+   489→  - Filter buttons: All, Broadcast, Individual
+   490→  - Table with columns: Type (broadcast/direct with icons), Recipient, Subject, Priority badge, Date
+   491→  - Pagination controls
+   492→  - EmptyState when no messages
+   493→- **Priority Badges**: Gold for URGENT, amber for IMPORTANT, muted for NORMAL
+   494→- **Broadcast messages**: Marked with megaphone icon, gold accent
+   495→- Uses TanStack Query for data fetching, Sonner for toast notifications
+   496→
+   497→#### 7. Investor Inbox Component (`src/components/investor/inbox.tsx`)
+   498→- **Header**: "Inbox" with gold accent, unread count badge
+   499→- **Two-panel layout** (1/3 + 2/3 on desktop):
+   500→  - **Message List**: Each message shows read/unread indicator (gold dot for unread), subject, sender, relative time, priority badge. Unread messages have gold left border accent. Broadcast messages have megaphone icon.
+   501→  - **Message Detail**: Subject (large), sender info with avatar, date, priority badge, body text, broadcast indicator, read status. Back button on mobile.
+   502→- **Pagination**: Page controls in message list
+   503→- **Empty State**: Illustration when no messages exist
+   504→- **Responsive**: Stacked layout on mobile, side-by-side on desktop
+   505→
+   506→#### 8. Route Integration
+   507→- Added 3 new route types to `src/lib/store.ts`: `admin-system-health`, `admin-communications`, `inbox`
+   508→- Added 3 new route cases in `src/app/page.tsx` (2 in renderAdmin, 1 in renderInvestor)
+   509→- Added 3 new nav items in `src/components/brand/portal-shell.tsx`:
+   510→  - Admin: "Communications" (Mail icon), "System Health" (Activity icon)
+   511→  - Investor: "Inbox" (Mail icon)
+   512→- Added Activity and Mail icon imports to portal-shell
+   513→
+   514→### Files Created
+   515→- `src/app/api/admin/system-health/route.ts` — System health API endpoint
+   516→- `src/app/api/admin/messages/route.ts` — Admin messages API (GET + POST)
+   517→- `src/app/api/messages/route.ts` — Investor messages API (GET)
+   518→- `src/components/admin/system-health.tsx` — System Health dashboard (~300 lines)
+   519→- `src/components/admin/communications.tsx` — Admin Communications (~300 lines)
+   520→- `src/components/investor/inbox.tsx` — Investor Inbox (~260 lines)
+   521→
+   522→### Files Modified
+   523→- `prisma/schema.prisma` — Added AdminMessage model + User relations
+   524→- `src/lib/db.ts` — Bumped schema version to v8-admin-messages
+   525→- `src/lib/store.ts` — Added 3 new route types
+   526→- `src/app/page.tsx` — Added 3 imports + 3 route cases
+   527→- `src/components/brand/portal-shell.tsx` — Added Activity, Mail icons + 3 nav items
+   528→
+   529→### Key Architecture Decisions
+   530→- **Broadcast efficiency**: Broadcast messages are stored as a single row with `isBroadcast=true` and `recipientId=null`, rather than duplicating for each investor. The investor API queries both broadcast messages and direct messages in a single `OR` query.
+   531→- **Auto-read on fetch**: The investor messages API automatically marks individual unread messages as read when fetched, avoiding a separate "mark as read" API call. Broadcast read status is tracked separately.
+   532→- **Health aggregation**: The overall health status is computed from 5 checks (DB healthy, DB latency, API latency, price feed, cache), giving "healthy" if all pass, "degraded" if ≥3 pass, "critical" otherwise.
+   533→- **Activity timeline**: Merges NAV updates, price feed events, and audit logs into a unified timeline for the admin health dashboard, giving a complete operational picture.
+   534→- **2FA adoption tracking**: The health endpoint calculates 2FA adoption rate from the User table, providing admins with visibility into security posture.
+   535→
+   536→### Issues Encountered
+   537→- None — all lint checks passed cleanly on first try.
+   538→
+   539→---
+   540→Task ID: 4 (Round 4)
+   541→Agent: Main Agent
+   542→Task: Round 4 — WebSocket Real-time, Watchlist, Calculator, Admin System Health, Communications, UI Polish
+   543→
+   544→Work Log:
+   545→- QA tested all pages with agent-browser and VLM (investor + admin sides)
+   546→- Found and fixed admin dashboard crash: TypeError on `auditLogs` (API returns `{logs: [...]}` not array directly)
+   547→- Added `safeHandler` wrapper to all admin API routes that were missing it (dashboard, audit-logs, ledger)
+   548→- Added error boundary state to AdminDashboard component with retry button
+   549→- Built WebSocket real-time price mini-service (mini-services/price-stream/) on port 3003
+   550→  - Socket.io server fetching CoinGecko prices every 15s
+   551→  - Frontend hook usePriceStream with connection status indicator
+   552→  - LIVE/OFFLINE/CONNECTING badges on investor dashboard
+   553→- Built Investor Watchlist feature
+   554→  - New Prisma model: WatchlistItem (with alertPrice, alertDirection, notes)
+   555→  - API: GET/POST/DELETE /api/watchlist, GET /api/watchlist/alerts, PUT /api/watchlist/[id]
+   556→  - Full watchlist component with add/edit alert dialogs, price tracking, alert status
+   557→  - Seed data: BTC/ETH/SOL with price alerts
+   558→- Built Profit/Loss Calculator
+   559→  - Interactive calculator with preset amounts, time period selector
+   560→  - Projected value based on actual NAV history
+   561→  - Animated counters, growth chart, risk disclaimer
+   562→- Built Admin System Health dashboard
+   563→  - API: GET /api/admin/system-health with real diagnostics (DB, memory, uptime, cache, etc.)
+   564→  - 2×3 health cards grid with green/amber/red indicators
+   565→  - Auto-refresh every 30s, activity timeline
+   566→- Built Admin Communications tool
+   567→  - New Prisma model: AdminMessage (with broadcast, priority, read status)
+   568→  - API: POST/GET /api/admin/messages (admin), GET /api/messages (investor)
+   569→  - Compose dialog with broadcast toggle, recipient selector, priority
+   570→  - Sent messages tab with filters and pagination
+   571→- Built Investor Inbox
+   572→  - Two-panel layout (message list + detail)
+   573→  - Unread indicators, priority badges, auto-read on view
+   574→  - 3 seed messages (Welcome, Q3 Outlook, Maintenance Window)
+   575→- Premium UI Polish
+   576→  - Added SkeletonCard, SkeletonMetric, SkeletonTable reusable components
+   577→  - Added EmptyState reusable component
+   578→  - Added 6 CSS micro-animation classes (hover-lift, press-scale, value-flash, row-enter, chart-hover-glow, tooltip-gold)
+   579→  - Premium Sonner toast styling (dark glass + gold border)
+   580→  - Enhanced page transitions with scale + fade in PortalShell
+   581→  - Applied skeleton/empty states to all 16+ pages
+   582→- Route integration for all new features (store.ts, page.tsx, portal-shell.tsx)
+   583→- Bumped Prisma schema version to v9-messages-refresh for client cache busting
+   584→- Cleared .next cache to force Prisma client regeneration after schema changes
+   585→- Re-seeded database with admin messages
+   586→
+   587→Stage Summary:
+   588→- **VLM Quality Ratings (Round 4):**
+   589→  - Landing: 7/10 (unchanged)
+   590→  - Investor Dashboard: 7/10 (unchanged)
+   591→  - Watchlist: 8/10 (NEW)
+   592→  - Calculator: 8/10 (NEW)
+   593→  - Investor Inbox: 8/10 (NEW)
+   594→  - Admin Dashboard: Working (fixed crash)
+   595→  - Admin System Health: 7/10 (NEW)
+   596→  - Admin Communications: Functional (NEW)
+   597→- **New Features:** WebSocket real-time prices, Watchlist, Calculator, Admin System Health, Admin Communications, Investor Inbox
+   598→- **Bug Fixes:** Admin dashboard crash (auditLogs type error), admin API 500 errors (added safeHandler), Prisma client cache issues
+   599→- **UI Polish:** Loading skeletons, empty states, micro-animations, premium toasts, page transitions
+   600→- **All lint checks pass**
+   601→- **All API endpoints verified working**
+   602→

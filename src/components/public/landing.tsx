@@ -15,7 +15,6 @@ import {
   Globe,
   Layers,
   Zap,
-  LineChart,
   CheckCircle2,
   Quote,
   Building2,
@@ -26,6 +25,8 @@ import {
   BadgeCheck,
   Eye,
   Scale,
+  Gauge,
+  Users,
 } from "lucide-react";
 import { fmtUSD, fmtPct, fmtNum } from "@/lib/format";
 import {
@@ -42,10 +43,10 @@ import {
 /* ------------------------------------------------------------------ */
 
 const heroStats = [
-  { label: "Assets Under Management", value: "$284.6M", sub: "As of latest NAV" },
-  { label: "Since Inception Return", value: "+147.2%", sub: "Net of fees" },
-  { label: "Sharpe Ratio", value: "2.31", sub: "Risk-adjusted" },
-  { label: "Accredited Investors", value: "412", sub: "Across 23 jurisdictions" },
+  { label: "Assets Under Management", value: "$284.6M", sub: "As of latest NAV", icon: Wallet },
+  { label: "Since Inception Return", value: "+147.2%", sub: "Net of fees", icon: TrendingUp },
+  { label: "Sharpe Ratio", value: "2.31", sub: "Risk-adjusted", icon: Gauge },
+  { label: "Accredited Investors", value: "412", sub: "Across 23 jurisdictions", icon: Users },
 ];
 
 const strategyCards = [
@@ -130,6 +131,9 @@ const trustBadges = [
   { label: "Insured", icon: ShieldCheck },
 ];
 
+/* As-featured-in text-based press row */
+const pressLogos = ["BLOOMBERG", "COINDESK", "FORBES", "REUTERS", "THE BLOCK"];
+
 /* ------------------------------------------------------------------ */
 /*  Main Landing Component                                             */
 /* ------------------------------------------------------------------ */
@@ -199,21 +203,26 @@ export function Landing() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
           >
-            {/* Badge */}
-            <div className="shimmer-badge mx-auto mb-8 inline-flex items-center gap-2 rounded-full border border-gold/30 bg-gold/[0.06] px-5 py-2 text-xs font-medium text-gold">
-              <span className="h-1.5 w-1.5 animate-pulse-gold rounded-full bg-gold" />
+            {/* Badge — redesigned with premium-chip + gold gradient background + prominent pulse */}
+            <div className="premium-chip mx-auto mb-8 shimmer-badge">
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-gold opacity-60" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-gold-bright shadow-[0_0_8px_rgba(212,175,55,0.8)]" />
+              </span>
               Nightmare Alpha Crypto Fund · Now Accepting Allocations
             </div>
 
-            {/* Headline */}
-            <h1 className="text-balance text-5xl font-extrabold leading-[1.05] tracking-tight sm:text-6xl lg:text-7xl">
+            {/* Headline — rebalanced weights, gold glow + thin accent line */}
+            <h1 className="text-balance text-5xl font-extrabold leading-[1.04] tracking-tight sm:text-6xl lg:text-7xl">
               <span className="text-gold-gradient text-glow-gold">NIGHTMARE ALPHA</span>
-              <br />
-              <span className="text-foreground">CRYPTO FUND</span>
+              <span className="mx-3 inline-block h-6 w-px translate-y-[-4px] bg-gradient-to-b from-transparent via-gold/50 to-transparent sm:mx-4 sm:h-8" />
+              <span className="font-black tracking-tight text-foreground drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)]">
+                CRYPTO FUND
+              </span>
             </h1>
 
             {/* Subheadline */}
-            <p className="mx-auto mt-6 max-w-2xl text-pretty text-lg text-foreground/55 sm:text-xl">
+            <p className="mx-auto mt-7 max-w-2xl text-pretty text-lg text-foreground/65 sm:text-xl">
               Institutional-Grade Digital Asset Management for Accredited Investors
             </p>
 
@@ -231,13 +240,13 @@ export function Landing() {
                 size="lg"
                 variant="outline"
                 onClick={() => scrollTo("strategy")}
-                className="h-13 rounded-lg border-gold/30 px-8 text-base text-gold hover:bg-gold/10"
+                className="group h-13 rounded-lg border-gold/30 px-8 text-base text-gold hover:bg-gold/10"
               >
                 Learn More
-                <ChevronDown className="ml-2 h-4 w-4" />
+                <ChevronDown className="ml-2 h-4 w-4 translate-y-px transition-transform group-hover:translate-y-1" />
               </Button>
             </div>
-            <p className="mt-4 text-xs text-muted-foreground">
+            <p className="mt-4 text-xs uppercase tracking-[0.18em] text-foreground/45">
               For accredited investors only · Minimum commitment $50,000
             </p>
           </motion.div>
@@ -249,19 +258,64 @@ export function Landing() {
             transition={{ duration: 0.8, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
             className="mt-16 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4"
           >
-            {heroStats.map((s) => (
-              <GlassCard key={s.label} gold className="stat-card-gold p-4 text-center sm:p-5">
-                <div className="text-[10px] font-medium uppercase tracking-[0.16em] text-muted-foreground sm:text-[11px]">
-                  {s.label}
-                </div>
-                <div className="mt-2 font-metric text-xl font-bold text-gold-gradient sm:text-2xl lg:text-3xl">
-                  {s.value}
-                </div>
-                <div className="mt-1 text-[11px] text-muted-foreground">{s.sub}</div>
-              </GlassCard>
-            ))}
+            {heroStats.map((s) => {
+              const Icon = s.icon;
+              return (
+                <GlassCard
+                  key={s.label}
+                  gold
+                  className="stat-card-gold gold-corner-accent glass-card-hover p-4 text-left sm:p-5"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-[0.16em] text-muted-foreground sm:text-[11px]">
+                      <Icon className="h-3 w-3 text-gold/70" />
+                      {s.label}
+                    </div>
+                  </div>
+                  <div className="mt-2 font-metric text-xl font-bold text-gold-gradient sm:text-2xl lg:text-3xl">
+                    {s.value}
+                  </div>
+                  <div className="mt-1 text-[11px] text-muted-foreground">{s.sub}</div>
+                </GlassCard>
+              );
+            })}
+          </motion.div>
+
+          {/* As-featured-in trust row */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.8, delay: 0.55 }}
+            className="mt-12 flex flex-col items-center gap-3"
+          >
+            <span className="text-[10px] font-medium uppercase tracking-[0.28em] text-muted-foreground/60">
+              As featured in
+            </span>
+            <div className="flex flex-wrap items-center justify-center gap-x-7 gap-y-2">
+              {pressLogos.map((logo) => (
+                <span
+                  key={logo}
+                  className="font-metric text-[13px] font-bold tracking-[0.18em] text-muted-foreground/45 transition-colors hover:text-foreground/70"
+                >
+                  {logo}
+                </span>
+              ))}
+            </div>
           </motion.div>
         </div>
+
+        {/* Scroll-down indicator — animated chevron at bottom of hero */}
+        <motion.button
+          type="button"
+          aria-label="Scroll to strategy section"
+          onClick={() => scrollTo("strategy")}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.6, delay: 0.9 }}
+          className="scroll-indicator absolute bottom-6 left-1/2 z-10 -translate-x-1/2"
+        >
+          <ChevronDown className="h-5 w-5" />
+        </motion.button>
       </section>
 
       {/* ============================================================ */}
