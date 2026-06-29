@@ -3,11 +3,12 @@ import { useState, type ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useApp, type Route } from "@/lib/store";
 import { Logo } from "@/components/brand/logo";
+import { NotificationCenter } from "@/components/brand/notification-center";
 import { Button } from "@/components/ui/button";
 import {
   LayoutDashboard, Wallet, ArrowLeftRight, FileText, Settings,
   Users, TrendingUp, Database, ScrollText, History, Menu, X, LogOut,
-  ChevronDown, ShieldCheck, Bell,
+  ChevronDown, ShieldCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { fmtDate } from "@/lib/format";
@@ -55,7 +56,7 @@ export function PortalShell({ children, admin = false }: { children: ReactNode; 
   return (
     <div className="min-h-screen flex flex-col bg-background">
       {/* Top bar */}
-      <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-border/60 glass-strong px-4 sm:px-6">
+      <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-border/60 glass-strong topbar-glow-line px-4 sm:px-6">
         <div className="flex items-center gap-3">
           <button
             onClick={() => setMobileOpen(true)}
@@ -74,12 +75,9 @@ export function PortalShell({ children, admin = false }: { children: ReactNode; 
           )}
         </div>
         <div className="flex items-center gap-2">
-          <button className="relative rounded-md p-2 text-muted-foreground hover:bg-gold/10 hover:text-gold" aria-label="Notifications">
-            <Bell className="h-4 w-4" />
-            <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-gold" />
-          </button>
+          <NotificationCenter />
           <div className="hidden items-center gap-2 rounded-lg border border-border/60 bg-black/30 px-3 py-1.5 sm:flex">
-            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gold-gradient text-xs font-bold text-black">
+            <div className={cn("flex h-7 w-7 items-center justify-center rounded-full bg-gold-gradient text-xs font-bold text-black", user.role === "ADMIN" && "ring-2 ring-gold/50 ring-offset-1 ring-offset-background")}>
               {user.name.charAt(0).toUpperCase()}
             </div>
             <div className="leading-none">
@@ -95,7 +93,7 @@ export function PortalShell({ children, admin = false }: { children: ReactNode; 
 
       <div className="flex flex-1">
         {/* Desktop sidebar */}
-        <aside className="sticky top-14 hidden h-[calc(100vh-3.5rem)] w-60 shrink-0 border-r border-border/60 bg-sidebar/40 lg:block">
+        <aside className="sidebar-gold-accent sticky top-14 hidden h-[calc(100vh-3.5rem)] w-60 shrink-0 border-r border-border/60 bg-sidebar/40 lg:block">
           <SidebarContent nav={nav} current={current} go={go} admin={admin} setRoute={setRoute} />
         </aside>
 
@@ -130,8 +128,12 @@ export function PortalShell({ children, admin = false }: { children: ReactNode; 
         </AnimatePresence>
 
         {/* Main */}
-        <main className="flex-1 overflow-x-hidden">
-          <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+        <main className="relative flex-1 overflow-x-hidden bg-gradient-animated">
+          {/* NIGHTMARE INVEST watermark */}
+          <div className="pointer-events-none absolute bottom-4 right-6 z-0 select-none text-[11px] font-semibold uppercase tracking-[0.3em] text-foreground/[0.02]">
+            NIGHTMARE INVEST
+          </div>
+          <div className="relative z-10 mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
             <AnimatePresence mode="wait">
               <motion.div
                 key={current}
@@ -174,22 +176,26 @@ function SidebarContent({
         <div className="px-3 pb-2 pt-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
           {admin ? "Administration" : "Investor"}
         </div>
-        {nav.map((item) => {
+        {nav.map((item, idx) => {
           const active = current === item.route.name;
+          const isFirstGroup = admin ? idx < 2 : idx < 3;
+          const showSeparator = !isFirstGroup && (admin ? idx === 2 : idx === 3);
           return (
-            <button
-              key={item.label}
-              onClick={() => go(item.route)}
-              className={cn(
-                "group flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all",
-                active
-                  ? "bg-gold-gradient text-black glow-gold"
-                  : "text-muted-foreground hover:bg-gold/10 hover:text-foreground"
-              )}
-            >
-              <item.icon className={cn("h-4 w-4", active ? "text-black" : "text-muted-foreground group-hover:text-gold")} />
-              <span className="flex-1 text-left">{item.label}</span>
-            </button>
+            <div key={item.label}>
+              {showSeparator && <div className="my-2 border-t border-border/40" />}
+              <button
+                onClick={() => go(item.route)}
+                className={cn(
+                  "nav-item-hover group flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all",
+                  active
+                    ? "nav-active-indicator bg-gold/10 text-gold"
+                    : "text-muted-foreground hover:bg-gold/10 hover:text-foreground"
+                )}
+              >
+                <item.icon className={cn("h-4 w-4", active ? "text-gold" : "text-muted-foreground group-hover:text-gold")} />
+                <span className="flex-1 text-left">{item.label}</span>
+              </button>
+            </div>
           );
         })}
       </nav>

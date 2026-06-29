@@ -61,22 +61,37 @@ export function TransactionsPage() {
             <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">Transactions</h1>
             <p className="text-sm text-muted-foreground">Submit and track capital movements</p>
           </div>
-          <div className="flex gap-2">
-            <Button onClick={() => setOpen("DEPOSIT")} className="bg-gold-gradient text-black hover:opacity-90">
-              <ArrowDownToLine className="mr-1.5 h-4 w-4" /> Deposit
-            </Button>
-            <Button onClick={() => setOpen("WITHDRAWAL")} variant="outline" className="border-gold/30 hover:bg-gold/10">
-              <ArrowUpFromLine className="mr-1.5 h-4 w-4" /> Withdraw
-            </Button>
+          <div className="flex flex-col items-end gap-1.5">
+            <div className="flex gap-2">
+              <Button onClick={() => setOpen("DEPOSIT")} className="bg-gold-gradient text-black hover:opacity-90">
+                <ArrowDownToLine className="mr-1.5 h-4 w-4" /> Deposit
+              </Button>
+              <Button onClick={() => setOpen("WITHDRAWAL")} variant="outline" className="border-gold/30 hover:bg-gold/10">
+                <ArrowUpFromLine className="mr-1.5 h-4 w-4" /> Withdraw
+              </Button>
+            </div>
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              <Info className="h-3 w-3 shrink-0" />
+              <span>Deposits are reviewed within 24 hours. Minimum commitment $50,000.</span>
+            </div>
           </div>
         </div>
       </FadeIn>
 
       <FadeIn delay={0.05}>
         <div className="grid gap-4 sm:grid-cols-3">
-          <GlassCard className="p-4">
-            <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Pending Requests</div>
+          <GlassCard className="border-gold/30 p-4">
+            <div className="flex items-center gap-2">
+              <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Pending Requests</div>
+              {pending.length > 0 && (
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-gold opacity-75" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-gold" />
+                </span>
+              )}
+            </div>
             <div className="mt-1 font-metric text-2xl font-bold text-warning">{pending.length}</div>
+            <div className="mt-0.5 text-[11px] text-muted-foreground">Awaiting admin review</div>
           </GlassCard>
           <GlassCard className="p-4">
             <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Total Deposited</div>
@@ -105,8 +120,11 @@ export function TransactionsPage() {
                 </tr>
               </thead>
               <tbody>
-                {txns.map((t: any) => (
-                  <tr key={t.id} className="border-b border-border/40 last:border-0 hover:bg-gold/5">
+                {txns.map((t: any, idx: number) => (
+                  <tr
+                    key={t.id}
+                    className={`border-b border-border/40 last:border-0 hover:bg-gold/5 ${idx % 2 === 0 ? "bg-white/[0.01]" : ""}`}
+                  >
                     <td className="py-3 pr-4"><TypePill type={t.type} /></td>
                     <td className="py-3 pr-4 font-metric font-semibold">{fmtUSD(t.amount)}</td>
                     <td className="py-3 pr-4"><StatusPill status={t.status} /></td>
@@ -116,12 +134,19 @@ export function TransactionsPage() {
                   </tr>
                 ))}
                 {txns.length === 0 && (
-                  <tr><td colSpan={6} className="py-10 text-center">
-                    <div className="flex flex-col items-center gap-3 text-muted-foreground">
-                      <Info className="h-6 w-6 text-gold/50" />
-                      <span>No transactions yet. Submit your first deposit request to begin.</span>
-                      <Button size="sm" onClick={() => setOpen("DEPOSIT")} className="bg-gold-gradient text-black hover:opacity-90">
-                        <Plus className="mr-1 h-4 w-4" /> New Deposit
+                  <tr><td colSpan={6} className="py-16 text-center">
+                    <div className="flex flex-col items-center gap-4">
+                      <div className="flex h-16 w-16 items-center justify-center rounded-full border border-gold/20 bg-gold/5">
+                        <ArrowDownToLine className="h-7 w-7 text-gold/60" />
+                      </div>
+                      <div className="space-y-1 text-center">
+                        <h3 className="text-lg font-semibold text-foreground">Begin Your Investment Journey</h3>
+                        <p className="max-w-sm text-sm text-muted-foreground">
+                          Submit your first deposit request to allocate capital into the Nightmare Alpha Crypto Fund.
+                        </p>
+                      </div>
+                      <Button onClick={() => setOpen("DEPOSIT")} className="bg-gold-gradient text-black hover:opacity-90">
+                        <Plus className="mr-1.5 h-4 w-4" /> New Deposit
                       </Button>
                     </div>
                   </td></tr>

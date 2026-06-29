@@ -17,6 +17,7 @@ import { AdminNav } from "@/components/admin/nav";
 import { AdminTransactions } from "@/components/admin/transactions";
 import { AdminLedger } from "@/components/admin/ledger";
 import { AdminAudit } from "@/components/admin/audit";
+import { WelcomeModal } from "@/components/brand/welcome-modal";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 const queryClient = new QueryClient({
@@ -107,6 +108,7 @@ function AppRouter() {
   // Investor routes
   return (
     <PortalShell>
+      <WelcomeModal />
       {renderInvestor(route.name)}
     </PortalShell>
   );

@@ -22,7 +22,8 @@ export function GlassCard({
     <div
       onClick={onClick}
       className={cn(
-        "relative rounded-xl overflow-hidden",
+        "relative rounded-xl overflow-hidden group",
+        "shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]",
         gold ? "glass-gold" : "glass",
         glow && (gold ? "glow-gold-strong" : "glow-gold"),
         hover && "transition-all duration-300 hover:-translate-y-0.5 hover:glow-gold",
@@ -30,9 +31,16 @@ export function GlassCard({
         className
       )}
     >
-      {/* gold top hairline */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-gold/40 to-transparent" />
-      {children}
+      {/* gold top hairline — pulses on gold cards */}
+      <div
+        className={cn(
+          "pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-gold/40 to-transparent",
+          gold && "gold-hairline-pulse"
+        )}
+      />
+      {/* hover brightening overlay */}
+      <div className="pointer-events-none absolute inset-0 rounded-xl bg-white/0 transition-colors duration-300 group-hover:bg-white/[0.02]" />
+      <div className="relative z-10">{children}</div>
     </div>
   );
 }
@@ -57,14 +65,14 @@ export function MetricTile({
   const accentColor =
     accent === "profit" ? "text-profit" : accent === "loss" ? "text-loss" : accent === "gold" ? "text-gold" : "text-foreground";
   return (
-    <GlassCard className={cn("p-5", className)} hover>
+    <GlassCard className={cn("metric-bottom-border p-5 transition-transform duration-200 hover:scale-[1.02]", className)} hover>
       <div className="flex items-start justify-between gap-3">
         <span className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
           {label}
         </span>
         {icon && <span className="text-gold/70">{icon}</span>}
       </div>
-      <div className={cn("mt-3 font-metric text-2xl font-semibold tracking-tight", accentColor)}>
+      <div className={cn("mt-3 font-metric text-2xl font-semibold tracking-tight text-shadow-metric", accentColor)}>
         {value}
       </div>
       {sub && <div className="mt-1 text-xs text-muted-foreground">{sub}</div>}

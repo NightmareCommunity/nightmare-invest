@@ -1,4 +1,5 @@
 "use client";
+import { useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useApp } from "@/lib/store";
 import { Logo } from "@/components/brand/logo";
@@ -16,6 +17,7 @@ import {
   LineChart,
   CheckCircle2,
   Quote,
+  Building2,
 } from "lucide-react";
 import { fmtUSD } from "@/lib/format";
 
@@ -99,7 +101,7 @@ export function Landing() {
               <button
                 key={n.label}
                 onClick={() => scrollTo(n.href)}
-                className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+                className="text-sm text-foreground/70 transition-colors hover:text-foreground"
               >
                 {n.label}
               </button>
@@ -109,7 +111,7 @@ export function Landing() {
             <Button
               variant="ghost"
               onClick={() => setRoute({ name: "login" })}
-              className="text-muted-foreground hover:text-foreground"
+              className="text-foreground/70 hover:text-foreground"
             >
               Investor Login
             </Button>
@@ -125,6 +127,7 @@ export function Landing() {
 
       {/* Hero */}
       <section className="relative overflow-hidden">
+        <HeroCanvas />
         <div className="absolute inset-0 bg-grid bg-grid-fade opacity-60" />
         <div className="absolute -top-40 left-1/2 h-96 w-[800px] -translate-x-1/2 rounded-full bg-gold/10 blur-[120px]" />
         <div className="relative mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8 lg:py-28">
@@ -134,16 +137,16 @@ export function Landing() {
             transition={{ duration: 0.7 }}
             className="mx-auto max-w-4xl text-center"
           >
-            <div className="mx-auto mb-6 inline-flex items-center gap-2 rounded-full border border-gold/20 bg-gold/5 px-4 py-1.5 text-xs font-medium text-gold">
+            <div className="shimmer-badge mx-auto mb-6 inline-flex items-center gap-2 rounded-full border border-gold/30 bg-gold/5 px-4 py-1.5 text-xs font-medium text-gold">
               <span className="h-1.5 w-1.5 animate-pulse-gold rounded-full bg-gold" />
               Nightmare Alpha Crypto Fund · Now Accepting Allocations
             </div>
-            <h1 className="text-balance text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-6xl">
+            <h1 className="glow-underline text-balance text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-6xl">
               Private Access to{" "}
-              <span className="text-gold-gradient text-glow-gold">Institutional</span>{" "}
+              <span className="font-extrabold text-gold-gradient text-glow-gold">Institutional</span>{" "}
               Crypto Alpha
             </h1>
-            <p className="mx-auto mt-6 max-w-2xl text-pretty text-base text-muted-foreground sm:text-lg">
+            <p className="mx-auto mt-8 max-w-2xl text-pretty text-base text-foreground/60 sm:text-lg">
               An elite hedge fund portal engineered for accredited investors. Allocate capital
               into a disciplined digital-asset strategy, monitor institutional-grade analytics,
               and access your portfolio with the confidentiality of a private bank.
@@ -161,7 +164,7 @@ export function Landing() {
                 size="lg"
                 variant="outline"
                 onClick={() => setRoute({ name: "login" })}
-                className="w-full border-gold/30 text-foreground hover:bg-gold/10 sm:w-auto"
+                className="w-full border-gold/30 text-gold hover:bg-gold/10 sm:w-auto"
               >
                 Investor Login
               </Button>
@@ -169,6 +172,21 @@ export function Landing() {
             <p className="mt-4 text-xs text-muted-foreground">
               Minimum commitment $50,000 · Accredited investors only
             </p>
+            {/* Trust indicators */}
+            <div className="mt-6 flex flex-wrap items-center justify-center gap-6 text-xs text-foreground/40">
+              <div className="flex items-center gap-1.5">
+                <Lock className="h-3.5 w-3.5" />
+                <span>256-bit Encryption</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <ShieldCheck className="h-3.5 w-3.5" />
+                <span>SOC 2 Audited</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Building2 className="h-3.5 w-3.5" />
+                <span>Qualified Custody</span>
+              </div>
+            </div>
           </motion.div>
 
           {/* Hero stats */}
@@ -179,7 +197,7 @@ export function Landing() {
             className="mt-16 grid grid-cols-2 gap-4 lg:grid-cols-4"
           >
             {stats.map((s) => (
-              <GlassCard key={s.label} gold className="p-5 text-center">
+              <GlassCard key={s.label} gold className="stat-card-gold p-5 text-center">
                 <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
                   {s.label}
                 </div>
@@ -503,4 +521,112 @@ function Sparkline() {
       </svg>
     </div>
   );
+}
+
+function HeroCanvas() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    // Respect reduced-motion preference
+    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (prefersReducedMotion) return;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    let animationId: number;
+    const PARTICLE_COUNT = 55;
+    const CONNECTION_DISTANCE = 140;
+
+    interface Particle {
+      x: number;
+      y: number;
+      vx: number;
+      vy: number;
+      r: number;
+      o: number;
+    }
+
+    const particles: Particle[] = [];
+
+    const resize = () => {
+      const dpr = window.devicePixelRatio || 1;
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    };
+
+    resize();
+    window.addEventListener("resize", resize);
+
+    const w = () => canvas.getBoundingClientRect().width;
+    const h = () => canvas.getBoundingClientRect().height;
+
+    // Initialize particles
+    for (let i = 0; i < PARTICLE_COUNT; i++) {
+      particles.push({
+        x: Math.random() * w(),
+        y: Math.random() * h(),
+        vx: (Math.random() - 0.5) * 0.25,
+        vy: -(Math.random() * 0.25 + 0.08), // slowly floating upward
+        r: Math.random() * 1.5 + 0.5,
+        o: Math.random() * 0.3 + 0.1, // opacity 0.1–0.4
+      });
+    }
+
+    const animate = () => {
+      const cw = w();
+      const ch = h();
+      ctx.clearRect(0, 0, cw, ch);
+
+      // Update & draw particles
+      for (const p of particles) {
+        p.x += p.vx;
+        p.y += p.vy;
+
+        // Wrap around edges
+        if (p.y < -10) p.y = ch + 10;
+        if (p.x < -10) p.x = cw + 10;
+        if (p.x > cw + 10) p.x = -10;
+
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(212, 175, 55, ${p.o})`;
+        ctx.fill();
+      }
+
+      // Draw connecting lines between nearby particles
+      for (let i = 0; i < particles.length; i++) {
+        for (let j = i + 1; j < particles.length; j++) {
+          const dx = particles[i].x - particles[j].x;
+          const dy = particles[i].y - particles[j].y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < CONNECTION_DISTANCE) {
+            const alpha = 0.05 + (1 - dist / CONNECTION_DISTANCE) * 0.05;
+            ctx.beginPath();
+            ctx.moveTo(particles[i].x, particles[i].y);
+            ctx.lineTo(particles[j].x, particles[j].y);
+            ctx.strokeStyle = `rgba(212, 175, 55, ${alpha})`;
+            ctx.lineWidth = 0.5;
+            ctx.stroke();
+          }
+        }
+      }
+
+      animationId = requestAnimationFrame(animate);
+    };
+
+    animate();
+
+    return () => {
+      cancelAnimationFrame(animationId);
+      window.removeEventListener("resize", resize);
+    };
+  }, []);
+
+  return <canvas ref={canvasRef} className="absolute inset-0 z-0 h-full w-full" />;
 }
