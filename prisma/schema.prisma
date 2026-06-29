@@ -1,0 +1,166 @@
+// NIGHTMARE INVEST — Institutional Crypto Hedge Fund Client Portal
+// Prisma schema (SQLite)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ----------------------------- Enums -----------------------------
+// SQLite has no native enum, so we use String with app-level validation.
+
+// ----------------------------- User ------------------------------
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  role         String   @default("USER") // USER | ADMIN
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  lastLogin    DateTime?
+
+  holdings     Holding[]
+  transactions Transaction[]
+  ledgerEntries LedgerEntry[] @relation("LedgerUser")
+  auditLogs    AuditLog[]     @relation("AuditActor")
+  processedTxn Transaction[]  @relation("ProcessedBy")
+  reports      Report[]
+}
+
+// ----------------------------- Fund ------------------------------
+model Fund {
+  id           String   @id @default(cuid())
+  name         String   @unique
+  slug         String   @unique
+  description  String
+  minInvest    Float    @default(50000)
+  feeStructure String   @default("2% management / 20% performance")
+  isActive     Boolean  @default(true)
+  inceptionNav Float    @default(100)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  navPoints    NAVPoint[]
+  holdings     Holding[]
+  transactions Transaction[]
+  allocations  Allocation[]
+}
+
+// Allocation of the fund across assets (admin controlled)
+model Allocation {
+  id       String  @id @default(cuid())
+  fundId   String
+  fund     Fund    @relation(fields: [fundId], references: [id], onDelete: Cascade)
+  asset    String  // e.g. BTC, ETH, SOL, Stablecoin, Altcoins
+  weight   Float   // percentage 0-100
+  color    String  @default("#D4AF37")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([fundId, asset])
+}
+
+// ----------------------------- NAV -------------------------------
+model NAVPoint {
+  id        String   @id @default(cuid())
+  fundId    String
+  fund      Fund     @relation(fields: [fundId], references: [id], onDelete: Cascade)
+  date      DateTime
+  nav       Float
+  aum       Float?
+  createdAt DateTime @default(now())
+
+  @@unique([fundId, date])
+}
+
+// --------------------------- Holdings ----------------------------
+model Holding {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fundId    String
+  fund      Fund     @relation(fields: [fundId], references: [id], onDelete: Cascade)
+  units     Float
+  avgPrice  Float
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, fundId])
+}
+
+// ------------------------- Transactions --------------------------
+model Transaction {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fundId     String
+  fund       Fund      @relation(fields: [fundId], references: [id], onDelete: Cascade)
+  type       String    // DEPOSIT | WITHDRAWAL
+  amount     Float
+  status     String    @default("PENDING") // PENDING | APPROVED | REJECTED
+  notes      String?
+  processedBy String?
+  processor  User?     @relation("ProcessedBy", fields: [processedBy], references: [id])
+  createdAt  DateTime  @default(now())
+  processedAt DateTime?
+}
+
+// --------------------------- Ledger ------------------------------
+model LedgerEntry {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation("LedgerUser", fields: [userId], references: [id], onDelete: Cascade)
+  accountId    String   // user-fund account key
+  amount       Float    // signed (+ deposit, - withdrawal)
+  type         String   // DEPOSIT | WITHDRAWAL | NAV_ADJUST | FEE
+  balanceAfter Float
+  reference    String?  // transaction id
+  createdAt    DateTime @default(now())
+
+  @@index([userId])
+  @@index([accountId])
+}
+
+// ------------------------- Audit Logs ----------------------------
+model AuditLog {
+  id           String   @id @default(cuid())
+  actorId      String?
+  actor        User?    @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+  action       String
+  resourceType String?
+  resourceId   String?
+  metadata     String?  // JSON string
+  timestamp    DateTime @default(now())
+
+  @@index([actorId])
+  @@index([action])
+}
+
+// --------------------------- Reports -----------------------------
+model Report {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String
+  period      String   // e.g. 2025-Q1
+  type        String   // STATEMENT | QUARTERLY | PERFORMANCE
+  summary     String
+  createdAt   DateTime @default(now())
+}
+
+// ----------------------- Market Cache ----------------------------
+// Cache live crypto prices to avoid hammering upstream APIs
+model MarketPrice {
+  id        String   @id @default(cuid())
+  symbol    String   @unique // bitcoin, ethereum, solana
+  name      String
+  priceUsd  Float
+  change24h Float
+  updatedAt DateTime @updatedAt
+}
