@@ -1,5 +1,5 @@
 "use client";
-import { useState, type ReactNode } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useApp, type Route } from "@/lib/store";
 import { Logo } from "@/components/brand/logo";
@@ -7,6 +7,8 @@ import { NotificationCenter } from "@/components/brand/notification-center";
 import { useRealtimeNotifications } from "@/hooks/use-realtime-notifications";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import { ErrorBoundary } from "@/components/brand/error-boundary";
+import { OnboardingWizard } from "@/components/brand/onboarding-wizard";
 import {
   LayoutDashboard, Wallet, ArrowLeftRight, FileText, Settings,
   Users, TrendingUp, Database, ScrollText, History, Menu, X, LogOut,
@@ -58,10 +60,25 @@ export function PortalShell({ children, admin = false }: { children: ReactNode; 
   const setRoute = useApp((s) => s.setRoute);
   const logout = useApp((s) => s.logout);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   // Real-time WebSocket notifications (toasts + badge refresh). Active
   // whenever the shell is mounted (i.e. user is logged in).
   useRealtimeNotifications();
+
+  // Show onboarding wizard for new investors with incomplete profile
+  useEffect(() => {
+    if (
+      !admin &&
+      user &&
+      user.role === "USER" &&
+      (user.kycStatus === "NONE" || user.kycStatus === "PENDING") &&
+      !sessionStorage.getItem("onboarding_dismissed")
+    ) {
+      const timer = setTimeout(() => setShowOnboarding(true), 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [admin, user]);
 
   const nav = admin ? ADMIN_NAV : INVESTOR_NAV;
   const current = route.name;
@@ -71,8 +88,29 @@ export function PortalShell({ children, admin = false }: { children: ReactNode; 
     setMobileOpen(false);
   };
 
+  // Expose onboarding trigger to child components via a global function
+  useEffect(() => {
+    (window as Record<string, unknown>).__showOnboarding = () => setShowOnboarding(true);
+    return () => { delete (window as Record<string, unknown>).__showOnboarding; };
+  }, []);
+
   return (
     <div className="min-h-screen flex flex-col bg-background">
+      {/* Onboarding wizard overlay */}
+      <AnimatePresence>
+        {showOnboarding && !admin && (
+          <OnboardingWizard
+            onComplete={() => {
+              setShowOnboarding(false);
+              sessionStorage.setItem("onboarding_dismissed", "1");
+            }}
+            onClose={() => {
+              setShowOnboarding(false);
+              sessionStorage.setItem("onboarding_dismissed", "1");
+            }}
+          />
+        )}
+      </AnimatePresence>
       {/* Top bar */}
       <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-border/60 glass-strong topbar-glow-line px-4 sm:px-6">
         <div className="flex items-center gap-3">
@@ -154,25 +192,27 @@ export function PortalShell({ children, admin = false }: { children: ReactNode; 
         </AnimatePresence>
 
         {/* Main */}
-        <main className="relative flex-1 overflow-x-hidden bg-gradient-animated">
+        <main className="relative flex flex-1 flex-col overflow-x-hidden bg-gradient-animated">
           {/* NIGHTMARE INVEST watermark */}
           <div className="pointer-events-none absolute bottom-4 right-6 z-0 select-none text-[11px] font-semibold uppercase tracking-[0.3em] text-foreground/[0.02]">
             NIGHTMARE INVEST
           </div>
-          <div className="relative z-10 mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={current}
-                initial={{ opacity: 0, y: 8, scale: 0.998 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -4, scale: 0.998 }}
-                transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-              >
-                {children}
-              </motion.div>
-            </AnimatePresence>
+          <div className="relative z-10 flex-1 mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 w-full">
+            <ErrorBoundary>
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={current}
+                  initial={{ opacity: 0, y: 8, scale: 0.998 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -4, scale: 0.998 }}
+                  transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+                >
+                  {children}
+                </motion.div>
+              </AnimatePresence>
+            </ErrorBoundary>
           </div>
-          <footer className="border-t border-border/60 bg-black/30 px-4 py-4 sm:px-6">
+          <footer className="mt-auto border-t border-border/60 bg-black/30 px-4 py-4 sm:px-6">
             <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-2 text-[11px] text-muted-foreground sm:flex-row">
               <span>© {new Date().getFullYear()} Nightmare Invest · Confidential</span>
               <span>NAV as of {fmtDate(new Date())} · For accredited investors only</span>

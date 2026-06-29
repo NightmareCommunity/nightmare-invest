@@ -1518,3 +1518,123 @@
   }
 }
 
+/* ----------------------- Settings: Avatar gold ring pulse ----------------------- */
+@keyframes avatar-ring-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(212, 175, 55, 0.4); }
+  50% { box-shadow: 0 0 0 6px rgba(212, 175, 55, 0); }
+}
+.avatar-gold-ring-pulse {
+  animation: avatar-ring-pulse 2.5s ease-in-out infinite;
+}
+
+/* Security ring animated glow */
+@keyframes security-ring-glow {
+  0%, 100% { filter: drop-shadow(0 0 4px rgba(212, 175, 55, 0.3)); }
+  50% { filter: drop-shadow(0 0 12px rgba(212, 175, 55, 0.5)); }
+}
+
+/* Report type selector animated indicator */
+.report-type-indicator {
+  transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Quick export card hover gold glow */
+.quick-export-glow {
+  transition: box-shadow 0.3s ease, border-color 0.3s ease, transform 0.3s ease;
+}
+.quick-export-glow:hover {
+  box-shadow: 0 0 20px rgba(212, 175, 55, 0.12), 0 0 1px rgba(212, 175, 55, 0.3);
+  border-color: rgba(212, 175, 55, 0.25);
+  transform: translateY(-1px);
+}
+
+/* Report history row hover gold effect */
+.report-row-gold {
+  transition: all 0.2s ease;
+}
+.report-row-gold:hover {
+  border-color: rgba(212, 175, 55, 0.2);
+  box-shadow: 0 0 12px rgba(212, 175, 55, 0.06);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+/* ──────────────────────────────────────────────────────────────────────────────
+   ONBOARDING WIZARD UTILITIES
+   ────────────────────────────────────────────────────────────────────────────── */
+
+/* Gold step ring pulse for current step */
+@keyframes step-ring-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(212, 175, 55, 0.3); }
+  50% { box-shadow: 0 0 16px 4px rgba(212, 175, 55, 0.2); }
+}
+
+/* File upload area drag-over glow */
+.kyc-upload-dragover {
+  border-color: rgba(212, 175, 55, 0.6) !important;
+  background: rgba(212, 175, 55, 0.08) !important;
+  box-shadow: 0 0 20px rgba(212, 175, 55, 0.1);
+}
+
+/* Onboarding modal backdrop blur */
+.onboarding-backdrop {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+/* Wizard step content fade-in */
+@keyframes wizard-fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.wizard-step-enter {
+  animation: wizard-fade-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* ──────────────────────────────────────────────────────────────────────────────
+   KYC DOCUMENT THUMBNAIL UTILITIES
+   ────────────────────────────────────────────────────────────────────────────── */
+
+/* Thumbnail gold border hover glow */
+.doc-thumbnail-hover {
+  transition: all 0.3s ease;
+}
+.doc-thumbnail-hover:hover {
+  border-color: rgba(212, 175, 55, 0.5);
+  box-shadow: 0 0 20px rgba(212, 175, 55, 0.15);
+}
+
+/* Side-by-side review panel border */
+.review-panel-divider {
+  border-right: 1px solid rgba(212, 175, 55, 0.1);
+}
+
+/* Checklist item checked animation */
+@keyframes checklist-check {
+  from { transform: scale(0); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+.checklist-check-enter {
+  animation: checklist-check 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* ──────────────────────────────────────────────────────────────────────────────
+   FORECAST CHART UTILITIES
+   ────────────────────────────────────────────────────────────────────────────── */
+
+/* Forecast dashed line style */
+.forecast-dashed-line {
+  stroke-dasharray: 6 4;
+  animation: forecast-dash 1.5s linear infinite;
+}
+@keyframes forecast-dash {
+  to { stroke-dashoffset: -10; }
+}
+
+/* Cohort heatmap cell hover */
+.cohort-cell {
+  transition: all 0.2s ease;
+}
+.cohort-cell:hover {
+  transform: scale(1.05);
+  z-index: 1;
+}

@@ -1,22 +1,23 @@
 "use client";
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { useApp } from "@/lib/store";
 import { api } from "@/lib/api-client";
-import { GlassCard, SectionTitle, FadeIn, SkeletonCard } from "@/components/brand/primitives";
+import { GlassCard, SectionTitle, FadeIn, SkeletonCard, MetricTile } from "@/components/brand/primitives";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
-import { Progress } from "@/components/ui/progress";
 import { fmtDate } from "@/lib/format";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Shield, KeyRound, LogOut, Mail, User, Clock, Lock, CheckCircle2,
   ShieldCheck, FileCheck2, Bell, Globe, TrendingUp, Newspaper,
   Monitor, Wifi, Eye, EyeOff, Pencil, Award, ChevronRight,
-  CircleDot, CircleCheck, CircleX, CircleEllipsis, AlertTriangle,
+  CircleDot, CircleX, CircleEllipsis, AlertTriangle,
+  Download, Trash2, FileText, ScrollText, ExternalLink,
+  Smartphone, Laptop, Tablet, MapPin, Activity,
 } from "lucide-react";
 import { toast } from "sonner";
 import { TwoFactorSection } from "./two-factor-section";
@@ -26,7 +27,6 @@ import { KycSection } from "./kyc-section";
 /*  Helpers                                                            */
 /* ------------------------------------------------------------------ */
 
-/** Get initials from a full name */
 function getInitials(name: string): string {
   return name
     .split(" ")
@@ -37,7 +37,6 @@ function getInitials(name: string): string {
     .toUpperCase();
 }
 
-/** Password strength score (0-4) */
 function passwordStrength(pw: string): { score: number; label: string; color: string } {
   if (!pw) return { score: 0, label: "—", color: "text-muted-foreground" };
   let s = 0;
@@ -53,31 +52,36 @@ function passwordStrength(pw: string): { score: number; label: string; color: st
 }
 
 /* ------------------------------------------------------------------ */
-/*  Security Ring SVG                                                  */
+/*  Security Ring SVG — Color-coded circular gauge                     */
 /* ------------------------------------------------------------------ */
 
-function SecurityRing({ percent, size = 120 }: { percent: number; size?: number }) {
-  const strokeWidth = 8;
+function SecurityRing({ percent, size = 140 }: { percent: number; size?: number }) {
+  const strokeWidth = 10;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (percent / 100) * circumference;
 
-  const ringColor =
-    percent >= 80 ? "#00c896" : percent >= 50 ? "#D4AF37" : "#ff4d4f";
-  const glowId = `ring-glow-${size}`;
+  const ringColor = percent >= 70 ? "#00c896" : percent >= 40 ? "#D4AF37" : "#ff4d4f";
+  const ringLabel = percent >= 70 ? "Strong" : percent >= 40 ? "Moderate" : "Weak";
+  const glowId = `ring-glow-${size}-${percent}`;
 
   return (
     <div className="relative inline-flex items-center justify-center">
       <svg width={size} height={size} className="-rotate-90">
         <defs>
           <filter id={glowId} x="-50%" y="-50%" width="200%" height="200%">
-            <feGaussianBlur stdDeviation="3" result="blur" />
+            <feGaussianBlur stdDeviation="4" result="blur" />
             <feMerge>
               <feMergeNode in="blur" />
               <feMergeNode in="SourceGraphic" />
             </feMerge>
           </filter>
+          <linearGradient id={`ring-grad-${percent}`} x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor={ringColor} />
+            <stop offset="100%" stopColor="#FFD700" />
+          </linearGradient>
         </defs>
+        {/* Background ring */}
         <circle
           cx={size / 2}
           cy={size / 2}
@@ -86,33 +90,37 @@ function SecurityRing({ percent, size = 120 }: { percent: number; size?: number 
           stroke="rgba(255,255,255,0.06)"
           strokeWidth={strokeWidth}
         />
+        {/* Animated progress ring */}
         <motion.circle
           cx={size / 2}
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke={ringColor}
+          stroke={`url(#ring-grad-${percent})`}
           strokeWidth={strokeWidth}
           strokeLinecap="round"
           strokeDasharray={circumference}
           initial={{ strokeDashoffset: circumference }}
           animate={{ strokeDashoffset: offset }}
-          transition={{ duration: 1.4, ease: [0.22, 1, 0.36, 1] }}
+          transition={{ duration: 1.6, ease: [0.22, 1, 0.36, 1] }}
           filter={`url(#${glowId})`}
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="font-metric text-2xl font-bold" style={{ color: ringColor, textShadow: `0 0 12px ${ringColor}66` }}>
-          {percent}%
+        <span
+          className="font-metric text-3xl font-bold"
+          style={{ color: ringColor, textShadow: `0 0 16px ${ringColor}66` }}
+        >
+          {percent}
         </span>
-        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Secure</span>
+        <span className="text-[10px] uppercase tracking-wider text-muted-foreground mt-0.5">{ringLabel}</span>
       </div>
     </div>
   );
 }
 
 /* ------------------------------------------------------------------ */
-/*  Section Header — numbered, accent-lined, iconified                  */
+/*  Section Header — numbered, accent-lined, iconified                 */
 /* ------------------------------------------------------------------ */
 
 function SettingsSectionHeader({
@@ -230,6 +238,33 @@ function KycStepIndicator({ status }: { status: string }) {
 }
 
 /* ------------------------------------------------------------------ */
+/*  Simulated Activity Log Data                                        */
+/* ------------------------------------------------------------------ */
+
+const ACTIVITY_LOG = [
+  { id: 1, action: "Logged in", timestamp: new Date(Date.now() - 1000 * 60 * 5), ip: "192.168.1.42", device: "Chrome / macOS", icon: Monitor },
+  { id: 2, action: "Password changed", timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2), ip: "192.168.1.42", device: "Chrome / macOS", icon: KeyRound },
+  { id: 3, action: "Logged in", timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24), ip: "10.0.0.15", device: "Safari / iOS", icon: Smartphone },
+  { id: 4, action: "2FA enabled", timestamp: new Date(Date.now() - 1000 * 60 * 60 * 48), ip: "192.168.1.42", device: "Chrome / macOS", icon: ShieldCheck },
+  { id: 5, action: "Deposit requested", timestamp: new Date(Date.now() - 1000 * 60 * 60 * 72), ip: "192.168.1.42", device: "Chrome / macOS", icon: TrendingUp },
+  { id: 6, action: "Logged in", timestamp: new Date(Date.now() - 1000 * 60 * 60 * 96), ip: "172.16.0.8", device: "Firefox / Windows", icon: Laptop },
+  { id: 7, action: "KYC documents uploaded", timestamp: new Date(Date.now() - 1000 * 60 * 60 * 120), ip: "192.168.1.42", device: "Chrome / macOS", icon: FileCheck2 },
+  { id: 8, action: "Logged in", timestamp: new Date(Date.now() - 1000 * 60 * 60 * 168), ip: "192.168.1.42", device: "Chrome / macOS", icon: Monitor },
+  { id: 9, action: "Notification preferences updated", timestamp: new Date(Date.now() - 1000 * 60 * 60 * 200), ip: "192.168.1.42", device: "Chrome / macOS", icon: Bell },
+  { id: 10, action: "Account created", timestamp: new Date(Date.now() - 1000 * 60 * 60 * 240), ip: "192.168.1.42", device: "Chrome / macOS", icon: User },
+];
+
+/* ------------------------------------------------------------------ */
+/*  Simulated Active Sessions                                          */
+/* ------------------------------------------------------------------ */
+
+const ACTIVE_SESSIONS = [
+  { id: "current", browser: "Chrome 121", os: "macOS Sonoma", ip: "192.168.1.42", lastActive: new Date(), device: "desktop", current: true },
+  { id: "mobile", browser: "Safari 17", os: "iOS 17.3", ip: "10.0.0.15", lastActive: new Date(Date.now() - 86400000), device: "mobile", current: false },
+  { id: "tablet", browser: "Firefox 122", os: "Windows 11", ip: "172.16.0.8", lastActive: new Date(Date.now() - 3 * 86400000), device: "desktop", current: false },
+];
+
+/* ------------------------------------------------------------------ */
 /*  Main Settings Page                                                 */
 /* ------------------------------------------------------------------ */
 
@@ -238,23 +273,33 @@ export function SettingsPage() {
   const refresh = useApp((s) => s.refresh);
   const logout = useApp((s) => s.logout);
   const [newPass, setNewPass] = useState("");
+  const [currentPass, setCurrentPass] = useState("");
+  const [confirmPass, setConfirmPass] = useState("");
   const [showPass, setShowPass] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [showChangePassword, setShowChangePassword] = useState(false);
 
   /* Notification preferences (visual only) */
   const [notifEmail, setNotifEmail] = useState(true);
-  const [notifTx, setNotifTx] = useState(true);
-  const [notifNav, setNotifNav] = useState(false);
-  const [notifNews, setNotifNews] = useState(false);
+  const [notifPush, setNotifPush] = useState(false);
+  const [notifStatement, setNotifStatement] = useState(true);
+  const [notifFund, setNotifFund] = useState(false);
+
+  /* Activity log state */
+  const [showAllActivity, setShowAllActivity] = useState(false);
 
   const reset = async () => {
     if (!user) return;
     if (newPass.length < 8) return toast.error("Password must be at least 8 characters");
+    if (newPass !== confirmPass) return toast.error("Passwords do not match");
     setSubmitting(true);
     try {
       await api.post("/api/auth/password-reset", { email: user.email, newPassword: newPass });
       toast.success("Password updated");
       setNewPass("");
+      setCurrentPass("");
+      setConfirmPass("");
+      setShowChangePassword(false);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed");
     } finally {
@@ -274,7 +319,7 @@ export function SettingsPage() {
     { label: "Email verified", done: !!user.email, weight: 20 },
     { label: "2FA enabled", done: totpEnabled, weight: 20 },
     { label: "KYC approved", done: kycStatus === "APPROVED", weight: 20 },
-    { label: "Strong password", done: false, weight: 20 }, // can't know, default optimistic
+    { label: "Strong password", done: false, weight: 20 },
   ];
   const completionPct = completionItems.reduce((acc, item) => acc + (item.done ? item.weight : 0), 0);
   const remainingItems = completionItems.filter((i) => !i.done);
@@ -303,60 +348,137 @@ export function SettingsPage() {
     { label: "12+ characters (recommended)", met: newPass.length >= 12 },
   ];
 
+  /* ---- Visible activity log items ---- */
+  const visibleLog = showAllActivity ? ACTIVITY_LOG : ACTIVITY_LOG.slice(0, 5);
+
+  /* ---- Sessions ---- */
+  const getDeviceIcon = (device: string) => {
+    if (device === "mobile") return Smartphone;
+    if (device === "tablet") return Tablet;
+    return Monitor;
+  };
+
   return (
     <div className="space-y-6">
       {/* ---- Page Header ---- */}
       <FadeIn>
         <div>
-          <span className="text-xs font-medium uppercase tracking-[0.18em] text-gold">Investor Portal</span>
-          <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">Settings</h1>
-          <p className="text-sm text-muted-foreground">Manage your account, security &amp; verification</p>
+          <div className="flex items-end justify-between gap-4">
+            <div>
+              <span className="text-xs font-medium uppercase tracking-[0.18em] text-gold">Investor Portal</span>
+              <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">Settings</h1>
+              <p className="text-sm text-muted-foreground">Manage your account, security &amp; verification</p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const showFn = (window as Record<string, unknown>).__showOnboarding;
+                if (typeof showFn === "function") (showFn as () => void)();
+              }}
+              className="border-gold/30 text-gold hover:bg-gold/10 gap-1.5"
+            >
+              <Shield className="h-3.5 w-3.5" /> Setup Wizard
+            </Button>
+          </div>
         </div>
       </FadeIn>
 
-      {/* ---- Account Completion Progress ---- */}
+      {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+      {/*  SECTION A: PROFILE (TOP)                                         */}
+      {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+
       <FadeIn delay={0.03}>
-        <GlassCard gold className="p-5 hover-lift">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex-1">
-              <div className="flex items-center gap-2">
-                <Award className="h-5 w-5 text-gold" />
-                <h3 className="text-base font-semibold text-foreground">Account Completion</h3>
-              </div>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Your account is{" "}
-                <span className="font-metric font-semibold text-gold">{completionPct}%</span>{" "}
-                complete
-              </p>
-              <div className="mt-3 h-2.5 w-full overflow-hidden rounded-full bg-white/5">
-                <motion.div
-                  className="h-full rounded-full bg-gold-gradient"
-                  initial={{ width: "0%" }}
-                  animate={{ width: `${completionPct}%` }}
-                  transition={{ duration: 1, ease: [0.22, 1, 0.36, 1], delay: 0.2 }}
-                />
-              </div>
-              {remainingItems.length > 0 && (
-                <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1">
-                  {remainingItems.map((item) => (
-                    <div key={item.label} className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                      <ChevronRight className="h-3 w-3 text-gold/60" />
-                      <span>{item.label}</span>
-                    </div>
-                  ))}
+        <GlassCard gold className="p-6 hover-lift">
+          <div className="flex flex-col sm:flex-row gap-6">
+            {/* Avatar with animated gold ring */}
+            <div className="flex flex-col items-center gap-3">
+              <div className="relative">
+                {/* Pulsing gold ring */}
+                <div className="absolute -inset-2 rounded-full border-2 border-gold/40 animate-pulse-gold" />
+                <div className="relative flex h-24 w-24 items-center justify-center rounded-full border-2 border-gold/60 bg-gradient-to-br from-gold/15 to-gold/5 text-3xl font-bold text-gold-gradient shadow-[0_0_24px_rgba(212,175,55,0.25)]">
+                  {getInitials(user.name)}
                 </div>
-              )}
+                <div className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full border-2 border-background bg-gold-gradient text-[9px] font-bold text-black shadow-[0_0_10px_rgba(212,175,55,0.5)]">
+                  ✓
+                </div>
+              </div>
+              <Badge
+                className={`shimmer-badge text-[10px] ${
+                  kycTier === "ACCREDITED"
+                    ? "border-gold/40 bg-gold/15 text-gold"
+                    : "border-muted-foreground/30 bg-muted/10 text-muted-foreground"
+                }`}
+              >
+                {kycTier === "ACCREDITED" ? (
+                  <><Award className="mr-1 h-3 w-3" /> Accredited</>
+                ) : (
+                  <><User className="mr-1 h-3 w-3" /> Standard</>
+                )}
+              </Badge>
             </div>
-            <div className="flex-shrink-0">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full border-2 border-gold/30 bg-gold/5">
-                <span className="font-metric text-xl font-bold text-gold">{completionPct}%</span>
+
+            {/* Info + Progress */}
+            <div className="flex-1 space-y-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-xl font-bold text-foreground">{user.name}</h2>
+                  <p className="text-sm text-muted-foreground flex items-center gap-1.5 mt-0.5">
+                    <Mail className="h-3.5 w-3.5" /> {user.email}
+                  </p>
+                  <div className="mt-2 flex items-center gap-2">
+                    <Badge className={user.role === "ADMIN" ? "border-gold/30 bg-gold/10 text-gold" : "border-profit/30 bg-profit/10 text-profit"}>
+                      {user.role}
+                    </Badge>
+                    <span className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Clock className="h-3 w-3" /> Member since {fmtDate(user.createdAt)}
+                    </span>
+                  </div>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="border-gold/30 text-gold hover:bg-gold/10 gap-1.5 text-xs shrink-0"
+                  onClick={() => toast.info("Profile editing is not available in this version")}
+                >
+                  <Pencil className="h-3 w-3" /> Edit Profile
+                </Button>
+              </div>
+
+              {/* Account completion progress bar */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-medium text-foreground/70">Account Completion</span>
+                  <span className="font-metric text-sm font-bold text-gold">{completionPct}%</span>
+                </div>
+                <div className="h-2.5 w-full overflow-hidden rounded-full bg-white/5">
+                  <motion.div
+                    className="h-full rounded-full bg-gold-gradient relative overflow-hidden"
+                    initial={{ width: "0%" }}
+                    animate={{ width: `${completionPct}%` }}
+                    transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1], delay: 0.3 }}
+                  >
+                    {/* Shimmer overlay on progress */}
+                    <div className="absolute inset-0 shimmer opacity-60" />
+                  </motion.div>
+                </div>
+                {remainingItems.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
+                    {remainingItems.map((item) => (
+                      <div key={item.label} className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                        <ChevronRight className="h-3 w-3 text-gold/60" />
+                        <span>{item.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </div>
         </GlassCard>
       </FadeIn>
 
-      {/* ---- KYC Progress Visualization ---- */}
+      {/* ---- KYC Progress ---- */}
       <FadeIn delay={0.05}>
         <GlassCard className="p-5 hover-lift">
           <div className="flex items-center justify-between gap-3 mb-4">
@@ -400,348 +522,70 @@ export function SettingsPage() {
         </GlassCard>
       </FadeIn>
 
-      {/* ---- Main Grid ---- */}
-      <div className="grid gap-4 lg:grid-cols-3">
-        {/* Left Column (2/3) */}
-        <FadeIn delay={0.07} className="lg:col-span-2 space-y-4">
+      {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+      {/*  SECTION B: SECURITY CENTER (PROMINENT)                           */}
+      {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
 
-          {/* ---- Profile Section (Enhanced) ---- */}
-          <GlassCard className="glass-card-hover p-6 border-gold/15" gold>
-            <SettingsSectionHeader
-              num="01"
-              title="Profile"
-              subtitle="Account information"
-              icon={<User className="h-4 w-4" />}
-              action={
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="border-gold/30 text-gold hover:bg-gold/10 gap-1.5 text-xs"
-                  onClick={() => toast.info("Profile editing is not available in this version")}
-                >
-                  <Pencil className="h-3 w-3" /> Edit
-                </Button>
-              }
-            />
+      <FadeIn delay={0.07}>
+        <GlassCard gold glow className="p-6">
+          <SettingsSectionHeader
+            num="01"
+            title="Security Center"
+            subtitle="Protect your account with advanced security measures"
+            icon={<Shield className="h-4 w-4" />}
+          />
 
-            <div className="mt-5 flex flex-col sm:flex-row gap-5">
-              {/* Avatar with rotating gold ring */}
-              <div className="flex flex-col items-center gap-2">
-                <div className="relative avatar-gold-ring">
-                  <div className="flex h-20 w-20 items-center justify-center rounded-full border-2 border-gold/60 bg-gradient-to-br from-gold/15 to-gold/5 text-2xl font-bold text-gold-gradient shadow-[0_0_20px_rgba(212,175,55,0.2)]">
-                    {getInitials(user.name)}
-                  </div>
-                  <div className="absolute -bottom-0.5 -right-0.5 flex h-6 w-6 items-center justify-center rounded-full border-2 border-background bg-gold-gradient text-[8px] font-bold text-black shadow-[0_0_8px_rgba(212,175,55,0.5)]">
-                    ✓
-                  </div>
-                </div>
-                <Badge
-                  className={`shimmer-badge text-[10px] ${
-                    kycTier === "ACCREDITED"
-                      ? "border-gold/40 bg-gold/15 text-gold"
-                      : "border-muted-foreground/30 bg-muted/10 text-muted-foreground"
-                  }`}
-                >
-                  {kycTier === "ACCREDITED" ? (
-                    <><Award className="mr-1 h-3 w-3" /> Accredited</>
-                  ) : (
-                    <><User className="mr-1 h-3 w-3" /> Standard</>
-                  )}
-                </Badge>
-              </div>
-
-              {/* Fields */}
-              <div className="flex-1 grid gap-4 sm:grid-cols-2">
-                <div className="space-y-1.5">
-                  <Label className="text-xs uppercase tracking-wider text-muted-foreground">Full Name</Label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input value={user.name} readOnly className="border-border/60 bg-black/20 pl-9 text-foreground" />
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs uppercase tracking-wider text-muted-foreground">Email</Label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input value={user.email} readOnly className="border-border/60 bg-black/20 pl-9 text-foreground" />
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs uppercase tracking-wider text-muted-foreground">Role</Label>
-                  <div className="flex h-9 items-center gap-2 rounded-md border border-border/60 bg-black/20 px-3">
-                    <Badge className={user.role === "ADMIN" ? "border-gold/30 bg-gold/10 text-gold" : "border-profit/30 bg-profit/10 text-profit"}>
-                      {user.role}
-                    </Badge>
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs uppercase tracking-wider text-muted-foreground">Member Since</Label>
-                  <div className="flex h-9 items-center gap-2 rounded-md border border-border/60 bg-black/20 px-3 text-sm text-muted-foreground">
-                    <Clock className="h-4 w-4" /> {fmtDate(user.createdAt)}
-                  </div>
-                </div>
-              </div>
+          <div className="mt-5 grid gap-6 lg:grid-cols-3">
+            {/* Security Score Gauge */}
+            <div className="flex flex-col items-center justify-center text-center">
+              <SecurityRing percent={securityScore} size={140} />
+              <p className="mt-3 text-xs text-muted-foreground">
+                {securityScore >= 70
+                  ? "Your account security is strong"
+                  : securityScore >= 40
+                    ? "Enable 2FA and complete KYC to improve"
+                    : "Immediate action recommended"}
+              </p>
             </div>
-          </GlassCard>
 
-          {/* ---- Password Section (Enhanced) ---- */}
-          <GlassCard className="glass-card-hover p-6 border-gold/10">
-            <SettingsSectionHeader
-              num="02"
-              title="Password"
-              subtitle="Update your password"
-              icon={<KeyRound className="h-4 w-4" />}
-            />
-            <div className="mt-4 space-y-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="newpass" className="text-xs uppercase tracking-wider text-muted-foreground">New Password</Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    id="newpass"
-                    type={showPass ? "text" : "password"}
-                    value={newPass}
-                    onChange={(e) => setNewPass(e.target.value)}
-                    placeholder="••••••••"
-                    className="border-border/60 bg-black/30 pl-9 pr-10"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPass(!showPass)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                    aria-label={showPass ? "Hide password" : "Show password"}
-                  >
-                    {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-              </div>
-
-              {/* Password strength meter */}
-              {newPass.length > 0 && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  transition={{ duration: 0.25 }}
-                  className="space-y-3"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground">Password strength</span>
-                    <span className={`text-xs font-semibold ${pwStrength.color}`}>{pwStrength.label}</span>
-                  </div>
-                  <div className="flex gap-1.5">
-                    {[1, 2, 3, 4].map((level) => (
-                      <div
-                        key={level}
-                        className={`h-1.5 flex-1 rounded-full transition-all duration-300 ${
-                          pwStrength.score >= level
-                            ? pwStrength.score >= 3
-                              ? "bg-profit"
-                              : pwStrength.score >= 2
-                                ? "bg-gold"
-                                : "bg-loss"
-                            : "bg-white/5"
-                        }`}
-                      />
-                    ))}
-                  </div>
-
-                  {/* Requirements checklist */}
-                  <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
-                    {pwRequirements.map((req) => (
-                      <div key={req.label} className="flex items-center gap-1.5 text-[11px]">
-                        {req.met ? (
-                          <CheckCircle2 className="h-3 w-3 text-profit shrink-0" />
-                        ) : (
-                          <CircleDot className="h-3 w-3 text-muted-foreground/40 shrink-0" />
-                        )}
-                        <span className={req.met ? "text-foreground/80" : "text-muted-foreground/60"}>
-                          {req.label}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </motion.div>
-              )}
-
-              <Button onClick={reset} disabled={submitting || newPass.length < 8} className="bg-gold-gradient text-black hover:opacity-90">
-                <KeyRound className="mr-1.5 h-4 w-4" /> {submitting ? "Updating…" : "Update Password"}
-              </Button>
-            </div>
-          </GlassCard>
-
-          {/* ---- 2FA ---- */}
-          <TwoFactorSection enabled={totpEnabled} onChanged={refresh} />
-
-          {/* ---- KYC ---- */}
-          <KycSection />
-
-          {/* ---- Notification Preferences ---- */}
-          <GlassCard className="glass-card-hover p-6 border-gold/15" gold>
-            <SettingsSectionHeader
-              num="03"
-              title="Notification Preferences"
-              subtitle="Control what updates you receive"
-              icon={<Bell className="h-4 w-4" />}
-            />
-            <div className="mt-5 space-y-4">
-              {[
-                {
-                  id: "email",
-                  label: "Email Notifications",
-                  desc: "Receive account alerts and summaries via email",
-                  icon: Mail,
-                  checked: notifEmail,
-                  onChange: setNotifEmail,
-                },
-                {
-                  id: "tx",
-                  label: "Transaction Alerts",
-                  desc: "Get notified for deposits, withdrawals, and transfers",
-                  icon: TrendingUp,
-                  checked: notifTx,
-                  onChange: setNotifTx,
-                },
-                {
-                  id: "nav",
-                  label: "NAV Updates",
-                  desc: "Daily net asset value changes and fund performance",
-                  icon: Globe,
-                  checked: notifNav,
-                  onChange: setNotifNav,
-                },
-                {
-                  id: "news",
-                  label: "Fund News & Reports",
-                  desc: "Monthly reports, strategy updates, and market commentary",
-                  icon: Newspaper,
-                  checked: notifNews,
-                  onChange: setNotifNews,
-                },
-              ].map((item) => {
-                const Icon = item.icon;
+            {/* Security checklist */}
+            <div className="lg:col-span-2 space-y-2.5">
+              {securityChecks.map((s) => {
+                const SIcon = s.icon;
                 return (
                   <motion.div
-                    key={item.id}
+                    key={s.label}
                     whileHover={{ x: 2 }}
-                    className="flex items-center justify-between gap-4 rounded-xl border border-gold/10 bg-black/20 p-3.5 transition-all duration-300 hover:bg-gold/[0.04] hover:border-gold/25"
+                    className={`flex items-center gap-3 rounded-lg px-3 py-2.5 transition-colors ${
+                      s.done ? "bg-white/[0.02] hover:bg-white/[0.04]" : "bg-gold/5 hover:bg-gold/[0.08]"
+                    }`}
                   >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gold/25 bg-gradient-to-br from-gold/10 to-gold/5">
-                        <Icon className="h-4 w-4 text-gold" />
-                      </div>
-                      <div className="min-w-0">
-                        <div className="text-sm font-medium text-foreground">{item.label}</div>
-                        <div className="text-[11px] text-muted-foreground truncate">{item.desc}</div>
-                      </div>
+                    <div
+                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border ${
+                        s.done
+                          ? "border-profit/20 bg-profit/10"
+                          : "border-gold/20 bg-gold/5"
+                      }`}
+                    >
+                      {s.done ? (
+                        <CheckCircle2 className="h-4 w-4 text-profit" />
+                      ) : (
+                        <SIcon className="h-4 w-4 text-gold/70" />
+                      )}
                     </div>
-                    <Switch
-                      checked={item.checked}
-                      onCheckedChange={item.onChange}
-                      className="switch-gold-glow data-[state=checked]:bg-gold data-[state=checked]:shadow-[0_0_12px_rgba(212,175,55,0.4)]"
-                    />
+                    <span className={`text-sm flex-1 ${s.done ? "text-foreground/80" : "text-muted-foreground"}`}>
+                      {s.label}
+                    </span>
+                    {!s.done && (
+                      <ChevronRight className="h-3.5 w-3.5 text-gold/50" />
+                    )}
                   </motion.div>
                 );
               })}
-            </div>
-          </GlassCard>
-
-          {/* ---- Connected Sessions (Enhanced) ---- */}
-          <GlassCard className="glass-card-hover p-6 border-gold/10">
-            <SettingsSectionHeader
-              num="04"
-              title="Connected Sessions"
-              subtitle="Authentication tokens"
-              icon={<Monitor className="h-4 w-4" />}
-            />
-            <div className="mt-4 space-y-3">
-              <div className="rounded-lg border border-profit/20 bg-profit/5 p-4">
-                <div className="flex items-start gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-profit/20 bg-profit/10">
-                    <Monitor className="h-5 w-5 text-profit" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-foreground">Current Session</span>
-                      <span className="flex items-center gap-1 rounded-full border border-profit/30 bg-profit/10 px-2 py-0.5 text-[10px] font-medium text-profit">
-                        <span className="h-1.5 w-1.5 rounded-full bg-profit animate-pulse" />
-                        Active
-                      </span>
-                    </div>
-                    <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <Wifi className="h-3 w-3" /> {typeof navigator !== "undefined" ? navigator.userAgent.includes("Chrome") ? "Chrome" : navigator.userAgent.includes("Firefox") ? "Firefox" : navigator.userAgent.includes("Safari") ? "Safari" : "Browser" : "Browser"}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Clock className="h-3 w-3" /> Last login {user.lastLogin ? fmtDate(user.lastLogin, true) : "—"}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <Button variant="outline" onClick={logout} className="border-loss/30 text-loss hover:bg-loss/10">
-                <LogOut className="mr-1.5 h-4 w-4" /> Sign out of all sessions
-              </Button>
-            </div>
-          </GlassCard>
-        </FadeIn>
-
-        {/* Right Column (1/3) */}
-        <FadeIn delay={0.12}>
-          <div className="space-y-4">
-            {/* ---- Security Center (Enhanced) ---- */}
-            <GlassCard gold className="glass-card-hover p-6">
-              <div className="flex items-center gap-2 mb-3">
-                <span className="number-badge">05</span>
-                <div className="flex items-center gap-2">
-                  <Shield className="h-4 w-4 text-gold" />
-                  <h3 className="text-base font-semibold text-foreground">Security Center</h3>
-                </div>
-              </div>
-              <div className="flex flex-col items-center text-center">
-                <p className="text-xs text-muted-foreground">
-                  Your account security score
-                </p>
-                <div className="mt-4">
-                  <SecurityRing percent={securityScore} />
-                </div>
-              </div>
-
-              <Separator className="my-5 bg-border/60" />
-
-              <div className="space-y-3">
-                {securityChecks.map((s) => {
-                  const SIcon = s.icon;
-                  return (
-                    <div
-                      key={s.label}
-                      className={`flex items-center gap-2.5 rounded-md px-2.5 py-2 transition-colors ${
-                        s.done ? "bg-white/[0.02]" : "bg-gold/5"
-                      }`}
-                    >
-                      <div
-                        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md border ${
-                          s.done
-                            ? "border-profit/20 bg-profit/10"
-                            : "border-gold/20 bg-gold/5"
-                        }`}
-                      >
-                        {s.done ? (
-                          <CheckCircle2 className="h-3.5 w-3.5 text-profit" />
-                        ) : (
-                          <SIcon className="h-3.5 w-3.5 text-gold/70" />
-                        )}
-                      </div>
-                      <span className={`text-xs leading-tight ${s.done ? "text-foreground/80" : "text-muted-foreground"}`}>
-                        {s.label}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
 
               {/* Strengthen suggestions */}
               {securityChecks.some((s) => !s.done) && (
-                <div className="mt-4 rounded-lg border border-gold/20 bg-gold/5 p-3">
+                <div className="rounded-lg border border-gold/20 bg-gold/5 p-3">
                   <div className="text-xs font-semibold text-gold mb-1.5">Strengthen your account</div>
                   <ul className="space-y-1">
                     {securityChecks
@@ -755,89 +599,525 @@ export function SettingsPage() {
                   </ul>
                 </div>
               )}
-            </GlassCard>
+            </div>
+          </div>
+        </GlassCard>
+      </FadeIn>
 
-            {/* ---- Quick Status Cards ---- */}
-            <GlassCard className="p-5 hover-lift">
+      {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+      {/*  SECURITY: 2FA + PASSWORD + SESSIONS                              */}
+      {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+
+      <div className="grid gap-4 lg:grid-cols-3">
+        {/* Left Column (2/3) */}
+        <FadeIn delay={0.09} className="lg:col-span-2 space-y-4">
+
+          {/* 2FA Section */}
+          <GlassCard className="glass-card-hover p-6 border-gold/15" gold>
+            <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
-                <div className={`flex h-9 w-9 items-center justify-center rounded-lg border ${
+                <div className={`flex h-10 w-10 items-center justify-center rounded-lg border ${
                   totpEnabled ? "border-profit/20 bg-profit/10" : "border-gold/20 bg-gold/5"
                 }`}>
-                  <ShieldCheck className={`h-4 w-4 ${totpEnabled ? "text-profit" : "text-gold"}`} />
+                  <ShieldCheck className={`h-5 w-5 ${totpEnabled ? "text-profit" : "text-gold"}`} />
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-foreground">2FA Status</div>
-                  <div className="text-xs text-muted-foreground">
-                    {totpEnabled ? "Authenticator app enabled" : "Not configured — recommended"}
-                  </div>
+                <div>
+                  <h3 className="text-base font-semibold text-foreground">Two-Factor Authentication</h3>
+                  <p className="text-xs text-muted-foreground">
+                    {totpEnabled ? "Authenticator app is enabled" : "Not configured — highly recommended"}
+                  </p>
                 </div>
-                <div className={`h-2.5 w-2.5 rounded-full ${totpEnabled ? "bg-profit" : "bg-gold animate-pulse"}`} />
               </div>
-            </GlassCard>
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={totpEnabled}
+                  className="switch-gold-glow data-[state=checked]:bg-gold data-[state=checked]:shadow-[0_0_12px_rgba(212,175,55,0.4)]"
+                />
+                <Badge
+                  className={
+                    totpEnabled
+                      ? "border-profit/30 bg-profit/10 text-profit"
+                      : "border-gold/30 bg-gold/10 text-gold"
+                  }
+                >
+                  {totpEnabled ? "Enabled" : "Disabled"}
+                </Badge>
+              </div>
+            </div>
+          </GlassCard>
+
+          <TwoFactorSection enabled={totpEnabled} onChanged={refresh} />
+
+          {/* ---- Password Section ---- */}
+          <GlassCard className="glass-card-hover p-6 border-gold/10">
+            <SettingsSectionHeader
+              num="02"
+              title="Change Password"
+              subtitle="Update your password"
+              icon={<KeyRound className="h-4 w-4" />}
+              action={
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="border-gold/30 text-gold hover:bg-gold/10 gap-1.5 text-xs"
+                  onClick={() => setShowChangePassword(!showChangePassword)}
+                >
+                  {showChangePassword ? "Cancel" : <><Pencil className="h-3 w-3" /> Change</>}
+                </Button>
+              }
+            />
+
+            <AnimatePresence>
+              {showChangePassword && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+                  className="overflow-hidden"
+                >
+                  <div className="mt-4 space-y-4">
+                    {/* Current Password */}
+                    <div className="space-y-1.5">
+                      <Label htmlFor="currentpass" className="text-xs uppercase tracking-wider text-muted-foreground">Current Password</Label>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                          id="currentpass"
+                          type="password"
+                          value={currentPass}
+                          onChange={(e) => setCurrentPass(e.target.value)}
+                          placeholder="••••••••"
+                          className="border-border/60 bg-black/30 pl-9"
+                        />
+                      </div>
+                    </div>
+
+                    {/* New Password */}
+                    <div className="space-y-1.5">
+                      <Label htmlFor="newpass" className="text-xs uppercase tracking-wider text-muted-foreground">New Password</Label>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                          id="newpass"
+                          type={showPass ? "text" : "password"}
+                          value={newPass}
+                          onChange={(e) => setNewPass(e.target.value)}
+                          placeholder="••••••••"
+                          className="border-border/60 bg-black/30 pl-9 pr-10"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPass(!showPass)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                          aria-label={showPass ? "Hide password" : "Show password"}
+                        >
+                          {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Confirm Password */}
+                    <div className="space-y-1.5">
+                      <Label htmlFor="confirmpass" className="text-xs uppercase tracking-wider text-muted-foreground">Confirm New Password</Label>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                          id="confirmpass"
+                          type="password"
+                          value={confirmPass}
+                          onChange={(e) => setConfirmPass(e.target.value)}
+                          placeholder="••••••••"
+                          className="border-border/60 bg-black/30 pl-9"
+                        />
+                        {confirmPass && newPass && (
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2">
+                            {newPass === confirmPass ? (
+                              <CheckCircle2 className="h-4 w-4 text-profit" />
+                            ) : (
+                              <CircleX className="h-4 w-4 text-loss" />
+                            )}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Password strength meter */}
+                    {newPass.length > 0 && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        transition={{ duration: 0.25 }}
+                        className="space-y-3"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-muted-foreground">Password strength</span>
+                          <span className={`text-xs font-semibold ${pwStrength.color}`}>{pwStrength.label}</span>
+                        </div>
+                        <div className="flex gap-1.5">
+                          {[1, 2, 3, 4].map((level) => (
+                            <motion.div
+                              key={level}
+                              className={`h-1.5 flex-1 rounded-full ${
+                                pwStrength.score >= level
+                                  ? pwStrength.score >= 3
+                                    ? "bg-profit"
+                                    : pwStrength.score >= 2
+                                      ? "bg-gold"
+                                      : "bg-loss"
+                                  : "bg-white/5"
+                              }`}
+                              initial={{ scaleX: 0 }}
+                              animate={{ scaleX: 1 }}
+                              transition={{ duration: 0.3, delay: level * 0.05 }}
+                              style={{ transformOrigin: "left" }}
+                            />
+                          ))}
+                        </div>
+
+                        {/* Requirements checklist */}
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
+                          {pwRequirements.map((req) => (
+                            <div key={req.label} className="flex items-center gap-1.5 text-[11px]">
+                              {req.met ? (
+                                <CheckCircle2 className="h-3 w-3 text-profit shrink-0" />
+                              ) : (
+                                <CircleDot className="h-3 w-3 text-muted-foreground/40 shrink-0" />
+                              )}
+                              <span className={req.met ? "text-foreground/80" : "text-muted-foreground/60"}>
+                                {req.label}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </motion.div>
+                    )}
+
+                    <Button onClick={reset} disabled={submitting || newPass.length < 8 || newPass !== confirmPass} className="bg-gold-gradient text-black hover:opacity-90">
+                      <KeyRound className="mr-1.5 h-4 w-4" /> {submitting ? "Updating…" : "Update Password"}
+                    </Button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </GlassCard>
+
+          {/* ---- KYC ---- */}
+          <KycSection />
+
+          {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+          {/*  SECTION C: NOTIFICATION PREFERENCES                             */}
+          {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+
+          <GlassCard className="glass-card-hover p-6 border-gold/15" gold>
+            <SettingsSectionHeader
+              num="03"
+              title="Notification Preferences"
+              subtitle="Control what updates you receive"
+              icon={<Bell className="h-4 w-4" />}
+            />
+            <div className="mt-5 space-y-3">
+              {[
+                {
+                  id: "email",
+                  label: "Email Notifications",
+                  desc: "Transaction updates and account alerts delivered to your inbox",
+                  icon: Mail,
+                  checked: notifEmail,
+                  onChange: setNotifEmail,
+                },
+                {
+                  id: "push",
+                  label: "Push Notifications",
+                  desc: "Real-time price alerts and market movement notifications",
+                  icon: Bell,
+                  checked: notifPush,
+                  onChange: setNotifPush,
+                },
+                {
+                  id: "statement",
+                  label: "Statement Generation Alerts",
+                  desc: "Get notified when new monthly and quarterly statements are ready",
+                  icon: ScrollText,
+                  checked: notifStatement,
+                  onChange: setNotifStatement,
+                },
+                {
+                  id: "fund",
+                  label: "Fund Update Announcements",
+                  desc: "Strategy changes, performance commentary, and fund news",
+                  icon: Newspaper,
+                  checked: notifFund,
+                  onChange: setNotifFund,
+                },
+              ].map((item) => {
+                const Icon = item.icon;
+                return (
+                  <GlassCard key={item.id} className="p-3.5" hover glowOnHover>
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-gold/25 bg-gradient-to-br from-gold/10 to-gold/5">
+                          <Icon className="h-5 w-5 text-gold" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-sm font-medium text-foreground">{item.label}</div>
+                          <div className="text-[11px] text-muted-foreground truncate">{item.desc}</div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Switch
+                          checked={item.checked}
+                          onCheckedChange={item.onChange}
+                          className="switch-gold-glow data-[state=checked]:bg-gold data-[state=checked]:shadow-[0_0_12px_rgba(212,175,55,0.4)]"
+                        />
+                        <span className={`text-[10px] font-medium uppercase tracking-wider ${item.checked ? "text-gold" : "text-muted-foreground/50"}`}>
+                          {item.checked ? "On" : "Off"}
+                        </span>
+                      </div>
+                    </div>
+                  </GlassCard>
+                );
+              })}
+            </div>
+          </GlassCard>
+
+          {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+          {/*  SECTION D: ACTIVE SESSIONS                                       */}
+          {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+
+          <GlassCard className="glass-card-hover p-6 border-gold/10">
+            <SettingsSectionHeader
+              num="04"
+              title="Active Sessions"
+              subtitle="Devices currently authenticated to your account"
+              icon={<Monitor className="h-4 w-4" />}
+            />
+            <div className="mt-4 space-y-3">
+              {ACTIVE_SESSIONS.map((session) => {
+                const DeviceIcon = getDeviceIcon(session.device);
+                return (
+                  <motion.div
+                    key={session.id}
+                    whileHover={{ x: 2 }}
+                    className={`flex items-center gap-4 rounded-xl border p-4 transition-all duration-300 ${
+                      session.current
+                        ? "border-profit/20 bg-profit/5 hover:bg-profit/[0.08]"
+                        : "border-border/30 bg-white/[0.02] hover:bg-white/[0.04] hover:border-gold/20"
+                    }`}
+                  >
+                    <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border ${
+                      session.current ? "border-profit/20 bg-profit/10" : "border-border/40 bg-black/20"
+                    }`}>
+                      <DeviceIcon className={`h-5 w-5 ${session.current ? "text-profit" : "text-muted-foreground"}`} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-foreground">{session.browser}</span>
+                        {session.current && (
+                          <span className="flex items-center gap-1 rounded-full border border-profit/30 bg-profit/10 px-2 py-0.5 text-[10px] font-medium text-profit">
+                            <span className="h-1.5 w-1.5 rounded-full bg-profit animate-pulse" />
+                            Active
+                          </span>
+                        )}
+                      </div>
+                      <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+                        <span className="flex items-center gap-1"><Laptop className="h-3 w-3" /> {session.os}</span>
+                        <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {session.ip}</span>
+                        <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {fmtDate(session.lastActive)}</span>
+                      </div>
+                    </div>
+                    {!session.current && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="border-loss/30 text-loss hover:bg-loss/10 text-xs shrink-0"
+                        onClick={() => toast.success("Session revoked")}
+                      >
+                        Revoke
+                      </Button>
+                    )}
+                  </motion.div>
+                );
+              })}
+              <Button variant="outline" onClick={logout} className="border-loss/30 text-loss hover:bg-loss/10 w-full">
+                <LogOut className="mr-1.5 h-4 w-4" /> Sign out of all sessions
+              </Button>
+            </div>
+          </GlassCard>
+        </FadeIn>
+
+        {/* Right Column (1/3) */}
+        <FadeIn delay={0.12}>
+          <div className="space-y-4">
+            {/* ---- Quick Status Metrics ---- */}
+            <MetricTile
+              label="2FA Status"
+              value={totpEnabled ? "Enabled" : "Disabled"}
+              sub={totpEnabled ? "Authenticator app configured" : "Not configured — recommended"}
+              icon={<ShieldCheck className="h-4 w-4" />}
+              accent={totpEnabled ? "profit" : "gold"}
+            />
+            <MetricTile
+              label="KYC Status"
+              value={kycStatus === "APPROVED" ? "Verified" : kycStatus === "PENDING" ? "In Review" : kycStatus === "REJECTED" ? "Rejected" : "Not Started"}
+              sub={`Tier ${kycTier}`}
+              icon={<FileCheck2 className="h-4 w-4" />}
+              accent={kycStatus === "APPROVED" ? "profit" : kycStatus === "PENDING" ? "gold" : "loss"}
+            />
+            <MetricTile
+              label="Notifications"
+              value={`${[notifEmail, notifPush, notifStatement, notifFund].filter(Boolean).length} of 4`}
+              sub="Active notification channels"
+              icon={<Bell className="h-4 w-4" />}
+              accent={[notifEmail, notifPush, notifStatement, notifFund].filter(Boolean).length >= 2 ? "profit" : "gold"}
+            />
+
+            {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+            {/*  SECTION E: ACCOUNT & LEGAL                                      */}
+            {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
 
             <GlassCard className="p-5 hover-lift">
-              <div className="flex items-center gap-3">
-                <div className={`flex h-9 w-9 items-center justify-center rounded-lg border ${
-                  kycStatus === "APPROVED"
-                    ? "border-profit/20 bg-profit/10"
-                    : kycStatus === "PENDING"
-                      ? "border-gold/20 bg-gold/5"
-                      : kycStatus === "REJECTED"
-                        ? "border-loss/20 bg-loss/5"
-                        : "border-muted-foreground/20 bg-muted/5"
-                }`}>
-                  <FileCheck2 className={`h-4 w-4 ${
-                    kycStatus === "APPROVED" ? "text-profit"
-                      : kycStatus === "PENDING" ? "text-gold"
-                        : kycStatus === "REJECTED" ? "text-loss"
-                          : "text-muted-foreground"
-                  }`} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-foreground">KYC Status</div>
-                  <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
-                    <Badge
-                      variant="outline"
-                      className={
-                        kycStatus === "APPROVED" ? "border-profit/30 text-profit"
-                        : kycStatus === "PENDING" ? "border-gold/30 text-gold"
-                        : kycStatus === "REJECTED" ? "border-loss/30 text-loss"
-                        : "border-muted-foreground/30 text-muted-foreground"
-                      }
-                    >
-                      {kycStatus}
-                    </Badge>
-                    <span>· Tier {kycTier}</span>
-                  </div>
-                </div>
-                <div className={`h-2.5 w-2.5 rounded-full ${
-                  kycStatus === "APPROVED" ? "bg-profit"
-                    : kycStatus === "PENDING" ? "bg-gold animate-pulse"
-                      : kycStatus === "REJECTED" ? "bg-loss"
-                        : "bg-muted-foreground/40"
-                }`} />
+              <div className="flex items-center gap-2 mb-4">
+                <span className="number-badge">05</span>
+                <h3 className="text-base font-semibold text-foreground">Account &amp; Legal</h3>
               </div>
-            </GlassCard>
-
-            <GlassCard className="p-5 hover-lift">
-              <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-gold/20 bg-gold/5">
-                  <Bell className="h-4 w-4 text-gold" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-foreground">Notifications</div>
-                  <div className="text-xs text-muted-foreground">
-                    {[notifEmail, notifTx, notifNav, notifNews].filter(Boolean).length} of 4 enabled
+              <div className="space-y-2.5">
+                {/* Download my data */}
+                <button
+                  onClick={() => toast.success("Data export initiated — you will receive an email")}
+                  className="flex w-full items-center gap-3 rounded-lg border border-gold/15 bg-gold/5 px-3.5 py-3 text-sm text-foreground transition-all hover:bg-gold/10 hover:border-gold/25 hover:glow-gold group"
+                >
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-gold/20 bg-gold/10">
+                    <Download className="h-4 w-4 text-gold" />
                   </div>
+                  <div className="flex-1 text-left">
+                    <div className="font-medium">Download My Data</div>
+                    <div className="text-[11px] text-muted-foreground">GDPR-style data export</div>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-gold transition-colors" />
+                </button>
+
+                {/* Terms & Privacy */}
+                <button
+                  onClick={() => toast.info("Terms of Service opens in a new window")}
+                  className="flex w-full items-center gap-3 rounded-lg border border-border/40 bg-white/[0.02] px-3.5 py-3 text-sm text-foreground transition-all hover:bg-white/[0.04] hover:border-gold/15 group"
+                >
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border/40 bg-black/20">
+                    <ScrollText className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <div className="flex-1 text-left">
+                    <div className="font-medium">Terms of Service</div>
+                    <div className="text-[11px] text-muted-foreground">View our terms and conditions</div>
+                  </div>
+                  <ExternalLink className="h-3.5 w-3.5 text-muted-foreground group-hover:text-gold transition-colors" />
+                </button>
+
+                <button
+                  onClick={() => toast.info("Privacy Policy opens in a new window")}
+                  className="flex w-full items-center gap-3 rounded-lg border border-border/40 bg-white/[0.02] px-3.5 py-3 text-sm text-foreground transition-all hover:bg-white/[0.04] hover:border-gold/15 group"
+                >
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border/40 bg-black/20">
+                    <FileText className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <div className="flex-1 text-left">
+                    <div className="font-medium">Privacy Policy</div>
+                    <div className="text-[11px] text-muted-foreground">How we handle your information</div>
+                  </div>
+                  <ExternalLink className="h-3.5 w-3.5 text-muted-foreground group-hover:text-gold transition-colors" />
+                </button>
+
+                {/* Danger Zone */}
+                <Separator className="bg-loss/20 my-2" />
+                <div className="rounded-lg border border-loss/20 bg-loss/5 p-3">
+                  <div className="text-xs font-semibold text-loss mb-2 flex items-center gap-1.5">
+                    <AlertTriangle className="h-3.5 w-3.5" /> Danger Zone
+                  </div>
+                  <button
+                    onClick={() => toast.error("Account deletion requires contacting investor relations")}
+                    className="flex w-full items-center gap-3 rounded-lg border border-loss/20 bg-loss/5 px-3 py-2.5 text-sm text-loss transition-all hover:bg-loss/10 hover:border-loss/30"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    <span className="font-medium">Delete Account</span>
+                  </button>
+                  <p className="mt-1.5 text-[10px] text-muted-foreground">
+                    This action is permanent and cannot be undone. Contact IR for assistance.
+                  </p>
                 </div>
-                <div className={`h-2.5 w-2.5 rounded-full ${
-                  [notifEmail, notifTx, notifNav, notifNews].filter(Boolean).length >= 2 ? "bg-profit" : "bg-gold"
-                }`} />
               </div>
             </GlassCard>
           </div>
         </FadeIn>
       </div>
+
+      {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+      {/*  SECTION F: ACTIVITY LOG                                          */}
+      {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+
+      <FadeIn delay={0.15}>
+        <GlassCard className="p-6 border-gold/10">
+          <SettingsSectionHeader
+            num="06"
+            title="Activity Log"
+            subtitle="Recent account activity and security events"
+            icon={<Activity className="h-4 w-4" />}
+            action={
+              <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                {ACTIVITY_LOG.length} events
+              </span>
+            }
+          />
+
+          <div className="mt-4 space-y-2">
+            {visibleLog.map((log, idx) => {
+              const LogIcon = log.icon;
+              return (
+                <motion.div
+                  key={log.id}
+                  initial={{ opacity: 0, x: -8 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.3, delay: idx * 0.04 }}
+                  className="flex items-center gap-3 rounded-lg border border-border/30 bg-white/[0.02] p-3 transition-all hover:bg-white/[0.04] hover:border-gold/15"
+                >
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border/40 bg-black/20">
+                    <LogIcon className="h-4 w-4 text-gold/70" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium text-foreground">{log.action}</div>
+                    <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
+                      <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {log.ip}</span>
+                      <span className="flex items-center gap-1"><Monitor className="h-3 w-3" /> {log.device}</span>
+                    </div>
+                  </div>
+                  <div className="text-[11px] text-muted-foreground shrink-0">
+                    {fmtDate(log.timestamp)}
+                  </div>
+                </motion.div>
+              );
+            })}
+          </div>
+
+          {ACTIVITY_LOG.length > 5 && (
+            <button
+              onClick={() => setShowAllActivity(!showAllActivity)}
+              className="mt-3 flex w-full items-center justify-center gap-1.5 text-xs text-gold hover:text-gold-bright transition-colors"
+            >
+              {showAllActivity ? "Show less" : `Show all ${ACTIVITY_LOG.length} events`}
+              <ChevronRight className={`h-3 w-3 transition-transform ${showAllActivity ? "rotate-[-90deg]" : "rotate-90"}`} />
+            </button>
+          )}
+
+          {/* Suspicious activity warning banner */}
+          <div className="mt-4 flex items-start gap-2 rounded-lg border border-gold/15 bg-gold/5 p-3">
+            <ShieldCheck className="mt-0.5 h-4 w-4 text-gold shrink-0" />
+            <div>
+              <div className="text-xs font-semibold text-gold">No suspicious activity detected</div>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                We continuously monitor your account for unauthorized access. You will be notified immediately if any suspicious activity is detected.
+              </p>
+            </div>
+          </div>
+        </GlassCard>
+      </FadeIn>
     </div>
   );
 }

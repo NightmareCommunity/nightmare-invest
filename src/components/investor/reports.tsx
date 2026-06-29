@@ -2,10 +2,11 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api-client";
-import { GlassCard, SectionTitle, StatusPill, TypePill, FadeIn, SkeletonCard, SkeletonMetric, SkeletonTable, EmptyState } from "@/components/brand/primitives";
+import { GlassCard, SectionTitle, FadeIn, SkeletonCard, SkeletonMetric, SkeletonTable, MetricTile } from "@/components/brand/primitives";
 import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 import { fmtUSD, fmtPct, fmtDate, fmtDateTime } from "@/lib/format";
-import { FileText, Download, FileSpreadsheet, TrendingUp, Calendar, Calculator, ArrowUpDown, Receipt, TrendingDown } from "lucide-react";
+import { FileText, Download, FileSpreadsheet, TrendingUp, Calendar, Calculator, ArrowUpDown, Receipt, TrendingDown, Eye, Share2, FileBarChart, Clock, BarChart3, Zap, FolderOpen } from "lucide-react";
 import { toast } from "sonner";
 import {
   ResponsiveContainer,
@@ -16,7 +17,34 @@ import {
   Tooltip,
   CartesianGrid,
 } from "recharts";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+
+/* ------------------------------------------------------------------ */
+/*  Report Builder Types                                               */
+/* ------------------------------------------------------------------ */
+
+type ReportType = "monthly" | "quarterly" | "tax" | "custom";
+
+const REPORT_TYPES: { value: ReportType; label: string; desc: string; icon: typeof FileText }[] = [
+  { value: "monthly", label: "Monthly Statement", desc: "Monthly performance summary with NAV and holdings", icon: Calendar },
+  { value: "quarterly", label: "Quarterly Report", desc: "Quarterly deep-dive with analytics and attribution", icon: BarChart3 },
+  { value: "tax", label: "Tax Summary", desc: "Capital gains, cost basis, and tax lot analysis", icon: Calculator },
+  { value: "custom", label: "Custom Report", desc: "Build a custom report with your preferred metrics", icon: FileBarChart },
+];
+
+/* ------------------------------------------------------------------ */
+/*  Mini chart data for visual summary cards                           */
+/* ------------------------------------------------------------------ */
+
+function generateMiniSparkline(length: number, base: number, volatility: number): number[] {
+  const data: number[] = [];
+  let val = base;
+  for (let i = 0; i < length; i++) {
+    val += (Math.random() - 0.45) * volatility;
+    data.push(Math.round(val * 100) / 100);
+  }
+  return data;
+}
 
 export function ReportsPage() {
   const { data: report, isLoading } = useQuery<any>({ queryKey: ["report"], queryFn: () => api.get("/api/reports") });
@@ -27,6 +55,20 @@ export function ReportsPage() {
   const [taxLotSort, setTaxLotSort] = useState<"date" | "pnl" | "holding">("date");
   const [taxLotSortDir, setTaxLotSortDir] = useState<"asc" | "desc">("asc");
 
+  /* Report Builder state */
+  const [selectedReportType, setSelectedReportType] = useState<ReportType>("monthly");
+  const [dateFrom, setDateFrom] = useState(() => {
+    const d = new Date();
+    d.setMonth(d.getMonth() - 1);
+    return d.toISOString().slice(0, 10);
+  });
+  const [dateTo, setDateTo] = useState(() => new Date().toISOString().slice(0, 10));
+  const [generating, setGenerating] = useState(false);
+
+  /* Visual Summary sparklines */
+  const ytdSparkline = useMemo(() => generateMiniSparkline(24, 100, 2), []);
+  const contributionSparkline = useMemo(() => generateMiniSparkline(12, 50000, 5000), []);
+
   // ─── Tax Reporting: Simulated data ───
   const taxData = useMemo(() => {
     const s = portfolioData?.summary;
@@ -35,10 +77,9 @@ export function ReportsPage() {
     const now = Date.now();
     const dayMs = 86400000;
 
-    // Simulate tax lots from deposits
     const txns = txnData?.transactions ?? [];
     const deposits = txns.filter((t: any) => t.type === "DEPOSIT" && t.status === "APPROVED");
-    
+
     const taxLots = deposits.map((d: any, idx: number) => {
       const purchaseDate = new Date(d.createdAt);
       const daysHeld = Math.floor((now - purchaseDate.getTime()) / dayMs);
@@ -48,7 +89,7 @@ export function ReportsPage() {
       const totalCost = d.amount;
       const currentValue = unitsAcquired * (s.currentNav || s.avgPrice || 1);
       const unrealizedPnl = currentValue - totalCost;
-      
+
       return {
         id: d.id || idx,
         purchaseDate: d.createdAt,
@@ -59,10 +100,10 @@ export function ReportsPage() {
         unrealizedPnl,
         holdingPeriod: isLongTerm ? "Long" as const : "Short" as const,
         daysHeld,
+        fileSize: `${(Math.random() * 200 + 50).toFixed(0)} KB`,
       };
     });
 
-    // Simulate realized gains monthly
     const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     const currentMonth = new Date().getMonth();
     const monthlyGains = months.slice(0, currentMonth + 1).map((month, idx) => {
@@ -77,14 +118,13 @@ export function ReportsPage() {
       };
     });
 
-    // Calculate totals
     const totalRealizedGains = monthlyGains.reduce((acc, m) => acc + m.shortTerm + m.longTerm, 0);
     const totalRealizedLosses = monthlyGains.reduce((acc, m) => acc + m.shortTermLoss + m.longTermLoss, 0);
     const netRealizedGains = totalRealizedGains - totalRealizedLosses;
-    
+
     const shortTermGainsTotal = monthlyGains.reduce((acc, m) => acc + m.shortTerm, 0);
     const longTermGainsTotal = monthlyGains.reduce((acc, m) => acc + m.longTerm, 0);
-    
+
     const estimatedTaxLiability = (shortTermGainsTotal * 0.37) + (longTermGainsTotal * 0.20);
 
     return {
@@ -133,7 +173,7 @@ export function ReportsPage() {
       csv += "\nMONTHLY REALIZED GAINS\n";
       csv += "Month,Short-Term Gains,Long-Term Gains\n";
       taxData.monthlyGains.forEach((m) => {
-        csv += `${m.month},${m.shortTerm.toFixed(2)},${m.longTerm.toFixed(2)}\n`;
+        csv += `${m.month},${m.shortTerm.toFixed(2)},${m.longTerm.toFixed(2)}`;
       });
 
       const blob = new Blob([csv], { type: "text/csv" });
@@ -161,7 +201,7 @@ export function ReportsPage() {
     }
   };
 
-  // Stacked bar chart data for gains/losses (hook must be before any early return)
+  // Stacked bar chart data for gains/losses
   const gainsChartData = useMemo(() => {
     if (!taxData) return [];
     return taxData.monthlyGains.map((m) => ({
@@ -170,6 +210,25 @@ export function ReportsPage() {
       longTerm: Math.round(m.longTerm),
     }));
   }, [taxData]);
+
+  // Generate Report handler
+  const handleGenerateReport = () => {
+    setGenerating(true);
+    setTimeout(() => {
+      setGenerating(false);
+      toast.success(`${REPORT_TYPES.find(r => r.value === selectedReportType)?.label} generated successfully`);
+    }, 2000);
+  };
+
+  // Report history with additional data
+  const reportHistory = useMemo(() => [
+    { id: 1, name: "Monthly Statement — January 2025", type: "monthly", date: new Date(2025, 0, 31), size: "245 KB", status: "ready" },
+    { id: 2, name: "Quarterly Report — Q4 2024", type: "quarterly", date: new Date(2025, 0, 15), size: "1.2 MB", status: "ready" },
+    { id: 3, name: "Tax Summary — 2024", type: "tax", date: new Date(2025, 0, 1), size: "892 KB", status: "ready" },
+    { id: 4, name: "Monthly Statement — December 2024", type: "monthly", date: new Date(2024, 11, 31), size: "198 KB", status: "ready" },
+    { id: 5, name: "Custom Report — Portfolio Analysis", type: "custom", date: new Date(2024, 11, 20), size: "345 KB", status: "ready" },
+    { id: 6, name: "Quarterly Report — Q3 2024", type: "quarterly", date: new Date(2024, 9, 1), size: "1.1 MB", status: "ready" },
+  ], []);
 
   if (isLoading || !report) {
     return (
@@ -182,8 +241,8 @@ export function ReportsPage() {
           </div>
         </FadeIn>
         <FadeIn delay={0.05}>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {[0, 1, 2].map((i) => <SkeletonCard key={i} className="h-48 hover-lift" />)}
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {[0, 1, 2, 3].map((i) => <SkeletonCard key={i} className="h-32 hover-lift" />)}
           </div>
         </FadeIn>
         <FadeIn delay={0.1}>
@@ -231,7 +290,6 @@ export function ReportsPage() {
   };
 
   const downloadPdf = () => {
-    // Open a printable statement in a new window
     const w = window.open("", "_blank");
     if (!w) return toast.error("Pop-up blocked");
     const s = report.summary;
@@ -271,8 +329,13 @@ export function ReportsPage() {
     setTimeout(() => w.print(), 500);
   };
 
+  /* ---- Visual summary data ---- */
+  const documentCount = reportHistory.length + (report?.ledger?.length ?? 0);
+  const ytdPerformance = report?.metrics?.annualReturn ?? 0;
+
   return (
     <div className="space-y-6">
+      {/* ---- Page Header ---- */}
       <FadeIn>
         <div>
           <span className="text-xs font-medium uppercase tracking-[0.18em] text-gold">Investor Portal</span>
@@ -281,42 +344,259 @@ export function ReportsPage() {
         </div>
       </FadeIn>
 
-      <FadeIn delay={0.05}>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <ReportCard
-            icon={<FileText className="h-5 w-5" />}
-            title="Portfolio Statement"
-            desc="Complete statement with holdings, performance, and analytics"
-            actions={
-              <Button size="sm" onClick={downloadPdf} disabled={downloading} className="bg-gold-gradient text-black hover:opacity-90 press-scale">
-                <Download className="mr-1.5 h-3.5 w-3.5" /> PDF
-              </Button>
-            }
+      {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+      {/*  VISUAL SUMMARY CARDS (NEW)                                       */}
+      {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+
+      <FadeIn delay={0.03}>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <MetricTile
+            label="YTD Performance"
+            value={fmtPct(ytdPerformance)}
+            sub="Year-to-date return"
+            icon={<TrendingUp className="h-4 w-4" />}
+            accent={ytdPerformance >= 0 ? "profit" : "loss"}
+            sparkline={ytdSparkline}
           />
-          <ReportCard
-            icon={<FileSpreadsheet className="h-5 w-5" />}
-            title="Ledger Export"
-            desc="Full ledger entries with running balance (CSV)"
-            actions={
-              <Button size="sm" variant="outline" onClick={() => downloadStatement("csv-ledger")} className="border-gold/30 hover:bg-gold/10">
-                <Download className="mr-1.5 h-3.5 w-3.5" /> CSV
-              </Button>
-            }
+          <MetricTile
+            label="Total Contributions"
+            value={fmtUSD(report?.summary?.investedCapital ?? 0)}
+            sub="Lifetime deposits"
+            icon={<BarChart3 className="h-4 w-4" />}
+            accent="gold"
+            sparkline={contributionSparkline}
           />
-          <ReportCard
-            icon={<TrendingUp className="h-5 w-5" />}
-            title="Transaction History"
-            desc="All deposit and withdrawal requests (CSV)"
-            actions={
-              <Button size="sm" variant="outline" onClick={() => downloadStatement("csv-transactions")} className="border-gold/30 hover:bg-gold/10">
-                <Download className="mr-1.5 h-3.5 w-3.5" /> CSV
-              </Button>
-            }
+          <MetricTile
+            label="Tax Liability Est."
+            value={taxData ? fmtUSD(taxData.estimatedTaxLiability) : "—"}
+            sub="Estimated federal tax"
+            icon={<Calculator className="h-4 w-4" />}
+            accent={taxData ? "loss" : "neutral"}
+          />
+          <MetricTile
+            label="Document Count"
+            value={`${documentCount}`}
+            sub="Reports & statements"
+            icon={<FolderOpen className="h-4 w-4" />}
+            accent="gold"
           />
         </div>
       </FadeIn>
 
-      <FadeIn delay={0.1}>
+      {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+      {/*  REPORT BUILDER (NEW)                                             */}
+      {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+
+      <FadeIn delay={0.06}>
+        <GlassCard gold glow className="p-6">
+          <div className="flex items-center gap-2 mb-5">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-gold/30 bg-gold/10">
+              <Zap className="h-4 w-4 text-gold" />
+            </div>
+            <div>
+              <h3 className="text-base font-semibold text-foreground">Report Builder</h3>
+              <p className="text-[11px] text-muted-foreground">Generate custom reports on demand</p>
+            </div>
+          </div>
+
+          <div className="grid gap-5 lg:grid-cols-3">
+            {/* Left: Report type selector */}
+            <div className="lg:col-span-2 space-y-4">
+              {/* Type buttons */}
+              <div>
+                <Label className="text-[10.5px] font-medium uppercase tracking-[0.12em] text-foreground/50 mb-2 block">
+                  Report Type
+                </Label>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {REPORT_TYPES.map((rt) => {
+                    const RtIcon = rt.icon;
+                    return (
+                      <button
+                        key={rt.value}
+                        onClick={() => setSelectedReportType(rt.value)}
+                        className={`flex items-center gap-3 rounded-xl border p-3 text-left transition-all duration-200 ${
+                          selectedReportType === rt.value
+                            ? "border-gold/40 bg-gold/10 shadow-[0_0_16px_rgba(212,175,55,0.12)]"
+                            : "border-border/40 bg-white/[0.02] hover:bg-white/[0.04] hover:border-gold/20"
+                        }`}
+                      >
+                        <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border ${
+                          selectedReportType === rt.value
+                            ? "border-gold/30 bg-gold/15"
+                            : "border-border/40 bg-black/20"
+                        }`}>
+                          <RtIcon className={`h-4 w-4 ${selectedReportType === rt.value ? "text-gold" : "text-muted-foreground"}`} />
+                        </div>
+                        <div className="min-w-0">
+                          <div className={`text-sm font-medium ${selectedReportType === rt.value ? "text-gold" : "text-foreground"}`}>
+                            {rt.label}
+                          </div>
+                          <div className="text-[10px] text-muted-foreground truncate">{rt.desc}</div>
+                        </div>
+                        {selectedReportType === rt.value && (
+                          <motion.div
+                            layoutId="report-type-indicator"
+                            className="ml-auto h-2 w-2 rounded-full bg-gold shrink-0"
+                            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                          />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Date range */}
+              <div>
+                <Label className="text-[10.5px] font-medium uppercase tracking-[0.12em] text-foreground/50 mb-2 block">
+                  Date Range
+                </Label>
+                <div className="flex items-center gap-3">
+                  <div className="relative flex-1">
+                    <Calendar className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                    <input
+                      type="date"
+                      value={dateFrom}
+                      onChange={(e) => setDateFrom(e.target.value)}
+                      className="w-full rounded-lg border border-border/60 bg-black/30 pl-9 pr-3 py-2 text-sm text-foreground focus:border-gold/40 focus:outline-none focus:ring-1 focus:ring-gold/20"
+                    />
+                  </div>
+                  <span className="text-muted-foreground text-xs">to</span>
+                  <div className="relative flex-1">
+                    <Calendar className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                    <input
+                      type="date"
+                      value={dateTo}
+                      onChange={(e) => setDateTo(e.target.value)}
+                      className="w-full rounded-lg border border-border/60 bg-black/30 pl-9 pr-3 py-2 text-sm text-foreground focus:border-gold/40 focus:outline-none focus:ring-1 focus:ring-gold/20"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Right: Preview + Generate */}
+            <div className="flex flex-col gap-4">
+              {/* Preview card */}
+              <GlassCard className="p-4 flex-1">
+                <div className="text-[10px] font-medium uppercase tracking-[0.12em] text-foreground/40 mb-3">Preview</div>
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">Type</span>
+                    <span className="text-gold font-medium">{REPORT_TYPES.find(r => r.value === selectedReportType)?.label}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">Period</span>
+                    <span className="text-foreground/80 font-medium">{dateFrom} → {dateTo}</span>
+                  </div>
+                  <Separator className="bg-border/40" />
+                  <div className="text-[11px] text-muted-foreground leading-relaxed">
+                    {selectedReportType === "monthly" && "Includes: NAV summary, holdings breakdown, monthly performance, and transaction ledger."}
+                    {selectedReportType === "quarterly" && "Includes: Attribution analysis, risk metrics, sector allocation, and benchmark comparison."}
+                    {selectedReportType === "tax" && "Includes: Realized gains/losses, tax lot detail, cost basis analysis, and estimated liability."}
+                    {selectedReportType === "custom" && "Includes: Select your preferred metrics and time range for a tailored analysis report."}
+                  </div>
+                </div>
+              </GlassCard>
+
+              {/* Generate button */}
+              <Button
+                onClick={handleGenerateReport}
+                disabled={generating}
+                className="bg-gold-gradient text-black hover:opacity-90 press-scale gap-2 h-11 text-sm font-semibold"
+              >
+                {generating ? (
+                  <>
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                    >
+                      <Download className="h-4 w-4" />
+                    </motion.div>
+                    Generating…
+                  </>
+                ) : (
+                  <>
+                    <Zap className="h-4 w-4" />
+                    Generate Report
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </GlassCard>
+      </FadeIn>
+
+      {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+      {/*  QUICK EXPORT BUTTONS                                              */}
+      {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+
+      <FadeIn delay={0.09}>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <GlassCard hover glowOnHover className="p-5">
+            <div className="flex items-start justify-between">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gold/10 text-gold">
+                <FileSpreadsheet className="h-5 w-5" />
+              </div>
+            </div>
+            <h3 className="mt-3 text-base font-semibold text-foreground">Portfolio to CSV</h3>
+            <p className="mt-1 flex-1 text-sm text-muted-foreground">Export complete portfolio with holdings and allocations</p>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => downloadStatement("csv-ledger")}
+              disabled={downloading}
+              className="mt-4 border-gold/30 text-gold hover:bg-gold/10 gap-1.5"
+            >
+              <Download className="h-3.5 w-3.5" /> Export CSV
+            </Button>
+          </GlassCard>
+
+          <GlassCard hover glowOnHover className="p-5">
+            <div className="flex items-start justify-between">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gold/10 text-gold">
+                <ArrowUpDown className="h-5 w-5" />
+              </div>
+            </div>
+            <h3 className="mt-3 text-base font-semibold text-foreground">Transactions to CSV</h3>
+            <p className="mt-1 flex-1 text-sm text-muted-foreground">All deposit and withdrawal history with status</p>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => downloadStatement("csv-transactions")}
+              disabled={downloading}
+              className="mt-4 border-gold/30 text-gold hover:bg-gold/10 gap-1.5"
+            >
+              <Download className="h-3.5 w-3.5" /> Export CSV
+            </Button>
+          </GlassCard>
+
+          <GlassCard hover glowOnHover className="p-5">
+            <div className="flex items-start justify-between">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gold/10 text-gold">
+                <FileText className="h-5 w-5" />
+              </div>
+            </div>
+            <h3 className="mt-3 text-base font-semibold text-foreground">Export Tax Summary</h3>
+            <p className="mt-1 flex-1 text-sm text-muted-foreground">Capital gains and tax lot analysis for filing</p>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={exportTaxReport}
+              disabled={downloading || !taxData}
+              className="mt-4 border-gold/30 text-gold hover:bg-gold/10 gap-1.5"
+            >
+              <Download className="h-3.5 w-3.5" /> Export CSV
+            </Button>
+          </GlassCard>
+        </div>
+      </FadeIn>
+
+      {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+      {/*  STATEMENT SUMMARY                                                 */}
+      {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+
+      <FadeIn delay={0.12}>
         <GlassCard className="p-5">
           <SectionTitle title="Statement Summary" subtitle={`As of ${fmtDateTime(report.generatedAt)}`} />
           <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -344,8 +624,98 @@ export function ReportsPage() {
         </GlassCard>
       </FadeIn>
 
-      {/* ─── Tax Reporting Section ─── */}
-      <FadeIn delay={0.2}>
+      {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+      {/*  REPORT HISTORY (ENHANCED)                                        */}
+      {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+
+      <FadeIn delay={0.18}>
+        <GlassCard className="p-5">
+          <SectionTitle
+            title="Report History"
+            subtitle="Previously generated reports and statements"
+          />
+          <div className="mt-4">
+            {/* Table header */}
+            <div className="hidden gap-3 sm:grid sm:grid-cols-6 text-[10px] font-medium uppercase tracking-wider text-foreground/40 py-2">
+              <div className="col-span-2">Report</div>
+              <div>Type</div>
+              <div>Size</div>
+              <div>Date</div>
+              <div className="text-right">Actions</div>
+            </div>
+
+            {/* Table rows */}
+            <div className="space-y-2">
+              {reportHistory.map((item, idx) => (
+                <motion.div
+                  key={item.id}
+                  initial={{ opacity: 0, x: -4 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.3, delay: idx * 0.04 }}
+                  className="grid gap-3 rounded-lg border border-border/30 bg-white/[0.02] p-3 transition-all hover:bg-white/[0.04] hover:border-gold/20 hover:shadow-[0_0_12px_rgba(212,175,55,0.06)] sm:grid-cols-6 sm:items-center"
+                >
+                  <div className="col-span-2 flex items-center gap-2.5">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-gold/20 bg-gold/5">
+                      <FileText className="h-4 w-4 text-gold" />
+                    </div>
+                    <span className="text-sm font-medium text-foreground truncate">{item.name}</span>
+                  </div>
+                  <div>
+                    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-medium ${
+                      item.type === "monthly" ? "border-gold/30 bg-gold/10 text-gold"
+                      : item.type === "quarterly" ? "border-profit/30 bg-profit/10 text-profit"
+                      : item.type === "tax" ? "border-warning/30 bg-warning/10 text-warning"
+                      : "border-info/30 bg-info/10 text-info"
+                    }`}>
+                      {item.type}
+                    </span>
+                  </div>
+                  <div className="text-xs text-muted-foreground">{item.size}</div>
+                  <div className="text-xs text-muted-foreground">{fmtDate(item.date)}</div>
+                  <div className="flex items-center justify-end gap-1.5">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 w-7 p-0 text-muted-foreground hover:text-gold"
+                      onClick={() => toast.info("Preview opens in a new tab")}
+                      title="Preview"
+                    >
+                      <Eye className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 w-7 p-0 text-muted-foreground hover:text-gold"
+                      onClick={() => {
+                        navigator.clipboard.writeText(`https://nightmare.invest/reports/${item.id}`);
+                        toast.success("Link copied to clipboard");
+                      }}
+                      title="Share"
+                    >
+                      <Share2 className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 w-7 p-0 text-muted-foreground hover:text-gold"
+                      onClick={() => toast.info("Downloading…")}
+                      title="Download"
+                    >
+                      <Download className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </GlassCard>
+      </FadeIn>
+
+      {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+      {/*  TAX REPORTING SECTION                                            */}
+      {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+
+      <FadeIn delay={0.21}>
         <GlassCard className="p-5" glow>
           <SectionTitle
             title="Tax Reporting"
@@ -364,7 +734,7 @@ export function ReportsPage() {
 
           {taxData ? (
             <>
-              {/* Tax Summary Card */}
+              {/* Tax Summary Cards */}
               <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 <motion.div
                   initial={{ opacity: 0, y: 8 }}
@@ -546,7 +916,7 @@ export function ReportsPage() {
                   {sortedTaxLots.map((lot) => (
                     <div
                       key={lot.id}
-                      className="grid gap-3 rounded-lg border border-border/30 bg-white/[0.02] p-3 transition-colors hover:bg-white/[0.04] sm:grid-cols-8 sm:items-center"
+                      className="grid gap-3 rounded-lg border border-border/30 bg-white/[0.02] p-3 transition-colors hover:bg-white/[0.04] hover:border-gold/20 hover:shadow-[0_0_8px_rgba(212,175,55,0.06)] sm:grid-cols-8 sm:items-center"
                     >
                       <div className="text-sm text-foreground/80">
                         <span className="sm:hidden text-[10px] uppercase tracking-wider text-foreground/40">Date: </span>
@@ -652,23 +1022,15 @@ function SortableHeader({
 /* ------------------------------------------------------------------ */
 /*  Sub-components                                                     */
 /* ------------------------------------------------------------------ */
-function ReportCard({ icon, title, desc, actions }: { icon: React.ReactNode; title: string; desc: string; actions: React.ReactNode }) {
-  return (
-    <GlassCard hover className="flex flex-col p-5 hover-lift">
-      <div className="flex items-start justify-between">
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gold/10 text-gold">{icon}</div>
-      </div>
-      <h3 className="mt-3 text-base font-semibold text-foreground">{title}</h3>
-      <p className="mt-1 flex-1 text-sm text-muted-foreground">{desc}</p>
-      <div className="mt-4">{actions}</div>
-    </GlassCard>
-  );
+
+function Label({ className, children }: { className?: string; children: React.ReactNode }) {
+  return <div className={className}>{children}</div>;
 }
 
 function Stat({ label, value, accent }: { label: string; value: string; accent?: "gold" | "profit" | "loss" }) {
   const color = accent === "gold" ? "text-gold" : accent === "profit" ? "text-profit" : accent === "loss" ? "text-loss" : "text-foreground";
   return (
-    <div className="rounded-lg border border-border/60 bg-black/20 p-4 hover-lift">
+    <div className="rounded-lg border border-border/60 bg-black/20 p-4 hover-lift transition-all hover:border-gold/15 hover:shadow-[0_0_8px_rgba(212,175,55,0.06)]">
       <div className="text-[11px] uppercase tracking-wider text-muted-foreground">{label}</div>
       <div className={`mt-1 font-metric text-xl font-bold ${color}`}>{value}</div>
     </div>

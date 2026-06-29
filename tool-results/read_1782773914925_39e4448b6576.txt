@@ -1,0 +1,686 @@
+     1→"use client";
+     2→import { useState, useMemo } from "react";
+     3→import { useQuery } from "@tanstack/react-query";
+     4→import { api } from "@/lib/api-client";
+     5→import { GlassCard, SectionTitle, StatusPill, TypePill, FadeIn, SkeletonCard, SkeletonMetric, SkeletonTable, EmptyState } from "@/components/brand/primitives";
+     6→import { Button } from "@/components/ui/button";
+     7→import { fmtUSD, fmtPct, fmtDate, fmtDateTime } from "@/lib/format";
+     8→import { FileText, Download, FileSpreadsheet, TrendingUp, Calendar, Calculator, ArrowUpDown, Receipt, TrendingDown } from "lucide-react";
+     9→import { toast } from "sonner";
+    10→import {
+    11→  ResponsiveContainer,
+    12→  BarChart,
+    13→  Bar,
+    14→  XAxis,
+    15→  YAxis,
+    16→  Tooltip,
+    17→  CartesianGrid,
+    18→} from "recharts";
+    19→import { motion } from "framer-motion";
+    20→
+    21→export function ReportsPage() {
+    22→  const { data: report, isLoading } = useQuery<any>({ queryKey: ["report"], queryFn: () => api.get("/api/reports") });
+    23→  const { data: txnData } = useQuery<any>({ queryKey: ["my-transactions"], queryFn: () => api.get("/api/transactions") });
+    24→  const { data: portfolioData } = useQuery<any>({ queryKey: ["portfolio"], queryFn: () => api.get("/api/portfolio") });
+    25→  const [downloading, setDownloading] = useState(false);
+    26→  const [costBasisMethod, setCostBasisMethod] = useState<"FIFO" | "LIFO">("FIFO");
+    27→  const [taxLotSort, setTaxLotSort] = useState<"date" | "pnl" | "holding">("date");
+    28→  const [taxLotSortDir, setTaxLotSortDir] = useState<"asc" | "desc">("asc");
+    29→
+    30→  // ─── Tax Reporting: Simulated data ───
+    31→  const taxData = useMemo(() => {
+    32→    const s = portfolioData?.summary;
+    33→    if (!s) return null;
+    34→
+    35→    const now = Date.now();
+    36→    const dayMs = 86400000;
+    37→
+    38→    // Simulate tax lots from deposits
+    39→    const txns = txnData?.transactions ?? [];
+    40→    const deposits = txns.filter((t: any) => t.type === "DEPOSIT" && t.status === "APPROVED");
+    41→    
+    42→    const taxLots = deposits.map((d: any, idx: number) => {
+    43→      const purchaseDate = new Date(d.createdAt);
+    44→      const daysHeld = Math.floor((now - purchaseDate.getTime()) / dayMs);
+    45→      const isLongTerm = daysHeld >= 365;
+    46→      const unitsAcquired = d.amount / (s.avgPrice || 1);
+    47→      const costBasisPerUnit = s.avgPrice || d.amount;
+    48→      const totalCost = d.amount;
+    49→      const currentValue = unitsAcquired * (s.currentNav || s.avgPrice || 1);
+    50→      const unrealizedPnl = currentValue - totalCost;
+    51→      
+    52→      return {
+    53→        id: d.id || idx,
+    54→        purchaseDate: d.createdAt,
+    55→        unitsAcquired: Math.round(unitsAcquired * 10000) / 10000,
+    56→        costBasisPerUnit,
+    57→        totalCost,
+    58→        currentValue,
+    59→        unrealizedPnl,
+    60→        holdingPeriod: isLongTerm ? "Long" as const : "Short" as const,
+    61→        daysHeld,
+    62→      };
+    63→    });
+    64→
+    65→    // Simulate realized gains monthly
+    66→    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    67→    const currentMonth = new Date().getMonth();
+    68→    const monthlyGains = months.slice(0, currentMonth + 1).map((month, idx) => {
+    69→      const shortTermGain = Math.round((Math.sin(idx * 1.3 + 2) * 3000 + 2000) * 100) / 100;
+    70→      const longTermGain = Math.round((Math.cos(idx * 0.9 + 1) * 2000 + 1500) * 100) / 100;
+    71→      return {
+    72→        month,
+    73→        shortTerm: Math.max(0, shortTermGain),
+    74→        longTerm: Math.max(0, longTermGain),
+    75→        shortTermLoss: shortTermGain < 0 ? Math.abs(shortTermGain) : 0,
+    76→        longTermLoss: longTermGain < 0 ? Math.abs(longTermGain) : 0,
+    77→      };
+    78→    });
+    79→
+    80→    // Calculate totals
+    81→    const totalRealizedGains = monthlyGains.reduce((acc, m) => acc + m.shortTerm + m.longTerm, 0);
+    82→    const totalRealizedLosses = monthlyGains.reduce((acc, m) => acc + m.shortTermLoss + m.longTermLoss, 0);
+    83→    const netRealizedGains = totalRealizedGains - totalRealizedLosses;
+    84→    
+    85→    const shortTermGainsTotal = monthlyGains.reduce((acc, m) => acc + m.shortTerm, 0);
+    86→    const longTermGainsTotal = monthlyGains.reduce((acc, m) => acc + m.longTerm, 0);
+    87→    
+    88→    const estimatedTaxLiability = (shortTermGainsTotal * 0.37) + (longTermGainsTotal * 0.20);
+    89→
+    90→    return {
+    91→      taxLots,
+    92→      monthlyGains,
+    93→      totalRealizedGains,
+    94→      totalRealizedLosses,
+    95→      netRealizedGains,
+    96→      shortTermGainsTotal,
+    97→      longTermGainsTotal,
+    98→      estimatedTaxLiability,
+    99→    };
+   100→  }, [portfolioData, txnData]);
+   101→
+   102→  // Sorted tax lots
+   103→  const sortedTaxLots = useMemo(() => {
+   104→    if (!taxData) return [];
+   105→    const lots = [...taxData.taxLots];
+   106→    lots.sort((a, b) => {
+   107→      let cmp = 0;
+   108→      if (taxLotSort === "date") cmp = new Date(a.purchaseDate).getTime() - new Date(b.purchaseDate).getTime();
+   109→      else if (taxLotSort === "pnl") cmp = a.unrealizedPnl - b.unrealizedPnl;
+   110→      else if (taxLotSort === "holding") cmp = a.daysHeld - b.daysHeld;
+   111→      return taxLotSortDir === "asc" ? cmp : -cmp;
+   112→    });
+   113→    return lots;
+   114→  }, [taxData, taxLotSort, taxLotSortDir]);
+   115→
+   116→  // Tax CSV export
+   117→  const exportTaxReport = () => {
+   118→    if (!taxData) return;
+   119→    setDownloading(true);
+   120→    try {
+   121→      let csv = "Nightmare Invest — Tax Report\n\n";
+   122→      csv += "TAX SUMMARY\n";
+   123→      csv += `Total Realized Gains YTD,${taxData.totalRealizedGains.toFixed(2)}\n`;
+   124→      csv += `Short-Term Gains,${taxData.shortTermGainsTotal.toFixed(2)}\n`;
+   125→      csv += `Long-Term Gains,${taxData.longTermGainsTotal.toFixed(2)}\n`;
+   126→      csv += `Estimated Tax Liability,${taxData.estimatedTaxLiability.toFixed(2)}\n`;
+   127→      csv += `Cost Basis Method,${costBasisMethod}\n\n`;
+   128→      csv += "TAX LOTS\n";
+   129→      csv += "Purchase Date,Units Acquired,Cost Basis/Unit,Total Cost,Current Value,Unrealized P&L,Holding Period,Days Held\n";
+   130→      taxData.taxLots.forEach((lot) => {
+   131→        csv += `${fmtDate(lot.purchaseDate)},${lot.unitsAcquired},${lot.costBasisPerUnit.toFixed(4)},${lot.totalCost.toFixed(2)},${lot.currentValue.toFixed(2)},${lot.unrealizedPnl.toFixed(2)},${lot.holdingPeriod},${lot.daysHeld}\n`;
+   132→      });
+   133→      csv += "\nMONTHLY REALIZED GAINS\n";
+   134→      csv += "Month,Short-Term Gains,Long-Term Gains\n";
+   135→      taxData.monthlyGains.forEach((m) => {
+   136→        csv += `${m.month},${m.shortTerm.toFixed(2)},${m.longTerm.toFixed(2)}\n`;
+   137→      });
+   138→
+   139→      const blob = new Blob([csv], { type: "text/csv" });
+   140→      const url = URL.createObjectURL(blob);
+   141→      const a = document.createElement("a");
+   142→      a.href = url;
+   143→      a.download = `nightmare-tax-report-${Date.now()}.csv`;
+   144→      a.click();
+   145→      URL.revokeObjectURL(url);
+   146→      toast.success("Tax report exported");
+   147→    } catch {
+   148→      toast.error("Export failed");
+   149→    } finally {
+   150→      setDownloading(false);
+   151→    }
+   152→  };
+   153→
+   154→  // Sort handler
+   155→  const handleSort = (col: "date" | "pnl" | "holding") => {
+   156→    if (taxLotSort === col) {
+   157→      setTaxLotSortDir((d) => (d === "asc" ? "desc" : "asc"));
+   158→    } else {
+   159→      setTaxLotSort(col);
+   160→      setTaxLotSortDir("asc");
+   161→    }
+   162→  };
+   163→
+   164→  // Stacked bar chart data for gains/losses (hook must be before any early return)
+   165→  const gainsChartData = useMemo(() => {
+   166→    if (!taxData) return [];
+   167→    return taxData.monthlyGains.map((m) => ({
+   168→      month: m.month,
+   169→      shortTerm: Math.round(m.shortTerm),
+   170→      longTerm: Math.round(m.longTerm),
+   171→    }));
+   172→  }, [taxData]);
+   173→
+   174→  if (isLoading || !report) {
+   175→    return (
+   176→      <div className="space-y-6">
+   177→        <FadeIn>
+   178→          <div>
+   179→            <span className="text-xs font-medium uppercase tracking-[0.18em] text-gold">Investor Portal</span>
+   180→            <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">Reports &amp; Statements</h1>
+   181→            <p className="text-sm text-muted-foreground">Download portfolio statements and transaction records</p>
+   182→          </div>
+   183→        </FadeIn>
+   184→        <FadeIn delay={0.05}>
+   185→          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+   186→            {[0, 1, 2].map((i) => <SkeletonCard key={i} className="h-48 hover-lift" />)}
+   187→          </div>
+   188→        </FadeIn>
+   189→        <FadeIn delay={0.1}>
+   190→          <GlassCard className="p-5">
+   191→            <SkeletonMetric className="h-6 w-40 rounded mb-4" />
+   192→            <SkeletonTable rows={4} cols={4} />
+   193→          </GlassCard>
+   194→        </FadeIn>
+   195→      </div>
+   196→    );
+   197→  }
+   198→
+   199→  const downloadStatement = (format: "csv-ledger" | "csv-transactions" | "json-full") => {
+   200→    setDownloading(true);
+   201→    try {
+   202→      let content = "";
+   203→      let filename = "";
+   204→      if (format === "csv-ledger") {
+   205→        const rows = report.ledger as any[];
+   206→        content = "Date,Type,Amount,Balance After,Reference\n" +
+   207→          rows.map((r) => `${r.createdAt},${r.type},${r.amount},${r.balanceAfter},${r.reference ?? ""}`).join("\n");
+   208→        filename = `nightmare-ledger-${Date.now()}.csv`;
+   209→      } else if (format === "csv-transactions") {
+   210→        const rows = txnData?.transactions ?? [];
+   211→        content = "Date,Type,Amount,Status,Notes\n" +
+   212→          rows.map((r: any) => `${r.createdAt},${r.type},${r.amount},${r.status},${(r.notes ?? "").replace(/,/g, ";")}`).join("\n");
+   213→        filename = `nightmare-transactions-${Date.now()}.csv`;
+   214→      } else {
+   215→        content = JSON.stringify(report, null, 2);
+   216→        filename = `nightmare-statement-${Date.now()}.json`;
+   217→      }
+   218→      const blob = new Blob([content], { type: format === "json-full" ? "application/json" : "text/csv" });
+   219→      const url = URL.createObjectURL(blob);
+   220→      const a = document.createElement("a");
+   221→      a.href = url;
+   222→      a.download = filename;
+   223→      a.click();
+   224→      URL.revokeObjectURL(url);
+   225→      toast.success("Report downloaded");
+   226→    } catch {
+   227→      toast.error("Download failed");
+   228→    } finally {
+   229→      setDownloading(false);
+   230→    }
+   231→  };
+   232→
+   233→  const downloadPdf = () => {
+   234→    // Open a printable statement in a new window
+   235→    const w = window.open("", "_blank");
+   236→    if (!w) return toast.error("Pop-up blocked");
+   237→    const s = report.summary;
+   238→    const m = report.metrics;
+   239→    w.document.write(`<html><head><title>Nightmare Invest — Statement</title>
+   240→      <style>body{font-family:Inter,Helvetica,Arial,sans-serif;background:#0a0a0b;color:#f5f5f4;margin:0;padding:48px}
+   241→      h1{color:#d4af37;letter-spacing:.1em;font-size:14px;text-transform:uppercase;margin:0 0 4px}
+   242→      h2{font-size:24px;margin:0 0 24px}
+   243→      table{width:100%;border-collapse:collapse;margin:16px 0}
+   244→      th,td{text-align:left;padding:8px 12px;border-bottom:1px solid #222;font-size:13px}
+   245→      th{color:#9a9a9a;font-size:11px;text-transform:uppercase;letter-spacing:.05em}
+   246→      .k{color:#9a9a9a}.v{color:#f5f5f4;font-weight:600}
+   247→      .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin:24px 0}
+   248→      .card{background:#141416;border:1px solid #222;border-radius:8px;padding:16px}
+   249→      .label{color:#9a9a9a;font-size:11px;text-transform:uppercase;letter-spacing:.08em}
+   250→      .value{color:#d4af37;font-size:22px;font-weight:700;margin-top:4px}
+   251→      header{display:flex;justify-content:space-between;border-bottom:1px solid #222;padding-bottom:16px;margin-bottom:24px}</style></head><body>
+   252→      <header><div><h1>Nightmare Invest</h1><h2>Portfolio Statement</h2></div>
+   253→      <div style="text-align:right"><div class="label">Generated</div><div>${fmtDateTime(report.generatedAt)}</div></div></header>
+   254→      <div class="grid">
+   255→        <div class="card"><div class="label">Investor</div><div class="value" style="font-size:16px">${report.investor.name}</div><div class="k">${report.investor.email}</div></div>
+   256→        <div class="card"><div class="label">Member Since</div><div class="value" style="font-size:16px">${fmtDate(report.investor.since)}</div></div>
+   257→        <div class="card"><div class="label">Portfolio Value</div><div class="value">${fmtUSD(s.currentValue)}</div></div>
+   258→        <div class="card"><div class="label">Invested Capital</div><div class="value">${fmtUSD(s.investedCapital)}</div></div>
+   259→        <div class="card"><div class="label">Unrealized P&L</div><div class="value" style="color:${s.unrealizedPnl >= 0 ? "#00c896" : "#ff4d4f"}">${fmtUSD(s.unrealizedPnl)} (${fmtPct(s.roi)})</div></div>
+   260→        <div class="card"><div class="label">Fund NAV</div><div class="value">${fmtUSD(m.nav, { decimals: 4 })}</div></div>
+   261→        <div class="card"><div class="label">Annual Return</div><div class="value">${fmtPct(m.annualReturn)}</div></div>
+   262→        <div class="card"><div class="label">Sharpe Ratio</div><div class="value">${m.sharpe.toFixed(2)}</div></div>
+   263→      </div>
+   264→      <h3 style="color:#d4af37;margin-top:32px">Allocations</h3><table><thead><tr><th>Asset</th><th>Weight</th></tr></thead><tbody>
+   265→      ${report.allocations.map((a: any) => `<tr><td>${a.asset}</td><td>${a.weight}%</td></tr>`).join("")}</tbody></table>
+   266→      <h3 style="color:#d4af37;margin-top:32px">Recent Transactions</h3><table><thead><tr><th>Date</th><th>Type</th><th>Amount</th><th>Status</th></tr></thead><tbody>
+   267→      ${(txnData?.transactions ?? []).slice(0, 10).map((t: any) => `<tr><td>${fmtDate(t.createdAt)}</td><td>${t.type}</td><td>${fmtUSD(t.amount)}</td><td>${t.status}</td></tr>`).join("")}</tbody></table>
+   268→      <p style="color:#7a7a7a;font-size:11px;margin-top:48px;border-top:1px solid #222;padding-top:16px">This statement is generated by the Nightmare Invest portal and is for informational purposes only. It does not constitute investment advice.</p>
+   269→      </body></html>`);
+   270→    w.document.close();
+   271→    setTimeout(() => w.print(), 500);
+   272→  };
+   273→
+   274→  return (
+   275→    <div className="space-y-6">
+   276→      <FadeIn>
+   277→        <div>
+   278→          <span className="text-xs font-medium uppercase tracking-[0.18em] text-gold">Investor Portal</span>
+   279→          <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">Reports &amp; Statements</h1>
+   280→          <p className="text-sm text-muted-foreground">Download portfolio statements and transaction records</p>
+   281→        </div>
+   282→      </FadeIn>
+   283→
+   284→      <FadeIn delay={0.05}>
+   285→        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+   286→          <ReportCard
+   287→            icon={<FileText className="h-5 w-5" />}
+   288→            title="Portfolio Statement"
+   289→            desc="Complete statement with holdings, performance, and analytics"
+   290→            actions={
+   291→              <Button size="sm" onClick={downloadPdf} disabled={downloading} className="bg-gold-gradient text-black hover:opacity-90 press-scale">
+   292→                <Download className="mr-1.5 h-3.5 w-3.5" /> PDF
+   293→              </Button>
+   294→            }
+   295→          />
+   296→          <ReportCard
+   297→            icon={<FileSpreadsheet className="h-5 w-5" />}
+   298→            title="Ledger Export"
+   299→            desc="Full ledger entries with running balance (CSV)"
+   300→            actions={
+   301→              <Button size="sm" variant="outline" onClick={() => downloadStatement("csv-ledger")} className="border-gold/30 hover:bg-gold/10">
+   302→                <Download className="mr-1.5 h-3.5 w-3.5" /> CSV
+   303→              </Button>
+   304→            }
+   305→          />
+   306→          <ReportCard
+   307→            icon={<TrendingUp className="h-5 w-5" />}
+   308→            title="Transaction History"
+   309→            desc="All deposit and withdrawal requests (CSV)"
+   310→            actions={
+   311→              <Button size="sm" variant="outline" onClick={() => downloadStatement("csv-transactions")} className="border-gold/30 hover:bg-gold/10">
+   312→                <Download className="mr-1.5 h-3.5 w-3.5" /> CSV
+   313→              </Button>
+   314→            }
+   315→          />
+   316→        </div>
+   317→      </FadeIn>
+   318→
+   319→      <FadeIn delay={0.1}>
+   320→        <GlassCard className="p-5">
+   321→          <SectionTitle title="Statement Summary" subtitle={`As of ${fmtDateTime(report.generatedAt)}`} />
+   322→          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+   323→            <Stat label="Portfolio Value" value={fmtUSD(report.summary.currentValue)} accent="gold" />
+   324→            <Stat label="Invested Capital" value={fmtUSD(report.summary.investedCapital)} />
+   325→            <Stat label="Unrealized P&L" value={fmtUSD(report.summary.unrealizedPnl)} accent={report.summary.unrealizedPnl >= 0 ? "profit" : "loss"} />
+   326→            <Stat label="ROI" value={fmtPct(report.summary.roi)} accent={report.summary.roi >= 0 ? "profit" : "loss"} />
+   327→            <Stat label="Fund NAV" value={fmtUSD(report.metrics.nav, { decimals: 4 })} />
+   328→            <Stat label="Annual Return" value={fmtPct(report.metrics.annualReturn)} />
+   329→            <Stat label="Sharpe Ratio" value={report.metrics.sharpe.toFixed(2)} />
+   330→            <Stat label="Max Drawdown" value={fmtPct(report.metrics.maxDrawdown)} accent="loss" />
+   331→          </div>
+   332→        </GlassCard>
+   333→      </FadeIn>
+   334→
+   335→      <FadeIn delay={0.15}>
+   336→        <GlassCard className="p-5">
+   337→          <SectionTitle title="Fund Information" />
+   338→          <dl className="mt-4 grid gap-3 sm:grid-cols-2">
+   339→            <Info label="Fund Name" value={report.fund.name} />
+   340→            <Info label="Fee Structure" value={report.fund.feeStructure} />
+   341→            <Info label="Minimum Investment" value={fmtUSD(report.fund.minInvest)} />
+   342→            <Info label="Investor Since" value={fmtDate(report.investor.since)} />
+   343→          </dl>
+   344→        </GlassCard>
+   345→      </FadeIn>
+   346→
+   347→      {/* ─── Tax Reporting Section ─── */}
+   348→      <FadeIn delay={0.2}>
+   349→        <GlassCard className="p-5" glow>
+   350→          <SectionTitle
+   351→            title="Tax Reporting"
+   352→            subtitle="Capital gains analysis and tax lot tracking"
+   353→            action={
+   354→              <button
+   355→                onClick={exportTaxReport}
+   356→                disabled={downloading || !taxData}
+   357→                className="inline-flex items-center gap-2 rounded-lg bg-gold-gradient px-4 py-2 text-sm font-semibold text-primary-foreground shadow-lg shadow-gold/20 transition-all duration-200 hover:shadow-gold/30 hover:brightness-110 active:scale-[0.97] disabled:opacity-50"
+   358→              >
+   359→                <Download className="h-4 w-4" />
+   360→                Export Tax Report
+   361→              </button>
+   362→            }
+   363→          />
+   364→
+   365→          {taxData ? (
+   366→            <>
+   367→              {/* Tax Summary Card */}
+   368→              <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+   369→                <motion.div
+   370→                  initial={{ opacity: 0, y: 8 }}
+   371→                  animate={{ opacity: 1, y: 0 }}
+   372→                  transition={{ duration: 0.4, delay: 0.05 }}
+   373→                  className="rounded-xl border border-gold/25 bg-gold/[0.06] p-4"
+   374→                >
+   375→                  <div className="flex items-center gap-2">
+   376→                    <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-gold/10">
+   377→                      <Receipt className="h-3.5 w-3.5 text-gold" />
+   378→                    </span>
+   379→                    <span className="text-[10.5px] font-medium uppercase tracking-[0.12em] text-foreground/50">
+   380→                      Net Realized Gains YTD
+   381→                    </span>
+   382→                  </div>
+   383→                  <div className={`mt-2 font-metric text-xl font-bold ${taxData.netRealizedGains >= 0 ? "text-profit" : "text-loss"}`}>
+   384→                    {fmtUSD(taxData.netRealizedGains)}
+   385→                  </div>
+   386→                </motion.div>
+   387→
+   388→                <motion.div
+   389→                  initial={{ opacity: 0, y: 8 }}
+   390→                  animate={{ opacity: 1, y: 0 }}
+   391→                  transition={{ duration: 0.4, delay: 0.1 }}
+   392→                  className="rounded-xl border border-warning/20 bg-warning/[0.04] p-4"
+   393→                >
+   394→                  <div className="flex items-center gap-2">
+   395→                    <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-warning/10">
+   396→                      <TrendingUp className="h-3.5 w-3.5 text-warning" />
+   397→                    </span>
+   398→                    <span className="text-[10.5px] font-medium uppercase tracking-[0.12em] text-foreground/50">
+   399→                      Short-Term Gains
+   400→                    </span>
+   401→                  </div>
+   402→                  <div className="mt-2 font-metric text-xl font-bold text-warning">
+   403→                    {fmtUSD(taxData.shortTermGainsTotal)}
+   404→                  </div>
+   405→                  <div className="mt-1 text-[10px] text-foreground/40">Taxed at 37%</div>
+   406→                </motion.div>
+   407→
+   408→                <motion.div
+   409→                  initial={{ opacity: 0, y: 8 }}
+   410→                  animate={{ opacity: 1, y: 0 }}
+   411→                  transition={{ duration: 0.4, delay: 0.15 }}
+   412→                  className="rounded-xl border border-profit/20 bg-profit/[0.04] p-4"
+   413→                >
+   414→                  <div className="flex items-center gap-2">
+   415→                    <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-profit/10">
+   416→                      <TrendingDown className="h-3.5 w-3.5 text-profit" />
+   417→                    </span>
+   418→                    <span className="text-[10.5px] font-medium uppercase tracking-[0.12em] text-foreground/50">
+   419→                      Long-Term Gains
+   420→                    </span>
+   421→                  </div>
+   422→                  <div className="mt-2 font-metric text-xl font-bold text-profit">
+   423→                    {fmtUSD(taxData.longTermGainsTotal)}
+   424→                  </div>
+   425→                  <div className="mt-1 text-[10px] text-foreground/40">Taxed at 20%</div>
+   426→                </motion.div>
+   427→
+   428→                <motion.div
+   429→                  initial={{ opacity: 0, y: 8 }}
+   430→                  animate={{ opacity: 1, y: 0 }}
+   431→                  transition={{ duration: 0.4, delay: 0.2 }}
+   432→                  className="rounded-xl border border-loss/20 bg-loss/[0.04] p-4"
+   433→                >
+   434→                  <div className="flex items-center gap-2">
+   435→                    <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-loss/10">
+   436→                      <Calculator className="h-3.5 w-3.5 text-loss" />
+   437→                    </span>
+   438→                    <span className="text-[10.5px] font-medium uppercase tracking-[0.12em] text-foreground/50">
+   439→                      Est. Tax Liability
+   440→                    </span>
+   441→                  </div>
+   442→                  <div className="mt-2 font-metric text-xl font-bold text-loss">
+   443→                    {fmtUSD(taxData.estimatedTaxLiability)}
+   444→                  </div>
+   445→                </motion.div>
+   446→              </div>
+   447→
+   448→              {/* Cost Basis Method Selector */}
+   449→              <div className="mt-5 flex items-center gap-3">
+   450→                <span className="text-[10.5px] font-medium uppercase tracking-[0.12em] text-foreground/50">
+   451→                  Cost Basis Method:
+   452→                </span>
+   453→                <div className="flex gap-1 rounded-lg bg-white/[0.04] p-1">
+   454→                  {(["FIFO", "LIFO"] as const).map((method) => (
+   455→                    <button
+   456→                      key={method}
+   457→                      onClick={() => setCostBasisMethod(method)}
+   458→                      className={`rounded-md px-3 py-1 text-xs font-medium transition-all duration-200 ${
+   459→                        costBasisMethod === method
+   460→                          ? "bg-gold/20 text-gold shadow-sm"
+   461→                          : "text-muted-foreground hover:text-foreground/80"
+   462→                      }`}
+   463→                    >
+   464→                      {method}
+   465→                    </button>
+   466→                  ))}
+   467→                </div>
+   468→              </div>
+   469→
+   470→              {/* Gain/Loss Summary Chart */}
+   471→              <div className="mt-5">
+   472→                <h4 className="text-xs font-medium uppercase tracking-[0.12em] text-foreground/50">
+   473→                  Monthly Realized Gains/Losses
+   474→                </h4>
+   475→                <div className="mt-3 h-64">
+   476→                  <ResponsiveContainer width="100%" height="100%">
+   477→                    <BarChart data={gainsChartData} margin={{ top: 6, right: 6, left: 6, bottom: 0 }} barSize={28}>
+   478→                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+   479→                      <XAxis
+   480→                        dataKey="month"
+   481→                        tick={{ fill: "#7A7A7A", fontSize: 11 }}
+   482→                        stroke="rgba(255,255,255,0.08)"
+   483→                      />
+   484→                      <YAxis
+   485→                        tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`}
+   486→                        tick={{ fill: "#7A7A7A", fontSize: 11 }}
+   487→                        stroke="rgba(255,255,255,0.08)"
+   488→                        width={56}
+   489→                      />
+   490→                      <Tooltip
+   491→                        cursor={{ fill: "rgba(212,175,55,0.06)" }}
+   492→                        contentStyle={{
+   493→                          background: "rgba(20,20,22,0.95)",
+   494→                          border: "1px solid rgba(212,175,55,0.25)",
+   495→                          borderRadius: "10px",
+   496→                          boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
+   497→                        }}
+   498→                        formatter={(v: number, name: string) => [
+   499→                          fmtUSD(v),
+   500→                          name === "shortTerm" ? "Short-Term" : "Long-Term",
+   501→                        ]}
+   502→                        labelStyle={{ color: "#9a9a9a", fontSize: 12 }}
+   503→                      />
+   504→                      <Bar dataKey="shortTerm" stackId="gains" fill="#f5a623" fillOpacity={0.85} radius={[0, 0, 0, 0]} name="shortTerm" />
+   505→                      <Bar dataKey="longTerm" stackId="gains" fill="#00c896" fillOpacity={0.85} radius={[4, 4, 0, 0]} name="longTerm" />
+   506→                    </BarChart>
+   507→                  </ResponsiveContainer>
+   508→                </div>
+   509→                <div className="mt-3 flex gap-4">
+   510→                  <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+   511→                    <span className="h-2.5 w-2.5 rounded-sm bg-warning" />
+   512→                    Short-Term (&lt;1yr)
+   513→                  </span>
+   514→                  <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+   515→                    <span className="h-2.5 w-2.5 rounded-sm bg-profit" />
+   516→                    Long-Term (&ge;1yr)
+   517→                  </span>
+   518→                </div>
+   519→              </div>
+   520→
+   521→              {/* Tax Lots Table */}
+   522→              <div className="mt-5">
+   523→                <div className="flex items-center justify-between">
+   524→                  <h4 className="text-xs font-medium uppercase tracking-[0.12em] text-foreground/50">
+   525→                    Tax Lots
+   526→                  </h4>
+   527→                  <span className="text-[10px] text-foreground/40">
+   528→                    {sortedTaxLots.length} lot{sortedTaxLots.length !== 1 ? "s" : ""}
+   529→                  </span>
+   530→                </div>
+   531→
+   532→                {/* Table header */}
+   533→                <div className="mt-3 hidden gap-3 sm:grid sm:grid-cols-8">
+   534→                  <SortableHeader label="Purchase Date" col="date" current={taxLotSort} dir={taxLotSortDir} onSort={handleSort} />
+   535→                  <div className="text-[10px] font-medium uppercase tracking-wider text-foreground/40 py-2">Units</div>
+   536→                  <div className="text-[10px] font-medium uppercase tracking-wider text-foreground/40 py-2">Cost/Unit</div>
+   537→                  <div className="text-[10px] font-medium uppercase tracking-wider text-foreground/40 py-2">Total Cost</div>
+   538→                  <div className="text-[10px] font-medium uppercase tracking-wider text-foreground/40 py-2">Current Value</div>
+   539→                  <SortableHeader label="Unrealized P&L" col="pnl" current={taxLotSort} dir={taxLotSortDir} onSort={handleSort} />
+   540→                  <SortableHeader label="Holding" col="holding" current={taxLotSort} dir={taxLotSortDir} onSort={handleSort} />
+   541→                  <div className="text-[10px] font-medium uppercase tracking-wider text-foreground/40 py-2">Days</div>
+   542→                </div>
+   543→
+   544→                {/* Table rows */}
+   545→                <div className="mt-1 max-h-96 space-y-2 overflow-y-auto scroll-luxury pr-1">
+   546→                  {sortedTaxLots.map((lot) => (
+   547→                    <div
+   548→                      key={lot.id}
+   549→                      className="grid gap-3 rounded-lg border border-border/30 bg-white/[0.02] p-3 transition-colors hover:bg-white/[0.04] sm:grid-cols-8 sm:items-center"
+   550→                    >
+   551→                      <div className="text-sm text-foreground/80">
+   552→                        <span className="sm:hidden text-[10px] uppercase tracking-wider text-foreground/40">Date: </span>
+   553→                        {fmtDate(lot.purchaseDate)}
+   554→                      </div>
+   555→                      <div className="font-metric text-sm text-foreground/80">
+   556→                        <span className="sm:hidden text-[10px] uppercase tracking-wider text-foreground/40">Units: </span>
+   557→                        {lot.unitsAcquired.toFixed(4)}
+   558→                      </div>
+   559→                      <div className="font-metric text-sm text-foreground/80">
+   560→                        <span className="sm:hidden text-[10px] uppercase tracking-wider text-foreground/40">Cost/Unit: </span>
+   561→                        {fmtUSD(lot.costBasisPerUnit, { decimals: 4 })}
+   562→                      </div>
+   563→                      <div className="font-metric text-sm text-foreground/80">
+   564→                        <span className="sm:hidden text-[10px] uppercase tracking-wider text-foreground/40">Total Cost: </span>
+   565→                        {fmtUSD(lot.totalCost)}
+   566→                      </div>
+   567→                      <div className="font-metric text-sm text-foreground/80">
+   568→                        <span className="sm:hidden text-[10px] uppercase tracking-wider text-foreground/40">Current: </span>
+   569→                        {fmtUSD(lot.currentValue)}
+   570→                      </div>
+   571→                      <div className={`font-metric text-sm font-semibold ${lot.unrealizedPnl >= 0 ? "text-profit" : "text-loss"}`}>
+   572→                        <span className="sm:hidden text-[10px] uppercase tracking-wider text-foreground/40">P&L: </span>
+   573→                        {fmtUSD(lot.unrealizedPnl)}
+   574→                      </div>
+   575→                      <div>
+   576→                        <span
+   577→                          className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-medium ${
+   578→                            lot.holdingPeriod === "Long"
+   579→                              ? "border-profit/30 bg-profit/10 text-profit"
+   580→                              : "border-warning/30 bg-warning/10 text-warning"
+   581→                          }`}
+   582→                        >
+   583→                          <span
+   584→                            className={`h-1.5 w-1.5 rounded-full ${
+   585→                              lot.holdingPeriod === "Long" ? "bg-profit" : "bg-warning"
+   586→                            }`}
+   587→                          />
+   588→                          {lot.holdingPeriod}
+   589→                        </span>
+   590→                      </div>
+   591→                      <div className="font-metric text-sm text-foreground/60">
+   592→                        <span className="sm:hidden text-[10px] uppercase tracking-wider text-foreground/40">Days: </span>
+   593→                        {lot.daysHeld}d
+   594→                      </div>
+   595→                    </div>
+   596→                  ))}
+   597→
+   598→                  {sortedTaxLots.length === 0 && (
+   599→                    <div className="flex flex-col items-center justify-center py-12 text-sm text-muted-foreground">
+   600→                      <Receipt className="mb-2 h-8 w-8 text-gold/20" />
+   601→                      No tax lots found
+   602→                    </div>
+   603→                  )}
+   604→                </div>
+   605→              </div>
+   606→            </>
+   607→          ) : (
+   608→            <div className="mt-5 flex flex-col items-center justify-center py-12 text-sm text-muted-foreground">
+   609→              <Calculator className="mb-2 h-8 w-8 text-gold/20" />
+   610→              Tax data will appear when portfolio data is available
+   611→            </div>
+   612→          )}
+   613→        </GlassCard>
+   614→      </FadeIn>
+   615→    </div>
+   616→  );
+   617→}
+   618→
+   619→/* ------------------------------------------------------------------ */
+   620→/*  Sortable column header                                             */
+   621→/* ------------------------------------------------------------------ */
+   622→function SortableHeader({
+   623→  label,
+   624→  col,
+   625→  current,
+   626→  dir,
+   627→  onSort,
+   628→}: {
+   629→  label: string;
+   630→  col: "date" | "pnl" | "holding";
+   631→  current: string;
+   632→  dir: "asc" | "desc";
+   633→  onSort: (col: "date" | "pnl" | "holding") => void;
+   634→}) {
+   635→  const isActive = current === col;
+   636→  return (
+   637→    <button
+   638→      onClick={() => onSort(col)}
+   639→      className={`flex items-center gap-1 py-2 text-left text-[10px] font-medium uppercase tracking-wider transition-colors ${
+   640→        isActive ? "text-gold" : "text-foreground/40 hover:text-foreground/60"
+   641→      }`}
+   642→    >
+   643→      {label}
+   644→      <ArrowUpDown className={`h-2.5 w-2.5 ${isActive ? "opacity-100" : "opacity-30"}`} />
+   645→      {isActive && (
+   646→        <span className="text-[8px]">{dir === "asc" ? "↑" : "↓"}</span>
+   647→      )}
+   648→    </button>
+   649→  );
+   650→}
+   651→
+   652→/* ------------------------------------------------------------------ */
+   653→/*  Sub-components                                                     */
+   654→/* ------------------------------------------------------------------ */
+   655→function ReportCard({ icon, title, desc, actions }: { icon: React.ReactNode; title: string; desc: string; actions: React.ReactNode }) {
+   656→  return (
+   657→    <GlassCard hover className="flex flex-col p-5 hover-lift">
+   658→      <div className="flex items-start justify-between">
+   659→        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gold/10 text-gold">{icon}</div>
+   660→      </div>
+   661→      <h3 className="mt-3 text-base font-semibold text-foreground">{title}</h3>
+   662→      <p className="mt-1 flex-1 text-sm text-muted-foreground">{desc}</p>
+   663→      <div className="mt-4">{actions}</div>
+   664→    </GlassCard>
+   665→  );
+   666→}
+   667→
+   668→function Stat({ label, value, accent }: { label: string; value: string; accent?: "gold" | "profit" | "loss" }) {
+   669→  const color = accent === "gold" ? "text-gold" : accent === "profit" ? "text-profit" : accent === "loss" ? "text-loss" : "text-foreground";
+   670→  return (
+   671→    <div className="rounded-lg border border-border/60 bg-black/20 p-4 hover-lift">
+   672→      <div className="text-[11px] uppercase tracking-wider text-muted-foreground">{label}</div>
+   673→      <div className={`mt-1 font-metric text-xl font-bold ${color}`}>{value}</div>
+   674→    </div>
+   675→  );
+   676→}
+   677→
+   678→function Info({ label, value }: { label: string; value: string }) {
+   679→  return (
+   680→    <div className="flex items-center justify-between rounded-lg border border-border/60 bg-black/20 px-4 py-3">
+   681→      <span className="text-sm text-muted-foreground">{label}</span>
+   682→      <span className="text-sm font-medium text-foreground">{value}</span>
+   683→    </div>
+   684→  );
+   685→}
+   686→
