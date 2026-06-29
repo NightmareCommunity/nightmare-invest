@@ -1,14 +1,15 @@
 "use client";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useApp } from "@/lib/store";
 import { api } from "@/lib/api-client";
 import { Logo } from "@/components/brand/logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { Label } from "@/components/ui/label";
 import { GlassCard } from "@/components/brand/primitives";
-import { ArrowLeft, ArrowRight, Lock, Mail, Shield, User } from "lucide-react";
+import { ArrowLeft, ArrowRight, Lock, Mail, Shield, ShieldCheck, User } from "lucide-react";
 import { toast } from "sonner";
 
 type Mode = "login" | "signup" | "forgot";
@@ -18,6 +19,9 @@ export function AuthScreen({ mode }: { mode: Mode }) {
   const refresh = useApp((s) => s.refresh);
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ name: "", email: "", password: "" });
+  // 2FA challenge state
+  const [challenge, setChallenge] = useState<string | null>(null);
+  const [totpCode, setTotpCode] = useState("");
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,9 +30,23 @@ export function AuthScreen({ mode }: { mode: Mode }) {
       if (mode === "signup") {
         await api.post("/api/auth/signup", form);
         toast.success("Account created. Welcome to Nightmare Invest.");
+        await refresh();
+        const me = useApp.getState().user;
+        setRoute(me?.role === "ADMIN" ? { name: "admin-dashboard" } : { name: "dashboard" });
       } else if (mode === "login") {
-        await api.post("/api/auth/login", { email: form.email, password: form.password });
-        toast.success("Authenticated. Accessing your portal.");
+        const res = await api.post<{ requiresTwoFactor?: boolean; challenge?: string }>(
+          "/api/auth/login",
+          { email: form.email, password: form.password }
+        );
+        if (res.requiresTwoFactor && res.challenge) {
+          setChallenge(res.challenge);
+          toast.info("Two-factor authentication required");
+        } else {
+          toast.success("Authenticated. Accessing your portal.");
+          await refresh();
+          const me = useApp.getState().user;
+          setRoute(me?.role === "ADMIN" ? { name: "admin-dashboard" } : { name: "dashboard" });
+        }
       } else {
         await api.post("/api/auth/password-reset", { email: form.email, newPassword: form.password || undefined });
         toast.success("If the account exists, your password has been updated.");
@@ -36,12 +54,28 @@ export function AuthScreen({ mode }: { mode: Mode }) {
         setLoading(false);
         return;
       }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Authentication failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const submit2fa = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (totpCode.length !== 6) {
+      toast.error("Enter the 6-digit code");
+      return;
+    }
+    setLoading(true);
+    try {
+      await api.post("/api/auth/login", { challenge, totpCode });
+      toast.success("Authenticated. Accessing your portal.");
       await refresh();
-      // Navigate to the appropriate portal
       const me = useApp.getState().user;
       setRoute(me?.role === "ADMIN" ? { name: "admin-dashboard" } : { name: "dashboard" });
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Authentication failed");
+      toast.error(err instanceof Error ? err.message : "Invalid verification code");
     } finally {
       setLoading(false);
     }
@@ -52,6 +86,21 @@ export function AuthScreen({ mode }: { mode: Mode }) {
     signup: { title: "Request Access", sub: "Create your investor account" },
     forgot: { title: "Reset Password", sub: "Recover access to your account" },
   };
+
+  if (challenge) {
+    return (
+      <TwoFactorChallenge
+        code={totpCode}
+        setCode={setTotpCode}
+        onSubmit={submit2fa}
+        onCancel={() => {
+          setChallenge(null);
+          setTotpCode("");
+        }}
+        loading={loading}
+      />
+    );
+  }
 
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-4 py-12">
@@ -196,6 +245,116 @@ export function AuthScreen({ mode }: { mode: Mode }) {
             <span className="text-gold">Demo investor:</span> investor@nightmare.invest · investor123
           </div>
         )}
+      </motion.div>
+    </div>
+  );
+}
+
+function TwoFactorChallenge({
+  code,
+  setCode,
+  onSubmit,
+  onCancel,
+  loading,
+}: {
+  code: string;
+  setCode: (v: string) => void;
+  onSubmit: (e: React.FormEvent) => void;
+  onCancel: () => void;
+  loading: boolean;
+}) {
+  const setRoute = useApp((s) => s.setRoute);
+  const otpRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    // Focus the OTP input shortly after mount
+    const t = setTimeout(() => {
+      const input = otpRef.current?.querySelector("input");
+      input?.focus();
+    }, 100);
+    return () => clearTimeout(t);
+  }, []);
+
+  return (
+    <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-4 py-12">
+      <div className="absolute inset-0 bg-grid bg-grid-fade opacity-40" />
+      <div className="absolute -top-32 left-1/2 h-80 w-[600px] -translate-x-1/2 rounded-full bg-gold/10 blur-[120px]" />
+
+      <button
+        onClick={() => setRoute({ name: "landing" })}
+        className="absolute left-4 top-4 inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground sm:left-6 sm:top-6"
+      >
+        <ArrowLeft className="h-4 w-4" /> Back to home
+      </button>
+
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="relative w-full max-w-md"
+      >
+        <div className="mb-8 flex flex-col items-center text-center">
+          <Logo size={40} />
+          <div className="mt-6 flex h-14 w-14 items-center justify-center rounded-full border border-gold/30 bg-gold/5">
+            <ShieldCheck className="h-7 w-7 text-gold" />
+          </div>
+          <h1 className="mt-4 text-2xl font-bold tracking-tight">Two-Factor Verification</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Enter the 6-digit code from your authenticator app
+          </p>
+        </div>
+
+        <GlassCard gold glow className="p-7">
+          <form onSubmit={onSubmit} className="space-y-5">
+            <div className="flex justify-center" ref={otpRef}>
+              <InputOTP
+                maxLength={6}
+                value={code}
+                onChange={(v) => setCode(v)}
+              >
+                <InputOTPGroup className="gap-2">
+                  <InputOTPSlot index={0} className="h-12 w-12 border-gold/30 bg-black/40 text-lg text-gold" />
+                  <InputOTPSlot index={1} className="h-12 w-12 border-gold/30 bg-black/40 text-lg text-gold" />
+                  <InputOTPSlot index={2} className="h-12 w-12 border-gold/30 bg-black/40 text-lg text-gold" />
+                  <InputOTPSlot index={3} className="h-12 w-12 border-gold/30 bg-black/40 text-lg text-gold" />
+                  <InputOTPSlot index={4} className="h-12 w-12 border-gold/30 bg-black/40 text-lg text-gold" />
+                  <InputOTPSlot index={5} className="h-12 w-12 border-gold/30 bg-black/40 text-lg text-gold" />
+                </InputOTPGroup>
+              </InputOTP>
+            </div>
+
+            <Button
+              type="submit"
+              disabled={loading || code.length !== 6}
+              className="w-full bg-gold-gradient text-black hover:opacity-90"
+            >
+              {loading ? (
+                <span className="flex items-center gap-2">
+                  <span className="h-3 w-3 animate-spin rounded-full border-2 border-black/40 border-t-black" />
+                  Verifying…
+                </span>
+              ) : (
+                <span className="flex items-center gap-2">
+                  <ShieldCheck className="h-4 w-4" />
+                  Verify & Continue
+                </span>
+              )}
+            </Button>
+
+            <button
+              type="button"
+              onClick={onCancel}
+              className="w-full text-center text-xs text-muted-foreground hover:text-gold"
+            >
+              Use a different account
+            </button>
+          </form>
+        </GlassCard>
+
+        <div className="mt-5 flex items-center justify-center gap-2 text-[11px] text-muted-foreground">
+          <Shield className="h-3.5 w-3.5 text-gold/60" />
+          <span>Two-factor authentication protects your institutional account</span>
+        </div>
       </motion.div>
     </div>
   );

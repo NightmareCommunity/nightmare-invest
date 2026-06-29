@@ -1,6 +1,7 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { cookies } from "next/headers";
+import * as otpauth from "otpauth";
 import { db } from "./db";
 import type { User } from "@prisma/client";
 
@@ -9,6 +10,60 @@ const JWT_REFRESH_SECRET =
   process.env.JWT_REFRESH_SECRET || "nightmare-invest-dev-refresh-secret-change";
 const ACCESS_EXPIRES = "30m";
 const REFRESH_EXPIRES_DAYS = 7;
+
+// Simple XOR-based secret obfuscation (NOT real encryption — sufficient for dev SQLite).
+// In production, swap with AES-GCM via a KMS-managed key.
+const TOTP_OBFUS_KEY = process.env.TOTP_OBFUS_KEY || "nightmare-totp-obfuscation-key";
+function obfuscate(secret: string): string {
+  const buf = Buffer.from(secret, "base64");
+  const out = Buffer.alloc(buf.length);
+  const key = Buffer.from(TOTP_OBFUS_KEY, "utf8");
+  for (let i = 0; i < buf.length; i++) out[i] = buf[i] ^ key[i % key.length];
+  return out.toString("base64");
+}
+function deobfuscate(stored: string): string {
+  const buf = Buffer.from(stored, "base64");
+  const out = Buffer.alloc(buf.length);
+  const key = Buffer.from(TOTP_OBFUS_KEY, "utf8");
+  for (let i = 0; i < buf.length; i++) out[i] = buf[i] ^ key[i % key.length];
+  return out.toString("base64");
+}
+
+export function generateTotpSecret(email: string): { secret: string; uri: string } {
+  const secret = new otpauth.Secret({ size: 20 });
+  const totp = new otpauth.TOTP({
+    issuer: "NIGHTMARE INVEST",
+    label: email,
+    algorithm: "SHA1",
+    digits: 6,
+    period: 30,
+    secret,
+  });
+  return {
+    secret: secret.base32,
+    uri: totp.toString(),
+  };
+}
+
+export function verifyTotpToken(token: string, base32Secret: string): boolean {
+  const totp = new otpauth.TOTP({
+    issuer: "NIGHTMARE INVEST",
+    algorithm: "SHA1",
+    digits: 6,
+    period: 30,
+    secret: otpauth.Secret.fromBase32(base32Secret),
+  });
+  const delta = totp.validate({ token, window: 1 });
+  return delta !== null;
+}
+
+export function encryptTotpSecret(base32Secret: string): string {
+  return obfuscate(Buffer.from(base32Secret, "utf8").toString("base64"));
+}
+
+export function decryptTotpSecret(stored: string): string {
+  return Buffer.from(deobfuscate(stored), "base64").toString("utf8");
+}
 
 export interface JwtPayload {
   sub: string;

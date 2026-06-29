@@ -52,6 +52,7 @@ export function MetricTile({
   icon,
   accent,
   trend,
+  sparkline,
   className,
 }: {
   label: string;
@@ -60,23 +61,93 @@ export function MetricTile({
   icon?: ReactNode;
   accent?: "gold" | "profit" | "loss" | "neutral";
   trend?: number;
+  sparkline?: number[];
   className?: string;
 }) {
   const accentColor =
     accent === "profit" ? "text-profit" : accent === "loss" ? "text-loss" : accent === "gold" ? "text-gold" : "text-foreground";
   return (
     <GlassCard className={cn("metric-bottom-border p-5 transition-transform duration-200 hover:scale-[1.02]", className)} hover>
-      <div className="flex items-start justify-between gap-3">
-        <span className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
-          {label}
-        </span>
-        {icon && <span className="text-gold/70">{icon}</span>}
+      <div className="relative">
+        <div className="flex items-start justify-between gap-3">
+          <span className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+            {label}
+          </span>
+          {icon && <span className="text-gold/70">{icon}</span>}
+        </div>
+        <div className={cn("mt-3 font-metric text-2xl font-semibold tracking-tight text-shadow-metric", accentColor)}>
+          {value}
+        </div>
+        {sub && <div className="mt-1 text-xs text-muted-foreground">{sub}</div>}
+        {sparkline && sparkline.length >= 2 && (
+          <div className="pointer-events-none absolute bottom-2 right-3 opacity-80">
+            <SparklineSVG data={sparkline} />
+          </div>
+        )}
       </div>
-      <div className={cn("mt-3 font-metric text-2xl font-semibold tracking-tight text-shadow-metric", accentColor)}>
-        {value}
-      </div>
-      {sub && <div className="mt-1 text-xs text-muted-foreground">{sub}</div>}
     </GlassCard>
+  );
+}
+
+/**
+ * Tiny 60×20 SVG line sparkline with a smooth bezier path. Gold stroke, no axes.
+ */
+function SparklineSVG({ data }: { data: number[] }) {
+  const w = 60;
+  const h = 20;
+  const min = Math.min(...data);
+  const max = Math.max(...data);
+  const range = max - min || 1;
+  // Map each value to an (x, y) point within the 60×20 box, with 1px padding
+  const pad = 1.5;
+  const usableW = w - pad * 2;
+  const usableH = h - pad * 2;
+  const points = data.map((v, i) => ({
+    x: pad + (i / (data.length - 1)) * usableW,
+    y: pad + (1 - (v - min) / range) * usableH,
+  }));
+
+  // Build a smooth cubic-bezier path using Catmull-Rom → Bezier conversion
+  let path = `M ${points[0].x.toFixed(2)} ${points[0].y.toFixed(2)}`;
+  for (let i = 0; i < points.length - 1; i++) {
+    const p0 = points[i === 0 ? 0 : i - 1];
+    const p1 = points[i];
+    const p2 = points[i + 1];
+    const p3 = points[i + 2 < points.length ? i + 2 : points.length - 1];
+    const tension = 0.18;
+    const cp1x = p1.x + ((p2.x - p0.x) / 6) * (1 - tension) * 6 * 0.5;
+    const cp1y = p1.y + ((p2.y - p0.y) / 6) * (1 - tension) * 6 * 0.5;
+    const cp2x = p2.x - ((p3.x - p1.x) / 6) * (1 - tension) * 6 * 0.5;
+    const cp2y = p2.y - ((p3.y - p1.y) / 6) * (1 - tension) * 6 * 0.5;
+    path += ` C ${cp1x.toFixed(2)} ${cp1y.toFixed(2)}, ${cp2x.toFixed(2)} ${cp2y.toFixed(2)}, ${p2.x.toFixed(2)} ${p2.y.toFixed(2)}`;
+  }
+
+  const last = points[points.length - 1];
+  const gradId = `spark-${Math.round(last.x * 1000 + last.y)}`;
+
+  return (
+    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="overflow-visible">
+      <defs>
+        <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#D4AF37" stopOpacity={0.35} />
+          <stop offset="100%" stopColor="#D4AF37" stopOpacity={0} />
+        </linearGradient>
+      </defs>
+      <path
+        d={`${path} L ${last.x.toFixed(2)} ${h} L ${points[0].x.toFixed(2)} ${h} Z`}
+        fill={`url(#${gradId})`}
+        stroke="none"
+      />
+      <path
+        d={path}
+        fill="none"
+        stroke="#D4AF37"
+        strokeWidth={1.25}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <circle cx={last.x} cy={last.y} r={1.4} fill="#FFD700" />
+    </svg>
   );
 }
 

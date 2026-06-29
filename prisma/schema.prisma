@@ -25,12 +25,25 @@ model User {
   updatedAt    DateTime @updatedAt
   lastLogin    DateTime?
 
+  // Two-factor authentication (TOTP)
+  totpSecret   String?  // encrypted base32 secret
+  totpEnabled  Boolean  @default(false)
+
+  // KYC verification status: NONE | PENDING | APPROVED | REJECTED
+  kycStatus    String   @default("NONE")
+  kycTier      String   @default("STANDARD") // STANDARD | ACCREDITED
+  kycReviewedBy String?
+  kycReviewedAt DateTime?
+  kycNotes     String?
+
   holdings     Holding[]
   transactions Transaction[]
   ledgerEntries LedgerEntry[] @relation("LedgerUser")
   auditLogs    AuditLog[]     @relation("AuditActor")
   processedTxn Transaction[]  @relation("ProcessedBy")
   reports      Report[]
+  kycDocuments KycDocument[]
+  reviewedKyc  KycDocument[] @relation("KycReviewer")
 }
 
 // ----------------------------- Fund ------------------------------
@@ -163,4 +176,26 @@ model MarketPrice {
   priceUsd  Float
   change24h Float
   updatedAt DateTime @updatedAt
+}
+
+// ------------------------ KYC Documents --------------------------
+// Documents uploaded by investors for identity/accreditation verification
+model KycDocument {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type       String   // GOVT_ID | PROOF_OF_ADDRESS | ACCREDITATION | SELFIE | SOURCE_OF_FUNDS
+  fileName   String
+  filePath   String   // relative path under /upload
+  mimeType   String
+  sizeBytes  Int
+  status     String   @default("PENDING") // PENDING | APPROVED | REJECTED
+  notes      String?
+  reviewedBy String?
+  reviewer   User?    @relation("KycReviewer", fields: [reviewedBy], references: [id], onDelete: SetNull)
+  reviewedAt DateTime?
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([status])
 }

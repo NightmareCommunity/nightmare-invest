@@ -10,6 +10,7 @@ export type Route =
   // investor
   | { name: "dashboard" }
   | { name: "portfolio" }
+  | { name: "analytics" }
   | { name: "transactions" }
   | { name: "reports" }
   | { name: "settings" }
@@ -19,6 +20,7 @@ export type Route =
   | { name: "admin-fund" }
   | { name: "admin-nav" }
   | { name: "admin-transactions" }
+  | { name: "admin-kyc" }
   | { name: "admin-ledger" }
   | { name: "admin-audit" };
 

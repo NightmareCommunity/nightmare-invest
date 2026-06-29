@@ -9,11 +9,14 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { fmtDate } from "@/lib/format";
-import { Shield, KeyRound, LogOut, Mail, User, Clock, Lock, CheckCircle2 } from "lucide-react";
+import { Shield, KeyRound, LogOut, Mail, User, Clock, Lock, CheckCircle2, ShieldCheck, FileCheck2 } from "lucide-react";
 import { toast } from "sonner";
+import { TwoFactorSection } from "./two-factor-section";
+import { KycSection } from "./kyc-section";
 
 export function SettingsPage() {
   const user = useApp((s) => s.user);
+  const refresh = useApp((s) => s.refresh);
   const logout = useApp((s) => s.logout);
   const [newPass, setNewPass] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -35,13 +38,28 @@ export function SettingsPage() {
 
   if (!user) return null;
 
+  const totpEnabled = !!user.totpEnabled;
+  const kycStatus = user.kycStatus ?? "NONE";
+  const kycTier = user.kycTier ?? "STANDARD";
+
+  // Security center checklist (dynamic based on user state)
+  const securityItems = [
+    { label: "256-bit encryption in transit (TLS 1.3)", done: true },
+    { label: "bcrypt password hashing (cost 12)", done: true },
+    { label: "HttpOnly secure session cookies", done: true },
+    { label: "Role-based access control (RBAC)", done: true },
+    { label: "Full audit trail of account activity", done: true },
+    { label: "Two-factor authentication (TOTP)", done: totpEnabled },
+    { label: "KYC identity verification", done: kycStatus === "APPROVED" },
+  ];
+
   return (
     <div className="space-y-6">
       <FadeIn>
         <div>
           <span className="text-xs font-medium uppercase tracking-[0.18em] text-gold">Investor Portal</span>
           <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">Settings</h1>
-          <p className="text-sm text-muted-foreground">Manage your account and security</p>
+          <p className="text-sm text-muted-foreground">Manage your account, security &amp; verification</p>
         </div>
       </FadeIn>
 
@@ -82,9 +100,9 @@ export function SettingsPage() {
             </div>
           </GlassCard>
 
-          {/* Security */}
+          {/* Password */}
           <GlassCard className="p-6">
-            <SectionTitle title="Security" subtitle="Update your password" />
+            <SectionTitle title="Password" subtitle="Update your password" />
             <div className="mt-4 space-y-4">
               <div className="space-y-1.5">
                 <Label htmlFor="newpass" className="text-xs uppercase tracking-wider text-muted-foreground">New Password</Label>
@@ -107,6 +125,12 @@ export function SettingsPage() {
             </div>
           </GlassCard>
 
+          {/* 2FA */}
+          <TwoFactorSection enabled={totpEnabled} onChanged={refresh} />
+
+          {/* KYC */}
+          <KycSection />
+
           {/* Session */}
           <GlassCard className="p-6">
             <SectionTitle title="Session" subtitle="Authentication tokens" />
@@ -126,28 +150,59 @@ export function SettingsPage() {
         </FadeIn>
 
         <FadeIn delay={0.1}>
-          <GlassCard gold className="h-full p-6">
-            <Shield className="h-8 w-8 text-gold" />
-            <h3 className="mt-3 text-base font-semibold">Security Center</h3>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Your account is protected by industry-grade encryption and JWT-based session management.
-            </p>
-            <Separator className="my-4 bg-border/60" />
-            <ul className="space-y-3 text-sm">
-              {[
-                "256-bit encryption in transit (TLS 1.3)",
-                "bcrypt password hashing (cost 12)",
-                "HttpOnly secure session cookies",
-                "Role-based access control (RBAC)",
-                "Full audit trail of account activity",
-              ].map((s) => (
-                <li key={s} className="flex items-start gap-2">
-                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-gold" />
-                  <span className="text-foreground/90">{s}</span>
-                </li>
-              ))}
-            </ul>
-          </GlassCard>
+          <div className="space-y-4">
+            <GlassCard gold className="p-6">
+              <Shield className="h-8 w-8 text-gold" />
+              <h3 className="mt-3 text-base font-semibold">Security Center</h3>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Your account is protected by industry-grade encryption and JWT-based session management.
+              </p>
+              <Separator className="my-4 bg-border/60" />
+              <ul className="space-y-3 text-sm">
+                {securityItems.map((s) => (
+                  <li key={s.label} className="flex items-start gap-2">
+                    {s.done ? (
+                      <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-gold" />
+                    ) : (
+                      <Shield className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                    )}
+                    <span className={s.done ? "text-foreground/90" : "text-muted-foreground"}>{s.label}</span>
+                  </li>
+                ))}
+              </ul>
+            </GlassCard>
+
+            <GlassCard className="p-5">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className={`h-5 w-5 ${totpEnabled ? "text-profit" : "text-muted-foreground"}`} />
+                <div className="text-sm font-medium text-foreground">2FA Status</div>
+              </div>
+              <div className="mt-1 text-xs text-muted-foreground">
+                {totpEnabled ? "Authenticator app enabled" : "Not configured — recommended"}
+              </div>
+            </GlassCard>
+
+            <GlassCard className="p-5">
+              <div className="flex items-center gap-2">
+                <FileCheck2 className={`h-5 w-5 ${kycStatus === "APPROVED" ? "text-profit" : kycStatus === "PENDING" ? "text-gold" : "text-muted-foreground"}`} />
+                <div className="text-sm font-medium text-foreground">KYC Status</div>
+              </div>
+              <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
+                <Badge
+                  variant="outline"
+                  className={
+                    kycStatus === "APPROVED" ? "border-profit/30 text-profit"
+                    : kycStatus === "PENDING" ? "border-gold/30 text-gold"
+                    : kycStatus === "REJECTED" ? "border-loss/30 text-loss"
+                    : "border-muted-foreground/30 text-muted-foreground"
+                  }
+                >
+                  {kycStatus}
+                </Badge>
+                <span>· Tier {kycTier}</span>
+              </div>
+            </GlassCard>
+          </div>
         </FadeIn>
       </div>
     </div>

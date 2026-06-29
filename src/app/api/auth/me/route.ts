@@ -15,6 +15,9 @@ export async function GET() {
       isActive: user.isActive,
       lastLogin: user.lastLogin,
       createdAt: user.createdAt,
+      totpEnabled: user.totpEnabled,
+      kycStatus: user.kycStatus,
+      kycTier: user.kycTier,
     },
     hasFund: fundCount > 0,
   });

@@ -5,10 +5,11 @@ import { useApp, type Route } from "@/lib/store";
 import { Logo } from "@/components/brand/logo";
 import { NotificationCenter } from "@/components/brand/notification-center";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import {
   LayoutDashboard, Wallet, ArrowLeftRight, FileText, Settings,
   Users, TrendingUp, Database, ScrollText, History, Menu, X, LogOut,
-  ChevronDown, ShieldCheck,
+  ChevronDown, ShieldCheck, BarChart3, FileCheck2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { fmtDate } from "@/lib/format";
@@ -17,25 +18,28 @@ interface NavItem {
   label: string;
   route: Route;
   icon: typeof LayoutDashboard;
+  description: string;
   badge?: "pendingTx" | "pendingAdmin";
 }
 
 const INVESTOR_NAV: NavItem[] = [
-  { label: "Dashboard", route: { name: "dashboard" }, icon: LayoutDashboard },
-  { label: "Portfolio", route: { name: "portfolio" }, icon: Wallet },
-  { label: "Transactions", route: { name: "transactions" }, icon: ArrowLeftRight },
-  { label: "Reports", route: { name: "reports" }, icon: FileText },
-  { label: "Settings", route: { name: "settings" }, icon: Settings },
+  { label: "Dashboard", route: { name: "dashboard" }, icon: LayoutDashboard, description: "Portfolio overview & metrics" },
+  { label: "Portfolio", route: { name: "portfolio" }, icon: Wallet, description: "Holdings, exposures & allocations" },
+  { label: "Analytics", route: { name: "analytics" }, icon: BarChart3, description: "Advanced risk & performance analytics" },
+  { label: "Transactions", route: { name: "transactions" }, icon: ArrowLeftRight, description: "Deposits, withdrawals & history" },
+  { label: "Reports", route: { name: "reports" }, icon: FileText, description: "Download statements & ledger exports" },
+  { label: "Settings", route: { name: "settings" }, icon: Settings, description: "Profile, security & preferences" },
 ];
 
 const ADMIN_NAV: NavItem[] = [
-  { label: "Dashboard", route: { name: "admin-dashboard" }, icon: LayoutDashboard },
-  { label: "Investors", route: { name: "admin-investors" }, icon: Users },
-  { label: "Fund", route: { name: "admin-fund" }, icon: TrendingUp },
-  { label: "NAV Management", route: { name: "admin-nav" }, icon: Database },
-  { label: "Transactions", route: { name: "admin-transactions" }, icon: ArrowLeftRight, badge: "pendingAdmin" },
-  { label: "Ledger", route: { name: "admin-ledger" }, icon: ScrollText },
-  { label: "Audit Logs", route: { name: "admin-audit" }, icon: History },
+  { label: "Dashboard", route: { name: "admin-dashboard" }, icon: LayoutDashboard, description: "AUM, NAV trend & capital flows" },
+  { label: "Investors", route: { name: "admin-investors" }, icon: Users, description: "Directory & user management" },
+  { label: "Fund", route: { name: "admin-fund" }, icon: TrendingUp, description: "Fund metadata & allocation editor" },
+  { label: "NAV Management", route: { name: "admin-nav" }, icon: Database, description: "Publish NAV & history" },
+  { label: "Transactions", route: { name: "admin-transactions" }, icon: ArrowLeftRight, description: "Review pending deposits & withdrawals", badge: "pendingAdmin" },
+  { label: "KYC Review", route: { name: "admin-kyc" }, icon: FileCheck2, description: "Review investor accreditation documents" },
+  { label: "Ledger", route: { name: "admin-ledger" }, icon: ScrollText, description: "Fund ledger entries & CSV export" },
+  { label: "Audit Logs", route: { name: "admin-audit" }, icon: History, description: "System action history & metadata" },
 ];
 
 export function PortalShell({ children, admin = false }: { children: ReactNode; admin?: boolean }) {
@@ -183,18 +187,33 @@ function SidebarContent({
           return (
             <div key={item.label}>
               {showSeparator && <div className="my-2 border-t border-border/40" />}
-              <button
-                onClick={() => go(item.route)}
-                className={cn(
-                  "nav-item-hover group flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all",
-                  active
-                    ? "nav-active-indicator bg-gold/10 text-gold"
-                    : "text-muted-foreground hover:bg-gold/10 hover:text-foreground"
-                )}
-              >
-                <item.icon className={cn("h-4 w-4", active ? "text-gold" : "text-muted-foreground group-hover:text-gold")} />
-                <span className="flex-1 text-left">{item.label}</span>
-              </button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => go(item.route)}
+                    className={cn(
+                      "nav-item-hover group flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all",
+                      active
+                        ? "nav-active-indicator bg-gold/10 text-gold"
+                        : "text-muted-foreground hover:bg-gold/10 hover:text-foreground"
+                    )}
+                  >
+                    <item.icon className={cn("h-4 w-4", active ? "text-gold" : "text-muted-foreground group-hover:text-gold")} />
+                    <span className="flex-1 text-left">{item.label}</span>
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent
+                  side="right"
+                  align="center"
+                  sideOffset={8}
+                  className="glass-strong border border-gold/25 px-3 py-2 text-foreground shadow-[0_0_24px_rgba(212,175,55,0.15)]"
+                >
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-xs font-semibold text-gold">{item.label}</span>
+                    <span className="max-w-[200px] text-[11px] leading-snug text-muted-foreground">{item.description}</span>
+                  </div>
+                </TooltipContent>
+              </Tooltip>
             </div>
           );
         })}

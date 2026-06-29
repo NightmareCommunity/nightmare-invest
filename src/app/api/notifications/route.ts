@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
-import { json, error } from "@/lib/api";
+import { json, safeHandler } from "@/lib/api";
 
 export interface NotificationItem {
   id: string;
@@ -15,11 +15,10 @@ export interface NotificationItem {
 // In-memory read state: Map<userId, Set<notificationId>>
 const readState = new Map<string, Set<string>>();
 
-export async function GET() {
+export const GET = safeHandler(async () => {
   const user = await requireUser();
 
-  try {
-    const notifications: NotificationItem[] = [];
+  const notifications: NotificationItem[] = [];
 
     // 1. Transaction status changes for the current user
     const processedTxns = await db.transaction.findMany({
@@ -90,44 +89,37 @@ export async function GET() {
 
     const unreadCount = notifications.filter((n) => !n.read).length;
 
-    return json({ notifications, unreadCount });
-  } catch (e) {
-    return error(e instanceof Error ? e.message : "Failed to fetch notifications", 500);
-  }
-}
+  return json({ notifications, unreadCount });
+});
 
-export async function PUT() {
+export const PUT = safeHandler(async () => {
   // Mark all notifications as read for the current user
   const user = await requireUser();
 
-  try {
-    // Get all notification IDs for this user
-    const processedTxns = await db.transaction.findMany({
-      where: {
-        userId: user.id,
-        status: { in: ["APPROVED", "REJECTED"] },
-      },
-      select: { id: true },
-    });
+  // Get all notification IDs for this user
+  const processedTxns = await db.transaction.findMany({
+    where: {
+      userId: user.id,
+      status: { in: ["APPROVED", "REJECTED"] },
+    },
+    select: { id: true },
+  });
 
-    const latestNav = await db.nAVPoint.findFirst({
-      orderBy: { date: "desc" },
-      select: { id: true },
-    });
+  const latestNav = await db.nAVPoint.findFirst({
+    orderBy: { date: "desc" },
+    select: { id: true },
+  });
 
-    const readSet = readState.get(user.id) ?? new Set<string>();
+  const readSet = readState.get(user.id) ?? new Set<string>();
 
-    for (const txn of processedTxns) {
-      readSet.add(`txn-${txn.id}`);
-    }
-    if (latestNav) {
-      readSet.add(`nav-${latestNav.id}`);
-    }
-
-    readState.set(user.id, readSet);
-
-    return json({ success: true });
-  } catch (e) {
-    return error(e instanceof Error ? e.message : "Failed to mark as read", 500);
+  for (const txn of processedTxns) {
+    readSet.add(`txn-${txn.id}`);
   }
-}
+  if (latestNav) {
+    readSet.add(`nav-${latestNav.id}`);
+  }
+
+  readState.set(user.id, readSet);
+
+  return json({ success: true });
+});

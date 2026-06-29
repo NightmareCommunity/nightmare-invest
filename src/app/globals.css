@@ -369,6 +369,26 @@
   box-shadow: inset 3px 0 8px -3px rgba(212, 175, 55, 0.15);
 }
 
+/* ----------------------- Ticker tape (live prices marquee) ----------------------- */
+@keyframes ticker-tape {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.ticker-tape-track {
+  display: inline-flex;
+  white-space: nowrap;
+  animation: ticker-tape 40s linear infinite;
+  will-change: transform;
+}
+.ticker-tape-container:hover .ticker-tape-track {
+  animation-play-state: paused;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ticker-tape-track {
+    animation: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.001ms !important;

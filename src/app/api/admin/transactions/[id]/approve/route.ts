@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { accountKey } from "@/lib/analytics";
-import { json, error, parseBody } from "@/lib/api";
+import { json, error, parseBody, safeHandler } from "@/lib/api";
 
 async function processApproval(req: NextRequest, ctx: { params: Promise<{ id: string }> }, action: "APPROVED" | "REJECTED") {
   const admin = await requireAdmin();
@@ -107,10 +107,6 @@ async function processApproval(req: NextRequest, ctx: { params: Promise<{ id: st
   return json({ transaction: result.updated, ledger: result.ledger });
 }
 
-export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
-  try {
-    return await processApproval(req, ctx, "APPROVED");
-  } catch (e) {
-    return error(e instanceof Error ? e.message : "Approval failed", 500);
-  }
-}
+export const POST = safeHandler(
+  (req: NextRequest, ctx: { params: Promise<{ id: string }> }) => processApproval(req, ctx, "APPROVED")
+);

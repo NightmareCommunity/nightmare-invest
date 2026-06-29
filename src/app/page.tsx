@@ -7,6 +7,7 @@ import { LegalPage } from "@/components/public/legal-page";
 import { PortalShell } from "@/components/brand/portal-shell";
 import { InvestorDashboard } from "@/components/investor/dashboard";
 import { PortfolioPage } from "@/components/investor/portfolio";
+import { AnalyticsPage } from "@/components/investor/analytics";
 import { TransactionsPage } from "@/components/investor/transactions";
 import { ReportsPage } from "@/components/investor/reports";
 import { SettingsPage } from "@/components/investor/settings";
@@ -15,6 +16,7 @@ import { AdminInvestors } from "@/components/admin/investors";
 import { AdminFund } from "@/components/admin/fund";
 import { AdminNav } from "@/components/admin/nav";
 import { AdminTransactions } from "@/components/admin/transactions";
+import { AdminKyc } from "@/components/admin/kyc";
 import { AdminLedger } from "@/components/admin/ledger";
 import { AdminAudit } from "@/components/admin/audit";
 import { WelcomeModal } from "@/components/brand/welcome-modal";
@@ -118,6 +120,7 @@ function renderInvestor(name: string) {
   switch (name) {
     case "dashboard": return <InvestorDashboard />;
     case "portfolio": return <PortfolioPage />;
+    case "analytics": return <AnalyticsPage />;
     case "transactions": return <TransactionsPage />;
     case "reports": return <ReportsPage />;
     case "settings": return <SettingsPage />;
@@ -132,6 +135,7 @@ function renderAdmin(name: string) {
     case "admin-fund": return <AdminFund />;
     case "admin-nav": return <AdminNav />;
     case "admin-transactions": return <AdminTransactions />;
+    case "admin-kyc": return <AdminKyc />;
     case "admin-ledger": return <AdminLedger />;
     case "admin-audit": return <AdminAudit />;
     default: return <AdminDashboard />;

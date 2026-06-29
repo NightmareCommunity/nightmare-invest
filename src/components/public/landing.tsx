@@ -1,6 +1,8 @@
 "use client";
 import { useRef, useEffect } from "react";
 import { motion } from "framer-motion";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "@/lib/api-client";
 import { useApp } from "@/lib/store";
 import { Logo } from "@/components/brand/logo";
 import { Button } from "@/components/ui/button";
@@ -19,7 +21,7 @@ import {
   Quote,
   Building2,
 } from "lucide-react";
-import { fmtUSD } from "@/lib/format";
+import { fmtUSD, fmtPct } from "@/lib/format";
 
 const navItems = [
   { label: "Fund", href: "fund" },
@@ -92,8 +94,11 @@ export function Landing() {
 
   return (
     <div className="min-h-screen flex flex-col">
+      {/* Live price ticker tape — sits above nav bar */}
+      <TickerTape />
+
       {/* Nav */}
-      <header className="sticky top-0 z-50 border-b border-border/60 glass-strong">
+      <header className="sticky top-7 z-50 border-b border-border/60 glass-strong">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <Logo />
           <nav className="hidden items-center gap-8 md:flex">
@@ -629,4 +634,68 @@ function HeroCanvas() {
   }, []);
 
   return <canvas ref={canvasRef} className="absolute inset-0 z-0 h-full w-full" />;
+}
+
+interface TickerPrice {
+  symbol: string;
+  name: string;
+  priceUsd: number;
+  change24h: number;
+}
+
+function TickerTape() {
+  const { data } = useQuery<{ prices: TickerPrice[]; updatedAt: string }>({
+    queryKey: ["market-prices"],
+    queryFn: () => api.get("/api/market/prices"),
+    refetchInterval: 30000,
+    staleTime: 15000,
+  });
+
+  const prices = data?.prices ?? [];
+
+  const renderItem = (p: TickerPrice, key: string) => (
+    <div key={key} className="flex items-center gap-2 px-4 text-[11px] font-medium">
+      <span className="font-semibold uppercase tracking-wide text-gold">{p.symbol}</span>
+      <span className="font-metric text-foreground/90">
+        {fmtUSD(p.priceUsd, { decimals: p.priceUsd > 1000 ? 0 : 2 })}
+      </span>
+      <span className={`font-metric ${p.change24h >= 0 ? "text-profit" : "text-loss"}`}>
+        {p.change24h >= 0 ? "▲" : "▼"} {fmtPct(Math.abs(p.change24h))}
+      </span>
+      <span className="ml-3 text-gold/30">•</span>
+    </div>
+  );
+
+  // Loading fallback — keep ticker height stable to avoid layout shift
+  if (prices.length === 0) {
+    return (
+      <div className="sticky top-0 z-[60] flex h-7 items-center overflow-hidden border-b border-gold/15 bg-black/95 backdrop-blur-sm">
+        <div className="flex h-full shrink-0 items-center gap-1.5 border-r border-gold/15 bg-black px-3 text-[10px] font-bold uppercase tracking-[0.18em] text-gold">
+          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-gold" />
+          Live
+        </div>
+        <div className="flex-1 px-4 text-[11px] text-muted-foreground">
+          Loading live market prices…
+        </div>
+      </div>
+    );
+  }
+
+  // Duplicate the price set so the marquee can loop seamlessly via translateX(-50%)
+  return (
+    <div className="ticker-tape-container sticky top-0 z-[60] flex h-7 items-center overflow-hidden border-b border-gold/15 bg-black/95 backdrop-blur-sm">
+      <div className="flex h-full shrink-0 items-center gap-1.5 border-r border-gold/15 bg-black px-3 text-[10px] font-bold uppercase tracking-[0.18em] text-gold">
+        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-gold" />
+        Live
+      </div>
+      <div className="relative flex-1 overflow-hidden">
+        <div className="ticker-tape-track">
+          {prices.map((p) => renderItem(p, `a-${p.symbol}`))}
+          <div aria-hidden="true" className="inline-flex">
+            {prices.map((p) => renderItem(p, `b-${p.symbol}`))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }

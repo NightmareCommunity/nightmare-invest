@@ -7,6 +7,7 @@ import { fmtUSD, fmtPct, fmtNum, fmtDate, timeAgo } from "@/lib/format";
 import { useCountUp } from "@/hooks/use-count-up";
 import { Button } from "@/components/ui/button";
 import { TrendingUp, TrendingDown, Wallet, PieChart, Activity, ArrowUpRight, ArrowDownRight, DollarSign, BarChart3, Bitcoin, Sparkles } from "lucide-react";
+import { motion } from "framer-motion";
 import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid, PieChart as RPie, Pie, Cell, BarChart, Bar,
 } from "recharts";
@@ -109,6 +110,7 @@ export function InvestorDashboard() {
             icon={s.unrealizedPnl >= 0 ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
             accent={s.unrealizedPnl >= 0 ? "profit" : "loss"}
             sub={<span className={s.unrealizedPnl >= 0 ? "text-profit" : "text-loss"}>{fmtPct(s.roi)} ROI</span>}
+            sparkline={m.navHistory.slice(-30).map((p) => p.nav)}
           />
           <AnimatedMetric
             label="Fund NAV"
@@ -117,6 +119,7 @@ export function InvestorDashboard() {
             prefix="$"
             icon={<Activity className="h-4 w-4" />}
             sub={<span className={m.dailyReturn >= 0 ? "text-profit" : "text-loss"}>{fmtPct(m.dailyReturn)} today</span>}
+            sparkline={m.navHistory.slice(-30).map((p) => p.nav)}
           />
         </div>
       </FadeIn>
@@ -149,13 +152,21 @@ export function InvestorDashboard() {
                 ))}
               </div>
             </div>
-            <div className="mt-4 h-72">
+            <div className="relative mt-4 h-72">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={chartData} margin={{ top: 6, right: 6, left: 6, bottom: 0 }}>
                   <defs>
                     <linearGradient id="navArea" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#D4AF37" stopOpacity={0.35} />
+                      <stop offset="0%" stopColor="#FFD700" stopOpacity={0.5} />
+                      <stop offset="22%" stopColor="#D4AF37" stopOpacity={0.34} />
+                      <stop offset="52%" stopColor="#D4AF37" stopOpacity={0.18} />
+                      <stop offset="78%" stopColor="#D4AF37" stopOpacity={0.06} />
                       <stop offset="100%" stopColor="#D4AF37" stopOpacity={0} />
+                    </linearGradient>
+                    <linearGradient id="navStroke" x1="0" y1="0" x2="1" y2="0">
+                      <stop offset="0%" stopColor="#b8860b" stopOpacity={0.85} />
+                      <stop offset="50%" stopColor="#FFD700" stopOpacity={1} />
+                      <stop offset="100%" stopColor="#D4AF37" stopOpacity={0.95} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
@@ -184,9 +195,23 @@ export function InvestorDashboard() {
                     formatter={(v: number) => [fmtUSD(v, { decimals: 4 }), "NAV"]}
                     labelFormatter={(d) => new Date(d as string).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}
                   />
-                  <Area type="monotone" dataKey="nav" stroke="#D4AF37" strokeWidth={2} fill="url(#navArea)" />
+                  <Area type="monotone" dataKey="nav" stroke="url(#navStroke)" strokeWidth={2.25} fill="url(#navArea)" />
                 </AreaChart>
               </ResponsiveContainer>
+              {/* Animated scanning line overlay — sweeps across the chart every 5s */}
+              <div className="pointer-events-none absolute inset-y-3 left-14 right-2">
+                <motion.div
+                  className="absolute top-0 bottom-0 w-px"
+                  style={{
+                    background:
+                      "linear-gradient(to bottom, transparent 0%, rgba(212,175,55,0.8) 50%, transparent 100%)",
+                    boxShadow: "0 0 10px rgba(212,175,55,0.55), 0 0 4px rgba(255,215,0,0.8)",
+                  }}
+                  initial={{ left: "0%", opacity: 0 }}
+                  animate={{ left: ["0%", "100%"], opacity: [0, 1, 1, 0] }}
+                  transition={{ duration: 5, repeat: Infinity, ease: "linear", times: [0, 0.08, 0.92, 1] }}
+                />
+              </div>
             </div>
           </GlassCard>
         </FadeIn>
@@ -381,16 +406,17 @@ function sliceHistory(history: { date: string; nav: number }[], range: string) {
 }
 
 function AnimatedMetric({
-  label, value, decimals = 0, prefix = "$", icon, accent, sub,
+  label, value, decimals = 0, prefix = "$", icon, accent, sub, sparkline,
 }: {
   label: string; value: number; decimals?: number; prefix?: string;
   icon: React.ReactNode; accent?: "gold" | "profit" | "loss" | "neutral"; sub?: React.ReactNode;
+  sparkline?: number[];
 }) {
   const animated = useCountUp(value, 1000);
   const display = prefix === "$"
     ? fmtUSD(animated, { decimals })
     : `${prefix}${fmtNum(animated, decimals)}`;
-  return <MetricTile label={label} value={display} icon={icon} accent={accent} sub={sub} />;
+  return <MetricTile label={label} value={display} icon={icon} accent={accent} sub={sub} sparkline={sparkline} />;
 }
 
 function DashboardSkeleton() {

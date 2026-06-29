@@ -7,12 +7,18 @@ export async function GET() {
   await requireAdmin();
   const fund = await db.fund.findFirst({ include: { allocations: true } });
 
-  const [investors, pendingDeposits, pendingWithdrawals, approvedTxns, totalUsers] = await Promise.all([
+  const [investors, pendingDeposits, pendingWithdrawals, approvedTxns, totalUsers, pendingKyc, kycStats] = await Promise.all([
     db.user.count({ where: { role: "USER", isActive: true } }),
     db.transaction.count({ where: { type: "DEPOSIT", status: "PENDING" } }),
     db.transaction.count({ where: { type: "WITHDRAWAL", status: "PENDING" } }),
     db.transaction.findMany({ where: { status: "APPROVED" }, select: { amount: true, type: true } }),
     db.user.count(),
+    db.kycDocument.count({ where: { status: "PENDING" } }),
+    db.user.groupBy({
+      by: ["kycStatus"],
+      where: { role: "USER" },
+      _count: { _all: true },
+    }),
   ]);
 
   const totalAum = fund
@@ -35,6 +41,11 @@ export async function GET() {
         }))
     : [];
 
+  const kycBreakdown = kycStats.reduce<Record<string, number>>((acc, s) => {
+    acc[s.kycStatus] = s._count._all;
+    return acc;
+  }, {});
+
   return json({
     fund,
     metrics,
@@ -43,6 +54,8 @@ export async function GET() {
     activeInvestors: investors,
     pendingDeposits,
     pendingWithdrawals,
+    pendingKyc,
+    kycBreakdown,
     depositVolume,
     withdrawalVolume,
     navTrend,
