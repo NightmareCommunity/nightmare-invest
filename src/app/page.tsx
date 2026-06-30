@@ -24,6 +24,7 @@ import { AdminFundUpdates } from "@/components/admin/fund-updates";
 import { AdminDocuments } from "@/components/admin/documents";
 import { SystemHealth } from "@/components/admin/system-health";
 import { AdminCommunications } from "@/components/admin/communications";
+import { AdminSettings } from "@/components/admin/settings";
 import { InvestorInbox } from "@/components/investor/inbox";
 import { WatchlistPage } from "@/components/investor/watchlist";
 import { CalculatorPage } from "@/components/investor/calculator";
@@ -154,6 +155,9 @@ function renderAdmin(name: string) {
     case "admin-documents": return <AdminDocuments />;
     case "admin-system-health": return <SystemHealth />;
     case "admin-communications": return <AdminCommunications />;
+    case "admin-settings": return <AdminSettings />;
+    // admin-kyc route retained for future KYC reintroduction (currently not in nav)
+    case "admin-kyc": return <AdminKyc />;
     default: return <AdminDashboard />;
   }
 }

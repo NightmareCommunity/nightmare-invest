@@ -26,9 +26,11 @@ interface OnboardingWizardProps {
 
 const STEPS = [
   { id: 1, label: "Profile", icon: User, description: "Complete your profile" },
-  { id: 2, label: "KYC", icon: Shield, description: "Verify your identity" },
-  { id: 3, label: "Security", icon: Lock, description: "Set up security" },
-  { id: 4, label: "Deposit", icon: CreditCard, description: "Fund your account" },
+  // KYC step temporarily disabled — module removed from active onboarding.
+  // The schema (KycDocument model, User.kyc* fields) is retained for clean
+  // future reintroduction. See /home/z/my-project/worklog.md.
+  { id: 2, label: "Security", icon: Lock, description: "Set up security" },
+  { id: 3, label: "Deposit", icon: CreditCard, description: "Fund your account" },
 ];
 
 export function OnboardingWizard({ onComplete, onClose }: OnboardingWizardProps) {
@@ -43,15 +45,7 @@ export function OnboardingWizard({ onComplete, onClose }: OnboardingWizardProps)
   });
   const [profileErrors, setProfileErrors] = useState<Record<string, string>>({});
 
-  // Step 2 state
-  const [kycFiles, setKycFiles] = useState<{
-    govtId: File | null;
-    proofOfAddress: File | null;
-    accreditation: File | null;
-  }>({ govtId: null, proofOfAddress: null, accreditation: null });
-  const [kycUploading, setKycUploading] = useState(false);
-
-  // Step 3 state
+  // Step 2 state (Security) — formerly step 3; KYC step removed
   const [security, setSecurity] = useState({
     totpEnabled: false,
     recoveryEmail: "",
@@ -59,12 +53,12 @@ export function OnboardingWizard({ onComplete, onClose }: OnboardingWizardProps)
   });
   const [totpStep, setTotpStep] = useState<"setup" | "verify">("setup");
 
-  // Step 4 state
+  // Step 3 state (Deposit) — formerly step 4
   const [depositAmount, setDepositAmount] = useState("");
   const [depositSubmitting, setDepositSubmitting] = useState(false);
 
   const goNext = useCallback(() => {
-    if (step >= 4) return;
+    if (step >= 3) return;
     setDirection("forward");
     setStep((s) => s + 1);
   }, [step]);
@@ -90,35 +84,7 @@ export function OnboardingWizard({ onComplete, onClose }: OnboardingWizardProps)
     }
   }, [validateProfile, goNext]);
 
-  const handleKycUpload = useCallback(async () => {
-    if (!kycFiles.govtId) {
-      toast.error("Government ID is required");
-      return;
-    }
-    setKycUploading(true);
-    try {
-      // Upload each file
-      const filesToUpload = [
-        { file: kycFiles.govtId, type: "GOVT_ID" },
-        ...(kycFiles.proofOfAddress ? [{ file: kycFiles.proofOfAddress, type: "PROOF_OF_ADDRESS" }] : []),
-        ...(kycFiles.accreditation ? [{ file: kycFiles.accreditation, type: "ACCREDITATION" }] : []),
-      ];
-
-      for (const { file, type } of filesToUpload) {
-        const form = new FormData();
-        form.append("file", file);
-        form.append("type", type);
-        await api.upload("/api/kyc/upload", form);
-      }
-
-      toast.success("Documents uploaded successfully");
-      goNext();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Upload failed");
-    } finally {
-      setKycUploading(false);
-    }
-  }, [kycFiles, goNext]);
+  // KYC upload handler removed — module temporarily disabled.
 
   const handleDepositSubmit = useCallback(async () => {
     const amount = parseFloat(depositAmount.replace(/[^0-9.]/g, ""));
@@ -252,21 +218,15 @@ export function OnboardingWizard({ onComplete, onClose }: OnboardingWizardProps)
                   />
                 )}
                 {step === 2 && (
-                  <Step2Kyc
-                    kycFiles={kycFiles}
-                    setKycFiles={setKycFiles}
-                  />
-                )}
-                {step === 3 && (
-                  <Step3Security
+                  <Step2Security
                     security={security}
                     setSecurity={setSecurity}
                     totpStep={totpStep}
                     setTotpStep={setTotpStep}
                   />
                 )}
-                {step === 4 && (
-                  <Step4Deposit
+                {step === 3 && (
+                  <Step3Deposit
                     amount={depositAmount}
                     setAmount={setDepositAmount}
                   />
@@ -307,25 +267,19 @@ export function OnboardingWizard({ onComplete, onClose }: OnboardingWizardProps)
             <Button
               onClick={() => {
                 if (step === 1) handleStep1Next();
-                else if (step === 2) handleKycUpload();
-                else if (step === 3) goNext();
-                else if (step === 4) handleDepositSubmit();
+                else if (step === 2) goNext();
+                else if (step === 3) handleDepositSubmit();
               }}
-              disabled={
-                (step === 2 && kycUploading) ||
-                (step === 4 && depositSubmitting)
-              }
+              disabled={step === 3 && depositSubmitting}
               className="bg-gold-gradient text-black hover:opacity-90"
             >
-              {step === 2 && kycUploading ? (
+              {step === 3 && depositSubmitting ? (
                 <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
-              ) : step === 4 && depositSubmitting ? (
-                <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
-              ) : step === 4 ? (
+              ) : step === 3 ? (
                 <CheckCircle2 className="mr-1.5 h-4 w-4" />
               ) : null}
-              {step === 4 ? "Submit Deposit" : "Continue"}
-              {step < 4 && <ChevronRight className="ml-1 h-4 w-4" />}
+              {step === 3 ? "Submit Deposit" : "Continue"}
+              {step < 3 && <ChevronRight className="ml-1 h-4 w-4" />}
             </Button>
           </div>
         </GlassCard>
@@ -425,168 +379,10 @@ function Step1Profile({
 }
 
 /* ──────────────────────────────────────────────────────────────────────────────
-   STEP 2: KYC VERIFICATION
+   STEP 2: SECURITY SETUP  (renumbered after KYC removal)
    ────────────────────────────────────────────────────────────────────────────── */
 
-function Step2Kyc({
-  kycFiles,
-  setKycFiles,
-}: {
-  kycFiles: { govtId: File | null; proofOfAddress: File | null; accreditation: File | null };
-  setKycFiles: (f: typeof kycFiles) => void;
-}) {
-  return (
-    <div className="space-y-5">
-      <div>
-        <h3 className="text-base font-semibold text-foreground">KYC Verification</h3>
-        <p className="text-xs text-muted-foreground mt-1">Upload required documents to verify your identity</p>
-      </div>
-
-      <div className="space-y-3">
-        {/* Government ID - Required */}
-        <FileUploadArea
-          label="Government ID"
-          description="Passport, driver's license, or national ID"
-          required
-          file={kycFiles.govtId}
-          accept="image/*,.pdf"
-          icon={<Shield className="h-5 w-5" />}
-          onFileChange={(f) => setKycFiles({ ...kycFiles, govtId: f })}
-        />
-
-        {/* Proof of Address */}
-        <FileUploadArea
-          label="Proof of Address"
-          description="Utility bill, bank statement (within 3 months)"
-          file={kycFiles.proofOfAddress}
-          accept="image/*,.pdf"
-          icon={<Globe className="h-5 w-5" />}
-          onFileChange={(f) => setKycFiles({ ...kycFiles, proofOfAddress: f })}
-        />
-
-        {/* Accreditation */}
-        <FileUploadArea
-          label="Accreditation Proof"
-          description="Required for accredited investor status"
-          file={kycFiles.accreditation}
-          accept="image/*,.pdf"
-          icon={<Briefcase className="h-5 w-5" />}
-          onFileChange={(f) => setKycFiles({ ...kycFiles, accreditation: f })}
-        />
-      </div>
-
-      <div className="rounded-lg border border-gold/20 bg-gold/5 p-3">
-        <div className="flex items-start gap-2">
-          <AlertCircle className="h-4 w-4 text-gold mt-0.5 shrink-0" />
-          <div className="text-[11px] text-muted-foreground">
-            All documents are encrypted and stored securely. Government ID is required to proceed.
-            Accreditation proof is optional but enables higher investment tiers.
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function FileUploadArea({
-  label,
-  description,
-  required,
-  file,
-  accept,
-  icon,
-  onFileChange,
-}: {
-  label: string;
-  description: string;
-  required?: boolean;
-  file: File | null;
-  accept: string;
-  icon: React.ReactNode;
-  onFileChange: (f: File | null) => void;
-}) {
-  const [dragOver, setDragOver] = useState(false);
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setDragOver(false);
-    const dropped = e.dataTransfer.files[0];
-    if (dropped) onFileChange(dropped);
-  };
-
-  return (
-    <div
-      className={`rounded-xl border-2 border-dashed p-4 transition-all ${
-        dragOver
-          ? "border-gold/60 bg-gold/10"
-          : file
-          ? "border-profit/40 bg-profit/[0.04]"
-          : "border-border/40 bg-black/20 hover:border-gold/30 hover:bg-gold/[0.03]"
-      }`}
-      onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-      onDragLeave={() => setDragOver(false)}
-      onDrop={handleDrop}
-    >
-      {file ? (
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-profit/15">
-            {file.type.startsWith("image/") ? (
-              <ImageIcon className="h-5 w-5 text-profit" />
-            ) : (
-              <FileText className="h-5 w-5 text-profit" />
-            )}
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="text-sm font-medium text-foreground truncate">{file.name}</div>
-            <div className="text-[11px] text-muted-foreground">{(file.size / 1024).toFixed(1)} KB · {file.type.split("/").pop()?.toUpperCase()}</div>
-          </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onFileChange(null)}
-            className="text-muted-foreground hover:text-loss"
-          >
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
-      ) : (
-        <div className="flex items-center gap-4">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gold/10 text-gold">
-            {icon}
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="text-sm font-medium text-foreground">
-              {label}
-              {required && <span className="text-gold ml-1">*</span>}
-            </div>
-            <div className="text-[11px] text-muted-foreground">{description}</div>
-          </div>
-          <label className="cursor-pointer">
-            <input
-              type="file"
-              accept={accept}
-              className="sr-only"
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) onFileChange(f);
-              }}
-            />
-            <div className="flex items-center gap-1.5 rounded-lg border border-gold/30 bg-gold/10 px-3 py-1.5 text-xs font-medium text-gold transition-colors hover:bg-gold/20">
-              <Upload className="h-3.5 w-3.5" />
-              Browse
-            </div>
-          </label>
-        </div>
-      )}
-    </div>
-  );
-}
-
-/* ──────────────────────────────────────────────────────────────────────────────
-   STEP 3: SECURITY SETUP
-   ────────────────────────────────────────────────────────────────────────────── */
-
-function Step3Security({
+function Step2Security({
   security,
   setSecurity,
   totpStep,
@@ -724,10 +520,10 @@ function Step3Security({
 }
 
 /* ──────────────────────────────────────────────────────────────────────────────
-   STEP 4: FIRST DEPOSIT
+   STEP 3: FIRST DEPOSIT  (renumbered after KYC removal)
    ────────────────────────────────────────────────────────────────────────────── */
 
-function Step4Deposit({
+function Step3Deposit({
   amount,
   setAmount,
 }: {

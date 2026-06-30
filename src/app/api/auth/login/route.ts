@@ -62,10 +62,20 @@ export const POST = safeHandler(async (req: NextRequest) => {
   }
 
   // Path B: standard login (with optional 2FA challenge issuance)
-  const { email, password } = body;
-  if (!email || !password) return error("Email and password are required", 422);
+  // Accepts either an email OR a username. When the input contains no "@",
+  // we treat it as a username and resolve it against the configured admin
+  // domain (e.g. "ojas1234" → "ojas1234@nightmare.invest"). This lets admins
+  // log in with their short username while keeping the email-based identity
+  // model intact.
+  const { email: rawIdentifier, password } = body;
+  if (!rawIdentifier || !password) return error("Email and password are required", 422);
 
-  const user = await db.user.findUnique({ where: { email: email.toLowerCase() } });
+  const identifier = rawIdentifier.trim();
+  const email = identifier.includes("@")
+    ? identifier.toLowerCase()
+    : `${identifier.toLowerCase()}@nightmare.invest`;
+
+  const user = await db.user.findUnique({ where: { email } });
   if (!user) return error("Invalid credentials", 401);
   if (!user.isActive) return error("Account suspended. Contact your fund manager.", 403);
 

@@ -311,3 +311,15 @@ model StatementRequest {
   @@index([userId])
   @@index([status])
 }
+
+// --------------------- System Settings ---------------------------
+// Platform-wide key-value configuration (admin editable via /admin/settings).
+// Stores security policy, fee config, feature flags, etc.
+model SystemSetting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String   // JSON-encoded value
+  category  String   @default("general") // general | security | fees | notifications | features
+  updatedAt DateTime @updatedAt
+  updatedBy String?
+}

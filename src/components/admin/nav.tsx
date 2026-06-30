@@ -1,13 +1,14 @@
 "use client";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api-client";
 import { GlassCard, SectionTitle, FadeIn, SkeletonCard } from "@/components/brand/primitives";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { fmtUSD, fmtNum, fmtDate } from "@/lib/format";
-import { Database, Plus, TrendingUp, Calendar } from "lucide-react";
+import { Database, Plus, TrendingUp, Calendar, Upload, FileText, Loader2, Download } from "lucide-react";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 import { toast } from "sonner";
 
@@ -17,6 +18,9 @@ export function AdminNav() {
   const [aum, setAum] = useState("");
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [saving, setSaving] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [csvUploading, setCsvUploading] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
 
   const { data: fundData } = useQuery<any>({ queryKey: ["portfolio"], queryFn: () => api.get("/api/portfolio") });
   const { data } = useQuery<any>({ queryKey: ["admin-nav"], queryFn: () => api.get("/api/admin/nav"), refetchInterval: 30000 });
@@ -45,6 +49,49 @@ export function AdminNav() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleCsvUpload = async (file: File | undefined) => {
+    if (!file) return;
+    if (!fundData?.fund?.id) {
+      toast.error("Fund not loaded yet");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("CSV file must be under 5MB");
+      return;
+    }
+    setCsvUploading(true);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      form.append("fundId", fundData.fund.id);
+      const res = await api.upload<{
+        summary: { total: number; inserted: number; updated: number; skipped: number; errors: { row: number; message: string }[] };
+      }>("/api/admin/nav/upload-csv", form);
+      const s = res.summary;
+      toast.success(`CSV imported: ${s.inserted} new, ${s.updated} updated${s.skipped ? `, ${s.skipped} skipped` : ""}`);
+      qc.invalidateQueries({ queryKey: ["admin-nav"] });
+      qc.invalidateQueries({ queryKey: ["admin-dashboard"] });
+      qc.invalidateQueries({ queryKey: ["portfolio"] });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "CSV upload failed");
+    } finally {
+      setCsvUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  };
+
+  const downloadTemplate = () => {
+    const csv = "date,nav,aum\n2026-01-01,150.0000,50000000\n2026-01-02,151.2500,50500000\n2026-01-03,152.1000,50800000\n";
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "nav-import-template.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success("Template downloaded");
   };
 
   const chartData = [...points].reverse().slice(-90).map((p: any) => ({ date: p.date, nav: p.nav }));
@@ -84,6 +131,63 @@ export function AdminNav() {
               </Button>
               <p className="text-[11px] text-muted-foreground">Publishing for an existing date overwrites the prior value.</p>
             </div>
+          </GlassCard>
+
+          {/* CSV Upload Card */}
+          <GlassCard className="mt-4 p-5 border-gold/15">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Upload className="h-4 w-4 text-gold" />
+                <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Bulk CSV Import</h4>
+              </div>
+              <button
+                onClick={downloadTemplate}
+                className="flex items-center gap-1 text-[11px] text-gold hover:underline"
+              >
+                <Download className="h-3 w-3" /> Template
+              </button>
+            </div>
+            <input
+              ref={fileRef}
+              type="file"
+              accept=".csv,text/csv,text/plain"
+              className="hidden"
+              onChange={(e) => handleCsvUpload(e.target.files?.[0])}
+            />
+            <div
+              onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setDragOver(false);
+                handleCsvUpload(e.dataTransfer.files[0]);
+              }}
+              className={`relative flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed p-5 transition-colors cursor-pointer ${
+                dragOver
+                  ? "border-gold bg-gold/10"
+                  : "border-border/60 bg-black/20 hover:border-gold/40 hover:bg-gold/5"
+              }`}
+              onClick={() => fileRef.current?.click()}
+            >
+              <div className="flex h-10 w-10 items-center justify-center rounded-full border border-gold/30 bg-gold/5">
+                {csvUploading ? (
+                  <Loader2 className="h-5 w-5 animate-spin text-gold" />
+                ) : (
+                  <FileText className="h-5 w-5 text-gold" />
+                )}
+              </div>
+              <div className="text-center">
+                <div className="text-sm font-medium text-foreground">
+                  {csvUploading ? "Importing…" : "Drop CSV or click to browse"}
+                </div>
+                <div className="text-[11px] text-muted-foreground mt-0.5">
+                  Columns: <span className="font-mono text-gold/80">date, nav, aum</span> · max 5MB
+                </div>
+              </div>
+            </div>
+            <p className="mt-2 text-[10px] text-muted-foreground">
+              Existing entries for the same date are overwritten. AUM column is optional.
+            </p>
           </GlassCard>
         </FadeIn>
 

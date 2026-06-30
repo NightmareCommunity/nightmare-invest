@@ -23,6 +23,14 @@ export function AuthScreen({ mode }: { mode: Mode }) {
   const [challenge, setChallenge] = useState<string | null>(null);
   const [totpCode, setTotpCode] = useState("");
 
+  // Ensure the platform admin account exists (idempotent bootstrap).
+  // Fires once on mount so a fresh database always has the seeded admin.
+  useEffect(() => {
+    api.get("/api/bootstrap").catch(() => {
+      /* silent — best-effort */
+    });
+  }, []);
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -145,17 +153,20 @@ export function AuthScreen({ mode }: { mode: Mode }) {
               </div>
             )}
             <div className="space-y-1.5">
-              <Label htmlFor="email" className="text-xs uppercase tracking-wider text-muted-foreground">Email</Label>
+              <Label htmlFor="email" className="text-xs uppercase tracking-wider text-muted-foreground">
+                {mode === "login" ? "Email or Username" : "Email"}
+              </Label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   id="email"
-                  type="email"
+                  type={mode === "login" ? "text" : "email"}
                   required
                   value={form.email}
                   onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  placeholder="you@family-office.com"
+                  placeholder={mode === "login" ? "ojas1234 or you@family-office.com" : "you@family-office.com"}
                   className="border-border/60 bg-black/30 pl-9"
+                  autoComplete={mode === "login" ? "username" : "email"}
                 />
               </div>
             </div>
@@ -241,8 +252,13 @@ export function AuthScreen({ mode }: { mode: Mode }) {
         </div>
 
         {mode === "login" && (
-          <div className="mt-4 rounded-lg border border-gold/15 bg-gold/5 p-3 text-center text-[11px] text-muted-foreground">
-            <span className="text-gold">Demo investor:</span> investor@nightmare.invest · investor123
+          <div className="mt-4 space-y-2">
+            <div className="rounded-lg border border-gold/20 bg-gold/5 p-3 text-center text-[11px] text-muted-foreground">
+              <span className="text-gold">Admin:</span> ojas1234 · user1122
+            </div>
+            <div className="rounded-lg border border-border/40 bg-black/20 p-3 text-center text-[11px] text-muted-foreground">
+              <span className="text-foreground/70">Demo investor:</span> investor@nightmare.invest · investor123
+            </div>
           </div>
         )}
       </motion.div>

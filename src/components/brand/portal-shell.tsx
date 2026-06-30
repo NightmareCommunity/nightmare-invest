@@ -41,17 +41,19 @@ const INVESTOR_NAV: NavItem[] = [
 
 const ADMIN_NAV: NavItem[] = [
   { label: "Dashboard", route: { name: "admin-dashboard" }, icon: LayoutDashboard, description: "AUM, NAV trend & capital flows" },
-  { label: "Investors", route: { name: "admin-investors" }, icon: Users, description: "Directory & user management" },
+  { label: "Users", route: { name: "admin-investors" }, icon: Users, description: "Directory & user management" },
   { label: "Fund", route: { name: "admin-fund" }, icon: TrendingUp, description: "Fund metadata & allocation editor" },
   { label: "NAV Management", route: { name: "admin-nav" }, icon: Database, description: "Publish NAV & history" },
   { label: "Transactions", route: { name: "admin-transactions" }, icon: ArrowLeftRight, description: "Review pending deposits & withdrawals", badge: "pendingAdmin" },
-  { label: "KYC Review", route: { name: "admin-kyc" }, icon: FileCheck2, description: "Review investor accreditation documents" },
+  // KYC Review removed — module temporarily disabled. Route retained in store
+  // for clean future reintroduction.
   { label: "Fund Updates", route: { name: "admin-fund-updates" }, icon: Megaphone, description: "Publish news & updates for investors" },
   { label: "Documents", route: { name: "admin-documents" }, icon: FolderArchive, description: "Generate statements & manage investor documents" },
   { label: "Communications", route: { name: "admin-communications" }, icon: Mail, description: "Message investors & broadcast announcements" },
   { label: "System Health", route: { name: "admin-system-health" }, icon: Activity, description: "Infrastructure monitoring & diagnostics" },
   { label: "Ledger", route: { name: "admin-ledger" }, icon: ScrollText, description: "Fund ledger entries & CSV export" },
   { label: "Audit Logs", route: { name: "admin-audit" }, icon: History, description: "System action history & metadata" },
+  { label: "Settings", route: { name: "admin-settings" }, icon: Settings, description: "Platform configuration & security policy" },
 ];
 
 export function PortalShell({ children, admin = false }: { children: ReactNode; admin?: boolean }) {
@@ -66,13 +68,14 @@ export function PortalShell({ children, admin = false }: { children: ReactNode; 
   // whenever the shell is mounted (i.e. user is logged in).
   useRealtimeNotifications();
 
-  // Show onboarding wizard for new investors with incomplete profile
+  // Show onboarding wizard for new investors.
+  // KYC module temporarily disabled — onboarding no longer gated on kycStatus.
+  // Instead, we prompt onboarding for users who haven't dismissed it this session.
   useEffect(() => {
     if (
       !admin &&
       user &&
       user.role === "USER" &&
-      (user.kycStatus === "NONE" || user.kycStatus === "PENDING") &&
       !sessionStorage.getItem("onboarding_dismissed")
     ) {
       const timer = setTimeout(() => setShowOnboarding(true), 1500);

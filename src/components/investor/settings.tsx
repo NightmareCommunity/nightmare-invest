@@ -17,11 +17,14 @@ import {
   Monitor, Wifi, Eye, EyeOff, Pencil, Award, ChevronRight,
   CircleDot, CircleX, CircleEllipsis, AlertTriangle,
   Download, Trash2, FileText, ScrollText, ExternalLink,
-  Smartphone, Laptop, Tablet, MapPin, Activity,
+  Smartphone, Laptop, Tablet, MapPin, Activity, Star,
 } from "lucide-react";
 import { toast } from "sonner";
 import { TwoFactorSection } from "./two-factor-section";
-import { KycSection } from "./kyc-section";
+// NOTE: KYC module temporarily disabled. The KycSection component and
+// related UI have been removed from the active investor flow. The
+// underlying schema (KycDocument model, User.kyc* fields) is retained
+// for clean future reintroduction. See /home/z/my-project/worklog.md.
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
@@ -158,84 +161,10 @@ function SettingsSectionHeader({
 
 /* ------------------------------------------------------------------ */
 /*  KYC Step Indicator                                                 */
+/*  (DISABLED — KYC module temporarily removed. Component retained    */
+/*   for clean future reintroduction — currently unused.)             */
 /* ------------------------------------------------------------------ */
 
-function KycStepIndicator({ status }: { status: string }) {
-  const steps = [
-    { key: "NONE", label: "Upload Documents", icon: FileCheck2 },
-    { key: "PENDING", label: "Under Review", icon: Clock },
-    { key: "APPROVED", label: "Approved", icon: CheckCircle2 },
-  ];
-
-  const currentIdx =
-    status === "REJECTED" ? 0 :
-    status === "APPROVED" ? 2 :
-    status === "PENDING" ? 1 : 0;
-
-  return (
-    <div className="flex items-center gap-0 w-full">
-      {steps.map((step, i) => {
-        const StepIcon = step.icon;
-        const isCompleted = i < currentIdx;
-        const isCurrent = i === currentIdx;
-        const isRejected = status === "REJECTED" && i === 0;
-
-        return (
-          <div key={step.key} className="flex flex-1 items-center">
-            <div className="flex flex-col items-center gap-1.5 min-w-0">
-              <div
-                className={`flex h-9 w-9 items-center justify-center rounded-full border-2 transition-all ${
-                  isCompleted
-                    ? "border-profit bg-profit/10 text-profit"
-                    : isCurrent && isRejected
-                      ? "border-loss bg-loss/10 text-loss animate-pulse"
-                      : isCurrent
-                        ? "border-gold bg-gold/10 text-gold glow-gold"
-                        : "border-border/40 bg-black/20 text-muted-foreground"
-                }`}
-              >
-                {isCompleted ? (
-                  <CheckCircle2 className="h-4 w-4" />
-                ) : isCurrent && isRejected ? (
-                  <CircleX className="h-4 w-4" />
-                ) : (
-                  <StepIcon className="h-4 w-4" />
-                )}
-              </div>
-              <span
-                className={`text-[10px] font-medium uppercase tracking-wider text-center leading-tight ${
-                  isCompleted
-                    ? "text-profit"
-                    : isCurrent && isRejected
-                      ? "text-loss"
-                      : isCurrent
-                        ? "text-gold"
-                        : "text-muted-foreground/50"
-                }`}
-              >
-                {step.label}
-              </span>
-            </div>
-            {i < steps.length - 1 && (
-              <div className="flex-1 mx-2 mt-[-18px]">
-                <div className="h-0.5 w-full rounded-full bg-border/30 overflow-hidden">
-                  <motion.div
-                    className={`h-full rounded-full ${
-                      i < currentIdx ? "bg-profit" : i === currentIdx && status !== "REJECTED" ? "bg-gold/50" : "bg-transparent"
-                    }`}
-                    initial={{ width: "0%" }}
-                    animate={{ width: i < currentIdx ? "100%" : i === currentIdx && status !== "REJECTED" ? "50%" : "0%" }}
-                    transition={{ duration: 0.8, delay: 0.3 + i * 0.2 }}
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
 
 /* ------------------------------------------------------------------ */
 /*  Simulated Activity Log Data                                        */
@@ -248,7 +177,7 @@ const ACTIVITY_LOG = [
   { id: 4, action: "2FA enabled", timestamp: new Date(Date.now() - 1000 * 60 * 60 * 48), ip: "192.168.1.42", device: "Chrome / macOS", icon: ShieldCheck },
   { id: 5, action: "Deposit requested", timestamp: new Date(Date.now() - 1000 * 60 * 60 * 72), ip: "192.168.1.42", device: "Chrome / macOS", icon: TrendingUp },
   { id: 6, action: "Logged in", timestamp: new Date(Date.now() - 1000 * 60 * 60 * 96), ip: "172.16.0.8", device: "Firefox / Windows", icon: Laptop },
-  { id: 7, action: "KYC documents uploaded", timestamp: new Date(Date.now() - 1000 * 60 * 60 * 120), ip: "192.168.1.42", device: "Chrome / macOS", icon: FileCheck2 },
+  { id: 7, action: "Watchlist alert created", timestamp: new Date(Date.now() - 1000 * 60 * 60 * 120), ip: "192.168.1.42", device: "Chrome / macOS", icon: Star },
   { id: 8, action: "Logged in", timestamp: new Date(Date.now() - 1000 * 60 * 60 * 168), ip: "192.168.1.42", device: "Chrome / macOS", icon: Monitor },
   { id: 9, action: "Notification preferences updated", timestamp: new Date(Date.now() - 1000 * 60 * 60 * 200), ip: "192.168.1.42", device: "Chrome / macOS", icon: Bell },
   { id: 10, action: "Account created", timestamp: new Date(Date.now() - 1000 * 60 * 60 * 240), ip: "192.168.1.42", device: "Chrome / macOS", icon: User },
@@ -310,16 +239,15 @@ export function SettingsPage() {
   if (!user) return null;
 
   const totpEnabled = !!user.totpEnabled;
-  const kycStatus = user.kycStatus ?? "NONE";
-  const kycTier = user.kycTier ?? "STANDARD";
+  // KYC module temporarily disabled — fields remain on the User model for
+  // future reintroduction but are no longer surfaced in the investor UI.
 
   /* ---- Account completion calculation ---- */
   const completionItems = [
-    { label: "Profile filled", done: !!user.name && !!user.email, weight: 20 },
-    { label: "Email verified", done: !!user.email, weight: 20 },
-    { label: "2FA enabled", done: totpEnabled, weight: 20 },
-    { label: "KYC approved", done: kycStatus === "APPROVED", weight: 20 },
-    { label: "Strong password", done: false, weight: 20 },
+    { label: "Profile filled", done: !!user.name && !!user.email, weight: 25 },
+    { label: "Email verified", done: !!user.email, weight: 25 },
+    { label: "2FA enabled", done: totpEnabled, weight: 25 },
+    { label: "Strong password", done: false, weight: 25 },
   ];
   const completionPct = completionItems.reduce((acc, item) => acc + (item.done ? item.weight : 0), 0);
   const remainingItems = completionItems.filter((i) => !i.done);
@@ -332,7 +260,6 @@ export function SettingsPage() {
     { label: "Role-based access control (RBAC)", done: true, icon: ShieldCheck },
     { label: "Full audit trail of account activity", done: true, icon: Eye },
     { label: "Two-factor authentication (TOTP)", done: totpEnabled, icon: ShieldCheck },
-    { label: "KYC identity verification", done: kycStatus === "APPROVED", icon: FileCheck2 },
   ];
   const securityScore = Math.round(
     (securityChecks.filter((s) => s.done).length / securityChecks.length) * 100
@@ -405,15 +332,15 @@ export function SettingsPage() {
               </div>
               <Badge
                 className={`shimmer-badge text-[10px] ${
-                  kycTier === "ACCREDITED"
+                  user.role === "ADMIN"
                     ? "border-gold/40 bg-gold/15 text-gold"
-                    : "border-muted-foreground/30 bg-muted/10 text-muted-foreground"
+                    : "border-profit/30 bg-profit/10 text-profit"
                 }`}
               >
-                {kycTier === "ACCREDITED" ? (
-                  <><Award className="mr-1 h-3 w-3" /> Accredited</>
+                {user.role === "ADMIN" ? (
+                  <><Award className="mr-1 h-3 w-3" /> Administrator</>
                 ) : (
-                  <><User className="mr-1 h-3 w-3" /> Standard</>
+                  <><User className="mr-1 h-3 w-3" /> Investor</>
                 )}
               </Badge>
             </div>
@@ -478,49 +405,9 @@ export function SettingsPage() {
         </GlassCard>
       </FadeIn>
 
-      {/* ---- KYC Progress ---- */}
-      <FadeIn delay={0.05}>
-        <GlassCard className="p-5 hover-lift">
-          <div className="flex items-center justify-between gap-3 mb-4">
-            <div>
-              <h3 className="text-base font-semibold text-foreground">KYC Verification Progress</h3>
-              <p className="mt-0.5 text-sm text-muted-foreground">
-                {kycStatus === "APPROVED"
-                  ? "Your identity has been verified"
-                  : kycStatus === "PENDING"
-                    ? "Your documents are being reviewed"
-                    : kycStatus === "REJECTED"
-                      ? "Action required — please re-submit documents"
-                      : "Complete verification to unlock full access"}
-              </p>
-            </div>
-            <Badge
-              className={
-                kycStatus === "APPROVED"
-                  ? "border-profit/30 bg-profit/10 text-profit"
-                  : kycStatus === "PENDING"
-                    ? "border-gold/30 bg-gold/10 text-gold"
-                    : kycStatus === "REJECTED"
-                      ? "border-loss/30 bg-loss/10 text-loss"
-                      : "border-muted-foreground/30 bg-muted/10 text-muted-foreground"
-              }
-            >
-              {kycStatus === "APPROVED" && <CheckCircle2 className="mr-1 h-3 w-3" />}
-              {kycStatus === "PENDING" && <Clock className="mr-1 h-3 w-3" />}
-              {kycStatus === "REJECTED" && <AlertTriangle className="mr-1 h-3 w-3" />}
-              {kycStatus === "NONE" && <CircleEllipsis className="mr-1 h-3 w-3" />}
-              {kycStatus === "APPROVED" ? "Verified" : kycStatus === "PENDING" ? "In Review" : kycStatus === "REJECTED" ? "Rejected" : "Not Started"}
-            </Badge>
-          </div>
-          <KycStepIndicator status={kycStatus} />
-          {kycStatus === "REJECTED" && (
-            <div className="mt-3 flex items-start gap-2 rounded-lg border border-loss/20 bg-loss/5 p-3 text-xs text-loss">
-              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-              <span>Your documents were not accepted. Please review and re-upload in the KYC section below.</span>
-            </div>
-          )}
-        </GlassCard>
-      </FadeIn>
+      {/* KYC module temporarily disabled — progress card removed.
+          The KycStepIndicator component and verification UI are retained
+          in the codebase for clean future reintroduction. */}
 
       {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
       {/*  SECTION B: SECURITY CENTER (PROMINENT)                           */}
@@ -802,8 +689,7 @@ export function SettingsPage() {
             </AnimatePresence>
           </GlassCard>
 
-          {/* ---- KYC ---- */}
-          <KycSection />
+          {/* KYC module temporarily disabled — section removed. */}
 
           {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
           {/*  SECTION C: NOTIFICATION PREFERENCES                             */}
@@ -958,11 +844,11 @@ export function SettingsPage() {
               accent={totpEnabled ? "profit" : "gold"}
             />
             <MetricTile
-              label="KYC Status"
-              value={kycStatus === "APPROVED" ? "Verified" : kycStatus === "PENDING" ? "In Review" : kycStatus === "REJECTED" ? "Rejected" : "Not Started"}
-              sub={`Tier ${kycTier}`}
-              icon={<FileCheck2 className="h-4 w-4" />}
-              accent={kycStatus === "APPROVED" ? "profit" : kycStatus === "PENDING" ? "gold" : "loss"}
+              label="Last Login"
+              value={user.lastLogin ? fmtDate(user.lastLogin, true) : "—"}
+              sub={user.lastLogin ? "Most recent session" : "First login"}
+              icon={<Clock className="h-4 w-4" />}
+              accent="gold"
             />
             <MetricTile
               label="Notifications"

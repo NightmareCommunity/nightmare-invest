@@ -28,6 +28,7 @@ export type Route =
   | { name: "admin-documents" }
   | { name: "admin-system-health" }
   | { name: "admin-communications" }
+  | { name: "admin-settings" }
   // investor tools
   | { name: "watchlist" }
   | { name: "calculator" }
