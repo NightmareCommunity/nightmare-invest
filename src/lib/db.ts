@@ -2,7 +2,7 @@ import { PrismaClient } from "@prisma/client";
 
 // Bust the cached Prisma client when the schema version changes so newly added
 // models are picked up without requiring a manual dev-server restart.
-const PRISMA_SCHEMA_VERSION = "v11-statement-requests"; // bump this after schema changes (v11)
+const PRISMA_SCHEMA_VERSION = "v12-investments"; // bump this after schema changes (v12 — Investment + InvestmentHistory + Transaction.method)
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;

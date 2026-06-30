@@ -368,11 +368,64 @@ export function AdminSettings() {
         </GlassCard>
       </FadeIn>
 
-      {/* Notification Settings */}
+      {/* Deposit Limits */}
       <FadeIn delay={0.11}>
         <GlassCard className="p-6">
           <SettingsSectionHeader
             num="04"
+            title="Deposit Limits"
+            subtitle="Minimum deposit thresholds for INR and crypto"
+            icon={<DollarSign className="h-4 w-4" />}
+          />
+          <div className="mt-5 grid gap-5 sm:grid-cols-2">
+            <Field label="Minimum INR Deposit (UPI)" icon={<DollarSign className="h-3.5 w-3.5" />}>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">₹</span>
+                <Input
+                  type="number"
+                  step={100}
+                  min={0}
+                  value={Number(form.minInrDeposit ?? 1000)}
+                  onChange={(e) => update("minInrDeposit", parseInt(e.target.value) || 0)}
+                  className="border-border/60 bg-black/30 pl-7 font-metric"
+                />
+              </div>
+            </Field>
+            <Field label="Minimum Crypto Deposit (USD equivalent)" icon={<DollarSign className="h-3.5 w-3.5" />}>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">$</span>
+                <Input
+                  type="number"
+                  step={1}
+                  min={0}
+                  value={Number(form.minCryptoDepositUsd ?? 10)}
+                  onChange={(e) => update("minCryptoDepositUsd", parseFloat(e.target.value) || 0)}
+                  className="border-border/60 bg-black/30 pl-7 font-metric"
+                />
+              </div>
+            </Field>
+          </div>
+          <Separator className="my-5 bg-border/40" />
+          <div className="rounded-lg border border-gold/15 bg-gold/5 p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <CheckCircle2 className="h-4 w-4 text-gold" />
+              <span className="text-sm font-semibold text-gold">Supported Methods</span>
+            </div>
+            <div className="text-xs text-muted-foreground leading-relaxed">
+              <span className="text-foreground">Supported Crypto:</span>{" "}
+              <span className="font-mono text-gold/90">BTC · LTC · USDT (TRC20)</span>
+              <br />
+              Validation uses live CoinGecko prices. USDT validated 1:1 against USD.
+            </div>
+          </div>
+        </GlassCard>
+      </FadeIn>
+
+      {/* Notification Settings */}
+      <FadeIn delay={0.13}>
+        <GlassCard className="p-6">
+          <SettingsSectionHeader
+            num="05"
             title="Notifications"
             subtitle="Admin alert routing and investor notifications"
             icon={<Bell className="h-4 w-4" />}
@@ -414,10 +467,10 @@ export function AdminSettings() {
       </FadeIn>
 
       {/* Danger Zone */}
-      <FadeIn delay={0.13}>
+      <FadeIn delay={0.15}>
         <GlassCard className="border-loss/20 p-6">
           <SettingsSectionHeader
-            num="05"
+            num="06"
             title="Danger Zone"
             subtitle="Irreversible platform operations"
             icon={<AlertTriangle className="h-4 w-4" />}

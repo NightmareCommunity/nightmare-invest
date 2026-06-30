@@ -54,6 +54,7 @@ model User {
   documents        Document[]
   statementRequests          StatementRequest[] @relation("StatementRequestRequester")
   processedStatementRequests StatementRequest[] @relation("StatementRequestProcessor")
+  investments      Investment[]
 }
 
 // ----------------------------- Fund ------------------------------
@@ -73,6 +74,7 @@ model Fund {
   holdings     Holding[]
   transactions Transaction[]
   allocations  Allocation[]
+  investments  Investment[]
 }
 
 // Allocation of the fund across assets (admin controlled)
@@ -132,6 +134,57 @@ model Transaction {
   processor  User?     @relation("ProcessedBy", fields: [processedBy], references: [id])
   createdAt  DateTime  @default(now())
   processedAt DateTime?
+
+  // Deposit / withdrawal method + optional crypto amount (for minimum validation)
+  method     String    @default("UPI") // UPI | BTC | LTC | USDT
+  cryptoAmount Float?  // raw crypto amount (e.g. 0.0005 BTC); null for UPI
+  usdValue   Float?    // USD equivalent at request time (for crypto methods)
+}
+
+// ------------------------- Investments ---------------------------
+// Admin-managed investments — admin creates positions on behalf of investors.
+// Tracks invested capital, current value, profit/loss, ROI and lifecycle.
+model Investment {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fundId          String
+  fund            Fund     @relation(fields: [fundId], references: [id], onDelete: Cascade)
+  investmentName  String
+  investedAmount  Float
+  currentValue    Float
+  profitLoss      Float    @default(0)
+  roiPercent      Float    @default(0)
+  startDate       DateTime
+  endDate         DateTime?
+  durationDays    Int      @default(0)
+  status          String   @default("PENDING") // PENDING | ACTIVE | COMPLETED | CLOSED | CANCELLED
+  notes           String?
+  createdBy       String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  history         InvestmentHistory[]
+
+  @@index([userId])
+  @@index([fundId])
+  @@index([status])
+}
+
+// --------------------- Investment History ------------------------
+// Append-only audit trail of value/ROI changes for each investment.
+model InvestmentHistory {
+  id            String   @id @default(cuid())
+  investmentId  String
+  investment    Investment @relation(fields: [investmentId], references: [id], onDelete: Cascade)
+  previousValue Float
+  newValue      Float
+  previousRoi   Float
+  newRoi        Float
+  updatedBy     String?
+  createdAt     DateTime @default(now())
+
+  @@index([investmentId])
 }
 
 // --------------------------- Ledger ------------------------------
@@ -141,7 +194,7 @@ model LedgerEntry {
   user         User     @relation("LedgerUser", fields: [userId], references: [id], onDelete: Cascade)
   accountId    String   // user-fund account key
   amount       Float    // signed (+ deposit, - withdrawal)
-  type         String   // DEPOSIT | WITHDRAWAL | NAV_ADJUST | FEE
+  type         String   // DEPOSIT | WITHDRAWAL | NAV_ADJUST | FEE | INVESTMENT_ALLOC | INVESTMENT_RELEASE
   balanceAfter Float
   reference    String?  // transaction id
   createdAt    DateTime @default(now())

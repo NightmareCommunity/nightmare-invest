@@ -5,6 +5,8 @@ const COINS: Record<string, { id: string; symbol: string; name: string }> = {
   BTC: { id: "bitcoin", symbol: "BTC", name: "Bitcoin" },
   ETH: { id: "ethereum", symbol: "ETH", name: "Ethereum" },
   SOL: { id: "solana", symbol: "SOL", name: "Solana" },
+  LTC: { id: "litecoin", symbol: "LTC", name: "Litecoin" },
+  USDT: { id: "tether", symbol: "USDT", name: "Tether" },
 };
 
 const COINGECKO_BASE = "https://api.coingecko.com/api/v3";
@@ -60,7 +62,57 @@ export async function fetchAndCachePrices(): Promise<PriceResult[]> {
       }
     }
   }
+  // Seed sensible fallbacks for any still-missing coins (USDT pegged to $1)
+  const SEED_FALLBACK: Record<string, number> = { BTC: 67000, ETH: 3500, SOL: 180, LTC: 85, USDT: 1 };
+  for (const key of Object.keys(COINS)) {
+    const coin = COINS[key];
+    if (results.find((r) => r.symbol === coin.symbol)) continue;
+    const fallback = SEED_FALLBACK[key] ?? 0;
+    results.push({ symbol: coin.symbol, name: coin.name, priceUsd: fallback, change24h: 0 });
+  }
   return results;
+}
+
+/**
+ * Get the live USD price for a single crypto symbol (BTC, LTC, USDT, ETH, SOL).
+ * Tries CoinGecko first, then cached DB value, then a hardcoded fallback.
+ * Used by deposit minimum validation.
+ */
+export async function getCryptoPriceUsd(symbol: string): Promise<number> {
+  const sym = symbol.toUpperCase();
+  const coin = COINS[sym];
+  if (!coin) throw new Error(`Unsupported crypto: ${symbol}`);
+
+  // Try fresh CoinGecko fetch for this single coin (cached 30s via fetch revalidate)
+  try {
+    const url = `${COINGECKO_BASE}/simple/price?ids=${coin.id}&vs_currencies=usd`;
+    const res = await fetch(url, {
+      headers: { accept: "application/json" },
+      next: { revalidate: 30 },
+    });
+    if (res.ok) {
+      const data = (await res.json()) as Record<string, { usd: number }>;
+      if (data[coin.id]?.usd) {
+        // Persist to cache
+        await db.marketPrice.upsert({
+          where: { symbol: coin.id },
+          update: { priceUsd: data[coin.id].usd, name: coin.name, updatedAt: new Date() },
+          create: { symbol: coin.id, name: coin.name, priceUsd: data[coin.id].usd, change24h: 0 },
+        });
+        return data[coin.id].usd;
+      }
+    }
+  } catch {
+    /* fall through to cache */
+  }
+
+  // Fall back to cached DB value
+  const cached = await db.marketPrice.findUnique({ where: { symbol: coin.id } });
+  if (cached) return cached.priceUsd;
+
+  // Hardcoded last-resort fallback
+  const FALLBACK: Record<string, number> = { BTC: 67000, ETH: 3500, SOL: 180, LTC: 85, USDT: 1 };
+  return FALLBACK[sym] ?? 0;
 }
 
 /** Return cached prices (used by API routes that don't want to wait for upstream). */

@@ -27,7 +27,10 @@ export type RealtimeEvent =
   | "new_document"
   | "kyc_approved"
   | "kyc_rejected"
-  | "fund_update";
+  | "fund_update"
+  | "investment_closed"
+  | "investment_cancelled"
+  | "investment_updated";
 
 interface NotifyBody {
   userIds: string[] | "all";

@@ -14,6 +14,33 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Check, X, ArrowDownToLine, ArrowUpFromLine, Clock, Inbox, ShieldAlert, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
+/* ──────────────────────────────────────────────────────────────────────────────
+   Method badge — UPI / BTC / LTC / USDT
+   ────────────────────────────────────────────────────────────────────────────── */
+function MethodBadge({ method, cryptoAmount }: { method?: string | null; cryptoAmount?: number | null }) {
+  const m = (method ?? "UPI").toUpperCase();
+  const map: Record<string, { label: string; symbol?: string; cls: string }> = {
+    UPI:  { label: "UPI",  cls: "border-gold/30 bg-gold/10 text-gold" },
+    BTC:  { label: "BTC",  symbol: "₿", cls: "border-warning/30 bg-warning/10 text-warning" },
+    LTC:  { label: "LTC",  symbol: "Ł", cls: "border-info/30 bg-info/10 text-info" },
+    USDT: { label: "USDT", symbol: "₮", cls: "border-profit/30 bg-profit/10 text-profit" },
+  };
+  const cfg = map[m] ?? map.UPI;
+  return (
+    <span className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-medium ${cfg.cls}`}>
+      {cfg.symbol && <span className="font-semibold">{cfg.symbol}</span>}
+      {cfg.label}
+    </span>
+  );
+}
+
+function formatCryptoAmount(method: string | null | undefined, amount: number | null | undefined): string | null {
+  if (!amount || !method) return null;
+  const m = method.toUpperCase();
+  const decimals = m === "BTC" ? 8 : m === "LTC" ? 6 : 2;
+  return `${amount.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: decimals })} ${m}`;
+}
+
 export function AdminTransactions() {
   const qc = useQueryClient();
   const [tab, setTab] = useState("PENDING");
@@ -197,6 +224,19 @@ export function AdminTransactions() {
                       <StatusPill status={t.status} />
                     </div>
                     <div className="mt-1 font-metric text-lg font-bold text-foreground">{fmtUSD(t.amount)}</div>
+                    {(t.method ?? "UPI").toUpperCase() === "UPI" ? (
+                      <span className="mt-0.5 inline-block rounded-sm bg-gold/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-gold/80">INR</span>
+                    ) : (
+                      t.cryptoAmount && (
+                        <div className="mt-0.5 text-[11px] text-muted-foreground">
+                          {formatCryptoAmount(t.method, t.cryptoAmount)}
+                        </div>
+                      )
+                    )}
+                  </div>
+                  <div className="min-w-[90px]">
+                    <div className="text-xs text-muted-foreground">Method</div>
+                    <div className="mt-1"><MethodBadge method={t.method} cryptoAmount={t.cryptoAmount} /></div>
                   </div>
                   <div className="min-w-[180px]">
                     <div className="text-xs text-muted-foreground">Investor</div>
@@ -389,6 +429,20 @@ export function AdminTransactions() {
                 <div>
                   <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Type</div>
                   <div className="mt-1"><TypePill type={reviewing.type} /></div>
+                </div>
+                <div>
+                  <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Method</div>
+                  <div className="mt-1 flex flex-wrap items-center gap-2">
+                    <MethodBadge method={reviewing.method} cryptoAmount={reviewing.cryptoAmount} />
+                    {reviewing.cryptoAmount && (
+                      <span className="text-[11px] text-muted-foreground">
+                        {formatCryptoAmount(reviewing.method, reviewing.cryptoAmount)}
+                      </span>
+                    )}
+                    {(reviewing.method ?? "UPI").toUpperCase() === "UPI" && (
+                      <span className="text-[11px] text-muted-foreground">INR via UPI</span>
+                    )}
+                  </div>
                 </div>
                 <div>
                   <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Investor</div>

@@ -14,6 +14,7 @@ import { motion } from "framer-motion";
 import {
   ArrowDownToLine, ArrowUpFromLine, Plus, Info, Search, Filter,
   Download, CheckCircle2, XCircle, Clock, FileDown, ShieldCheck,
+  AlertTriangle, Bitcoin, Coins, Banknote,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -50,6 +51,49 @@ function AnimatedStatusBadge({ status }: { status: string }) {
 }
 
 /* ------------------------------------------------------------------ */
+/*  Deposit Method Configuration                                       */
+/* ------------------------------------------------------------------ */
+type DepositMethod = "UPI" | "BTC" | "LTC" | "USDT";
+
+interface MethodMeta {
+  label: string;
+  prefix: string;
+  placeholder: string;
+  quickAmounts: number[];
+  minInr?: number;
+  minUsd?: number;
+}
+
+const METHOD_META: Record<DepositMethod, MethodMeta> = {
+  UPI: { label: "Amount (INR ₹)", prefix: "₹", placeholder: "1000", quickAmounts: [1000, 5000, 10000, 50000], minInr: 1000 },
+  BTC: { label: "Amount (BTC)", prefix: "₿", placeholder: "0.00015", quickAmounts: [0.0001, 0.0005, 0.001, 0.005], minUsd: 10 },
+  LTC: { label: "Amount (LTC)", prefix: "Ł", placeholder: "0.12", quickAmounts: [0.01, 0.05, 0.1, 0.5], minUsd: 10 },
+  USDT: { label: "Amount (USDT)", prefix: "₮", placeholder: "10", quickAmounts: [10, 50, 100, 500], minUsd: 10 },
+};
+
+function MethodPill({ method }: { method?: string | null }) {
+  if (!method || method === "UPI") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-md border border-info/30 bg-info/10 px-2 py-0.5 text-[11px] font-medium text-info">
+        <Banknote className="h-3 w-3" /> UPI
+      </span>
+    );
+  }
+  const cls: Record<string, string> = {
+    BTC: "border-amber-500/30 bg-amber-500/10 text-amber-400",
+    LTC: "border-slate-400/30 bg-slate-400/10 text-slate-300",
+    USDT: "border-emerald-500/30 bg-emerald-500/10 text-emerald-400",
+  };
+  const sym: Record<string, string> = { BTC: "₿", LTC: "Ł", USDT: "₮" };
+  return (
+    <span className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-medium ${cls[method] ?? "border-border/60 bg-muted/10 text-muted-foreground"}`}>
+      {method === "BTC" ? <Bitcoin className="h-3 w-3" /> : method === "LTC" ? <Coins className="h-3 w-3" /> : <span className="text-[11px] leading-none">{sym[method] ?? ""}</span>}
+      {method}
+    </span>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /*  High-Value Threshold for 2FA                                       */
 /* ------------------------------------------------------------------ */
 const HIGH_VALUE_THRESHOLD = 50000;
@@ -67,6 +111,7 @@ export function TransactionsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState<"ALL" | "DEPOSIT" | "WITHDRAWAL">("ALL");
   const [filterStatus, setFilterStatus] = useState<"ALL" | "PENDING" | "APPROVED" | "REJECTED">("ALL");
+  const [method, setMethod] = useState<DepositMethod>("UPI");
 
   // 2FA verification state
   const [show2FA, setShow2FA] = useState(false);
@@ -75,6 +120,15 @@ export function TransactionsPage() {
   const { data: portfolio } = useQuery<any>({ queryKey: ["portfolio"], queryFn: () => api.get("/api/portfolio") });
   const { data: userData } = useQuery<any>({ queryKey: ["auth-me"], queryFn: () => api.get("/api/auth/me") });
   const { data, isLoading } = useQuery<any>({ queryKey: ["my-transactions"], queryFn: () => api.get("/api/transactions") });
+  const { data: market } = useQuery<{ prices: { symbol: string; priceUsd: number }[] }>({
+    queryKey: ["market-prices"],
+    queryFn: () => api.get("/api/market/prices"),
+  });
+  const priceMap = useMemo(() => {
+    const map: Record<string, number> = { USDT: 1 };
+    for (const p of market?.prices ?? []) map[p.symbol] = p.priceUsd;
+    return map;
+  }, [market]);
 
   const userHas2FA = userData?.user?.totpEnabled ?? false;
 
@@ -82,18 +136,24 @@ export function TransactionsPage() {
     if (!open) return;
     const amt = parseFloat(amount);
     if (!amt || amt <= 0) return toast.error("Enter a valid amount");
+    const isCryptoDeposit = open === "DEPOSIT" && method !== "UPI";
+    const cryptoPrice = isCryptoDeposit ? (priceMap[method] ?? 0) : 1;
+    const usdEquivalent = isCryptoDeposit ? amt * cryptoPrice : amt;
     setSubmitting(true);
     try {
       await api.post("/api/transactions", {
         type: open,
-        amount: amt,
+        amount: isCryptoDeposit ? usdEquivalent : amt,
         fundId: portfolio.fund.id,
+        method: open === "DEPOSIT" ? method : "UPI",
+        cryptoAmount: isCryptoDeposit ? amt : undefined,
         notes: notes || undefined,
       });
       toast.success(`${open === "DEPOSIT" ? "Deposit" : "Withdrawal"} request submitted for review`);
       setOpen(null);
       setAmount("");
       setNotes("");
+      setMethod("UPI");
       qc.invalidateQueries({ queryKey: ["my-transactions"] });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed");
@@ -102,21 +162,26 @@ export function TransactionsPage() {
     }
   };
 
-  // Handle open dialog — check for 2FA requirement on high-value operations
+  // Handle open dialog — reset method state, 2FA check happens on submit
   const handleOpenDialog = (type: "DEPOSIT" | "WITHDRAWAL") => {
+    setMethod("UPI");
+    setAmount("");
+    setNotes("");
     setOpen(type);
-    // We don't check 2FA here because amount hasn't been entered yet.
-    // The 2FA check happens on submit.
   };
 
-  // Enhanced submit with 2FA check
+  // Enhanced submit with 2FA check — for crypto deposits, threshold uses USD equivalent
   const handleSubmitWith2FA = () => {
     if (!open) return;
     const amt = parseFloat(amount);
     if (!amt || amt <= 0) return toast.error("Enter a valid amount");
 
+    const isCryptoDeposit = open === "DEPOSIT" && method !== "UPI";
+    const cryptoPrice = isCryptoDeposit ? (priceMap[method] ?? 0) : 1;
+    const usdEquivalent = isCryptoDeposit ? amt * cryptoPrice : amt;
+
     // Check if 2FA is required for high-value operations
-    if (amt >= HIGH_VALUE_THRESHOLD) {
+    if (usdEquivalent >= HIGH_VALUE_THRESHOLD) {
       // Need 2FA verification
       setPending2FAAction(open);
       setShow2FA(true);
@@ -160,10 +225,12 @@ export function TransactionsPage() {
 
   // Export CSV handler
   const exportCSV = () => {
-    const headers = ["Type", "Amount", "Status", "Date", "Processed By", "Notes"];
+    const headers = ["Type", "Amount", "Method", "Crypto Amount", "Status", "Date", "Processed By", "Notes"];
     const rows = txns.map((t: any) => [
       t.type,
       t.amount,
+      t.method ?? "UPI",
+      t.cryptoAmount ?? "",
       t.status,
       fmtDate(t.createdAt, true),
       t.processor?.name ?? "—",
@@ -181,7 +248,14 @@ export function TransactionsPage() {
   };
 
   const currentAmount = parseFloat(amount) || 0;
-  const isHighValue = currentAmount >= HIGH_VALUE_THRESHOLD;
+  const isCryptoDeposit = open === "DEPOSIT" && method !== "UPI";
+  const cryptoPrice = isCryptoDeposit ? (priceMap[method] ?? 0) : 1;
+  const usdEquivalent = isCryptoDeposit ? currentAmount * cryptoPrice : currentAmount;
+  const isHighValue = usdEquivalent >= HIGH_VALUE_THRESHOLD;
+  const methodMeta = METHOD_META[method];
+  const minInrMet = method === "UPI" ? currentAmount >= (methodMeta.minInr ?? 1000) : true;
+  const minUsdMet = method !== "UPI" ? usdEquivalent >= (methodMeta.minUsd ?? 10) : true;
+  const meetsMinimum = open === "DEPOSIT" ? (minInrMet && minUsdMet && currentAmount > 0) : currentAmount > 0;
 
   if (isLoading) {
     return (
@@ -331,6 +405,7 @@ export function TransactionsPage() {
                 <tr className="border-b border-border/60 text-left text-[11px] uppercase tracking-wider text-muted-foreground">
                   <th className="pb-2 pr-4 font-medium">Type</th>
                   <th className="pb-2 pr-4 font-medium">Amount</th>
+                  <th className="pb-2 pr-4 font-medium">Method</th>
                   <th className="pb-2 pr-4 font-medium">Status</th>
                   <th className="pb-2 pr-4 font-medium">Date</th>
                   <th className="pb-2 pr-4 font-medium">Processed By</th>
@@ -347,7 +422,16 @@ export function TransactionsPage() {
                     className={`investor-row-hover border-b border-border/40 last:border-0 ${idx % 2 === 0 ? "bg-white/[0.01]" : ""}`}
                   >
                     <td className="py-3 pr-4"><TypePill type={t.type} /></td>
-                    <td className="py-3 pr-4 font-metric font-semibold">{fmtUSD(t.amount)}</td>
+                    <td className="py-3 pr-4 font-metric font-semibold">
+                      <div>{fmtUSD(t.amount)}</div>
+                      {t.cryptoAmount ? (
+                        <div className="text-[10.5px] font-normal text-muted-foreground">
+                          {t.method === "BTC" ? "₿" : t.method === "LTC" ? "Ł" : t.method === "USDT" ? "₮" : ""}
+                          {t.cryptoAmount} {t.method}
+                        </div>
+                      ) : null}
+                    </td>
+                    <td className="py-3 pr-4"><MethodPill method={t.method} /></td>
                     <td className="py-3 pr-4"><AnimatedStatusBadge status={t.status} /></td>
                     <td className="py-3 pr-4 text-muted-foreground">{fmtDate(t.createdAt, true)}</td>
                     <td className="py-3 pr-4 text-muted-foreground">{t.processor?.name ?? "—"}</td>
@@ -355,7 +439,7 @@ export function TransactionsPage() {
                   </motion.tr>
                 ))}
                 {txns.length === 0 && allTxns.length > 0 && (
-                  <tr><td colSpan={6}>
+                  <tr><td colSpan={7}>
                     <div className="flex flex-col items-center gap-2 py-8 text-center">
                       <Search className="h-6 w-6 text-muted-foreground/40" />
                       <p className="text-sm text-muted-foreground">No transactions match your filters</p>
@@ -366,7 +450,7 @@ export function TransactionsPage() {
                   </td></tr>
                 )}
                 {allTxns.length === 0 && (
-                  <tr><td colSpan={6}>
+                  <tr><td colSpan={7}>
                     <EmptyState
                       icon={<ArrowDownToLine className="h-7 w-7" />}
                       title="Begin Your Investment Journey"
@@ -400,23 +484,126 @@ export function TransactionsPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
+            {/* Minimum deposit warning card — DEPOSITS only */}
+            {open === "DEPOSIT" && (
+              <div className="rounded-lg border border-gold/30 bg-gold/5 p-3">
+                <div className="flex items-start gap-2.5">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-gold" />
+                  <div className="flex-1">
+                    <div className="text-xs font-semibold uppercase tracking-wider text-gold">Minimum Deposits</div>
+                    <ul className="mt-1 space-y-0.5 text-[11px] text-foreground/80">
+                      <li>• INR (UPI): <span className="font-metric font-semibold text-gold">₹1000</span></li>
+                      <li>• Crypto: <span className="font-metric font-semibold text-gold">$10 equivalent</span> <span className="text-muted-foreground">(BTC · LTC · USDT TRC20)</span></li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Method selector — DEPOSITS only (withdrawals stay UPI) */}
+            {open === "DEPOSIT" && (
+              <div className="space-y-1.5">
+                <Label className="text-xs uppercase tracking-wider text-muted-foreground">Deposit Method</Label>
+                <div className="flex flex-wrap gap-1.5">
+                  {(Object.keys(METHOD_META) as DepositMethod[]).map((m) => (
+                    <button
+                      key={m}
+                      onClick={() => { setMethod(m); setAmount(""); }}
+                      className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-medium transition-all press-scale ${
+                        method === m
+                          ? "border-gold/40 bg-gold/15 text-gold shadow-[0_0_12px_rgba(212,175,55,0.15)]"
+                          : "border-border/60 bg-black/20 text-muted-foreground hover:border-gold/30 hover:text-foreground"
+                      }`}
+                    >
+                      {m === "UPI" && <Banknote className="h-3.5 w-3.5" />}
+                      {m === "BTC" && <Bitcoin className="h-3.5 w-3.5" />}
+                      {m === "LTC" && <Coins className="h-3.5 w-3.5" />}
+                      {m === "USDT" && <span className="text-[11px] leading-none">₮</span>}
+                      {m}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Amount input — method-aware */}
             <div className="space-y-1.5">
-              <Label htmlFor="amt" className="text-xs uppercase tracking-wider text-muted-foreground">Amount (USD)</Label>
-              <Input
-                id="amt"
-                type="number"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                placeholder="50000"
-                className="border-border/60 bg-black/30 font-metric text-lg"
-              />
+              <Label htmlFor="amt" className="text-xs uppercase tracking-wider text-muted-foreground">
+                {open === "DEPOSIT" ? methodMeta.label : "Amount (USD)"}
+              </Label>
+              <div className="relative">
+                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 font-metric text-lg font-semibold text-gold/80">
+                  {open === "DEPOSIT" ? methodMeta.prefix : "$"}
+                </span>
+                <Input
+                  id="amt"
+                  type="number"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  placeholder={open === "DEPOSIT" ? methodMeta.placeholder : "50000"}
+                  className="border-border/60 bg-black/30 pl-8 font-metric text-lg"
+                />
+              </div>
+
+              {/* Live USD equivalent for crypto deposits */}
+              {isCryptoDeposit && currentAmount > 0 && (
+                <div className="text-[11px] text-muted-foreground">
+                  ≈ <span className="font-metric font-semibold text-gold">{fmtUSD(usdEquivalent, { decimals: 2 })}</span> USD
+                  {method !== "USDT" && (
+                    <span className="ml-1.5 text-muted-foreground/70">
+                      (@ {fmtUSD(cryptoPrice, { decimals: cryptoPrice >= 100 ? 0 : 2 })} / {method})
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {/* Method-aware quick amounts */}
               {open === "DEPOSIT" && portfolio && (
                 <div className="flex flex-wrap gap-1.5 pt-1">
+                  {methodMeta.quickAmounts.map((v) => (
+                    <button
+                      key={v}
+                      onClick={() => setAmount(String(v))}
+                      className="rounded-md border border-border/60 px-2 py-0.5 text-xs text-muted-foreground hover:border-gold/40 hover:text-gold press-scale"
+                    >
+                      {method === "UPI" ? `₹${v.toLocaleString()}` : method === "USDT" ? `₮${v}` : `${methodMeta.prefix}${v}`}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {open === "WITHDRAWAL" && portfolio && (
+                <div className="flex flex-wrap gap-1.5 pt-1">
                   {[50000, 100000, 250000, 500000].map((v) => (
-                    <button key={v} onClick={() => setAmount(String(v))} className="rounded-md border border-border/60 px-2 py-0.5 text-xs text-muted-foreground hover:border-gold/40 hover:text-gold press-scale">
+                    <button
+                      key={v}
+                      onClick={() => setAmount(String(v))}
+                      className="rounded-md border border-border/60 px-2 py-0.5 text-xs text-muted-foreground hover:border-gold/40 hover:text-gold press-scale"
+                    >
                       {fmtUSD(v, { compact: true })}
                     </button>
                   ))}
+                </div>
+              )}
+
+              {/* Live minimum validation feedback — DEPOSITS only */}
+              {open === "DEPOSIT" && currentAmount > 0 && (
+                <div className="flex items-center gap-1.5 pt-0.5 text-[11px]">
+                  {meetsMinimum ? (
+                    <>
+                      <CheckCircle2 className="h-3 w-3 text-profit" />
+                      <span className="text-profit">Meets minimum requirement</span>
+                    </>
+                  ) : method === "UPI" ? (
+                    <>
+                      <AlertTriangle className="h-3 w-3 text-loss" />
+                      <span className="text-loss">Minimum INR deposit is ₹1000</span>
+                    </>
+                  ) : (
+                    <>
+                      <AlertTriangle className="h-3 w-3 text-loss" />
+                      <span className="text-loss">Minimum crypto deposit is $10</span>
+                    </>
+                  )}
                 </div>
               )}
             </div>
@@ -447,7 +634,11 @@ export function TransactionsPage() {
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setOpen(null)}>Cancel</Button>
-            <Button onClick={handleSubmitWith2FA} disabled={submitting} className="bg-gold-gradient text-black hover:opacity-90 press-scale">
+            <Button
+              onClick={handleSubmitWith2FA}
+              disabled={submitting || (open === "DEPOSIT" && !meetsMinimum)}
+              className="bg-gold-gradient text-black hover:opacity-90 press-scale"
+            >
               {submitting ? "Submitting…" : isHighValue ? "Submit with 2FA" : "Submit Request"}
             </Button>
           </DialogFooter>
@@ -460,7 +651,13 @@ export function TransactionsPage() {
         onClose={() => { setShow2FA(false); setPending2FAAction(null); }}
         onVerified={handle2FAVerified}
         userHas2FA={userHas2FA}
-        purpose={`Verify to proceed with ${pending2FAAction?.toLowerCase() ?? "transaction"} of ${fmtUSD(currentAmount)}`}
+        purpose={`Verify to proceed with ${pending2FAAction?.toLowerCase() ?? "transaction"} of ${
+          isCryptoDeposit
+            ? fmtUSD(usdEquivalent, { decimals: 2 })
+            : open === "DEPOSIT" && method === "UPI"
+              ? `₹${currentAmount.toLocaleString()}`
+              : fmtUSD(currentAmount)
+        }`}
       />
     </div>
   );

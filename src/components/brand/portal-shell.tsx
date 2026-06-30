@@ -13,7 +13,7 @@ import {
   LayoutDashboard, Wallet, ArrowLeftRight, FileText, Settings,
   Users, TrendingUp, Database, ScrollText, History, Menu, X, LogOut,
   ChevronDown, ShieldCheck, BarChart3, FileCheck2, Megaphone,
-  Star, Calculator, Activity, Mail, FolderArchive,
+  Star, Calculator, Activity, Mail, FolderArchive, PiggyBank,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { fmtDate } from "@/lib/format";
@@ -30,6 +30,7 @@ const INVESTOR_NAV: NavItem[] = [
   { label: "Dashboard", route: { name: "dashboard" }, icon: LayoutDashboard, description: "Portfolio overview & metrics" },
   { label: "Portfolio", route: { name: "portfolio" }, icon: Wallet, description: "Holdings, exposures & allocations" },
   { label: "Analytics", route: { name: "analytics" }, icon: BarChart3, description: "Advanced risk & performance analytics" },
+  { label: "My Investments", route: { name: "investments" }, icon: PiggyBank, description: "Your active investment positions & performance" },
   { label: "Watchlist", route: { name: "watchlist" }, icon: Star, description: "Track favorite crypto assets & price alerts" },
   { label: "Calculator", route: { name: "calculator" }, icon: Calculator, description: "Profit/loss projection calculator" },
   { label: "Inbox", route: { name: "inbox" }, icon: Mail, description: "Messages & announcements from the fund" },
@@ -42,9 +43,10 @@ const INVESTOR_NAV: NavItem[] = [
 const ADMIN_NAV: NavItem[] = [
   { label: "Dashboard", route: { name: "admin-dashboard" }, icon: LayoutDashboard, description: "AUM, NAV trend & capital flows" },
   { label: "Users", route: { name: "admin-investors" }, icon: Users, description: "Directory & user management" },
+  { label: "Deposits", route: { name: "admin-transactions" }, icon: ArrowLeftRight, description: "Review pending deposits & withdrawals", badge: "pendingAdmin" },
+  { label: "Investments", route: { name: "admin-investments" }, icon: PiggyBank, description: "Create & manage investor investment positions" },
   { label: "Fund", route: { name: "admin-fund" }, icon: TrendingUp, description: "Fund metadata & allocation editor" },
   { label: "NAV Management", route: { name: "admin-nav" }, icon: Database, description: "Publish NAV & history" },
-  { label: "Transactions", route: { name: "admin-transactions" }, icon: ArrowLeftRight, description: "Review pending deposits & withdrawals", badge: "pendingAdmin" },
   // KYC Review removed — module temporarily disabled. Route retained in store
   // for clean future reintroduction.
   { label: "Fund Updates", route: { name: "admin-fund-updates" }, icon: Megaphone, description: "Publish news & updates for investors" },

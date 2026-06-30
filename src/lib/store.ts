@@ -12,6 +12,7 @@ export type Route =
   | { name: "portfolio" }
   | { name: "analytics" }
   | { name: "transactions" }
+  | { name: "investments" }
   | { name: "reports" }
   | { name: "documents" }
   | { name: "settings" }
@@ -21,6 +22,7 @@ export type Route =
   | { name: "admin-fund" }
   | { name: "admin-nav" }
   | { name: "admin-transactions" }
+  | { name: "admin-investments" }
   | { name: "admin-kyc" }
   | { name: "admin-ledger" }
   | { name: "admin-audit" }

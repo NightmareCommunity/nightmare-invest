@@ -1946,3 +1946,162 @@ Stage Summary:
 - **New files**: scripts/seed-admin.ts, src/app/api/bootstrap/route.ts, src/app/api/admin/settings/route.ts, src/app/api/admin/settings/stats/route.ts, src/app/api/admin/nav/upload-csv/route.ts, src/components/admin/settings.tsx.
 - **Modified files**: prisma/schema.prisma (+SystemSetting), package.json (+seed:admin script), src/app/page.tsx, src/lib/store.ts, src/lib/api-client.ts (unchanged), src/app/api/auth/login/route.ts, src/components/public/auth-screen.tsx, src/components/investor/settings.tsx, src/components/brand/onboarding-wizard.tsx, src/components/brand/portal-shell.tsx, src/components/admin/nav.tsx.
 - **Unresolved/known**: WebSocket realtime notifications show timeout on direct localhost (works through Caddy gateway — pre-existing, not a regression). Agent-browser cannot interact with hidden file inputs (CSV upload UI tested via API instead — real users unaffected). Welcome modal focus-trapping with agent-browser (pre-existing, real users unaffected).
+
+---
+Task ID: 7
+Agent: full-stack-developer (Backend)
+Task: Build investment management API routes + deposit minimum validation
+
+Work Log:
+- Read worklog + existing lib helpers (`auth.ts`, `api.ts`, `audit.ts`, `analytics.ts`, `realtime.ts`, `market.ts`, `db.ts`), Prisma schema, and the admin transaction approve route to match patterns exactly.
+- Updated `/src/app/api/transactions/route.ts` POST: wrapped in `safeHandler`; added `method` (UPI|BTC|LTC|USDT, default UPI) + `cryptoAmount` fields; reads `minInrDeposit` (₹1000) and `minCryptoDepositUsd` ($10) from SystemSetting; UPI deposits enforce `amount >= minInrDeposit`; crypto deposits compute `usdValue` via `getCryptoPriceUsd` for BTC/LTC (USDT pegged 1:1) and enforce `usdValue >= minCryptoDepositUsd`; withdrawals keep existing balance check with NO minimum enforcement; stores `method`/`cryptoAmount`/`usdValue` on the Transaction; `audit()` metadata now includes method/cryptoAmount/usdValue. GET handler untouched.
+- Created `/src/app/api/admin/investments/route.ts`: GET lists all investments (user + fund + latest history) with `?status=` and `?q=` (search investmentName or user email) filters; POST creates investment (validates user+fund exist, defaults currentValue=investedAmount, auto-calcs profitLoss/roiPercent, status=ACTIVE, computes durationDays from start/end if not given, createdBy=admin.id) inside `db.$transaction` that also writes a `LedgerEntry` with `type: INVESTMENT_ALLOC`, `amount: -investedAmount`; `audit()` → `INVESTMENT_CREATED`.
+- Created `/src/app/api/admin/investments/[id]/route.ts`: GET returns single investment (user + fund + full history desc); PUT partial-updates fields; if `currentValue` or `investedAmount` changes, recalcs profitLoss/roiPercent; if `currentValue` changed, appends `InvestmentHistory` inside `db.$transaction`; `audit()` → `INVESTMENT_UPDATED` with `changes` object.
+- Created `/src/app/api/admin/investments/[id]/close/route.ts`: POST closes ACTIVE/PENDING; optional `finalValue` recalcs P/L+ROI and writes InvestmentHistory; status→CLOSED, endDate→now if not set; in `db.$transaction` writes `LedgerEntry` `type: INVESTMENT_RELEASE`, `amount: +finalValue`; `audit()` → `INVESTMENT_CLOSED`; `notifyUser(userId, "investment_closed", { investmentId, name, finalValue })`.
+- Created `/src/app/api/admin/investments/[id]/cancel/route.ts`: POST cancels PENDING/ACTIVE; status→CANCELLED; if it was ACTIVE, releases `investedAmount` (capital only) via `LedgerEntry` `INVESTMENT_RELEASE`; `audit()` → `INVESTMENT_CANCELLED`; `notifyUser` → `"investment_cancelled"`.
+- Created `/src/app/api/investments/route.ts` (user): GET lists investments for the current user (requireUser) with fund + recent history.
+- Created `/src/app/api/investments/[id]/route.ts` (user): GET single investment owned by current user (404 otherwise) with fund + full history.
+- Created `/src/app/api/deposit-limits/route.ts` (public, no auth): returns `{ minInrDeposit, minCryptoDepositUsd, supportedCrypto, supportedMethods }` from SystemSetting with defaults.
+- Extended `RealtimeEvent` union in `/src/lib/realtime.ts` with `investment_closed`, `investment_cancelled`, `investment_updated` (additive, non-breaking) so the new `notifyUser` calls type-check.
+- Ran `bun run lint` — passes cleanly (no errors or warnings). Dev log shows only unrelated frontend module-not-found warnings for `@/components/admin/investments` and `@/components/investor/investments` (frontend agents' scope).
+
+Stage Summary:
+- Files created/modified:
+  - MODIFIED: `src/app/api/transactions/route.ts`, `src/lib/realtime.ts`
+  - CREATED: `src/app/api/admin/investments/route.ts`, `src/app/api/admin/investments/[id]/route.ts`, `src/app/api/admin/investments/[id]/close/route.ts`, `src/app/api/admin/investments/[id]/cancel/route.ts`, `src/app/api/investments/route.ts`, `src/app/api/investments/[id]/route.ts`, `src/app/api/deposit-limits/route.ts`
+- API endpoints (10 total):
+  - `GET/POST /api/admin/investments`
+  - `GET/PUT /api/admin/investments/[id]`
+  - `POST /api/admin/investments/[id]/close`
+  - `POST /api/admin/investments/[id]/cancel`
+  - `GET /api/investments`
+  - `GET /api/investments/[id]`
+  - `GET /api/deposit-limits` (public, no auth)
+  - `GET/POST /api/transactions` (POST updated, GET unchanged)
+- Validation rules implemented:
+  - UPI deposit minimum ₹1000 (configurable via `minInrDeposit` SystemSetting, default 1000).
+  - Crypto deposit minimum $10 USD (configurable via `minCryptoDepositUsd`, default 10) — `usdValue` computed via `getCryptoPriceUsd` for BTC/LTC; USDT pegged 1:1.
+  - Withdrawals: NO minimum enforced (partial-balance allowed); existing balance check intact.
+  - Investment lifecycle: ACTIVE/PENDING → CLOSED (close); PENDING/ACTIVE → CANCELLED (cancel).
+  - Ledger integration: `INVESTMENT_ALLOC` (-investedAmount) on create; `INVESTMENT_RELEASE` (+finalValue on close; +investedAmount on cancel of ACTIVE).
+  - InvestmentHistory appended on every currentValue change (PUT + close).
+
+---
+Task ID: 8
+Agent: full-stack-developer (Admin UI)
+Task: Build admin investments page + min-deposit settings section + method column in admin transactions
+
+Work Log:
+- Read worklog.md and studied existing admin pages (investors, transactions, nav, settings) to internalize the dark-luxury / gold-glassmorphism design system, primitives, and TanStack Query patterns.
+- Confirmed page.tsx already imports `AdminInvestments` from `@/components/admin/investments` (route `admin-investments`), so the new component slots directly into the portal.
+- Created `src/components/admin/investments.tsx` — a complete investment management page:
+  • Header with "Admin Console" eyebrow, "Investment Management" title, subtitle, and a gold-gradient "Create Investment" button.
+  • 4 metric tiles (Total Investments, Capital Allocated, Active P&L with profit/loss color, Avg ROI capital-weighted) built with GlassCard + hover-lift + gold-glow-hover.
+  • Search input (name/email) + status filter pill toggles (ALL/ACTIVE/PENDING/CLOSED/CANCELLED/COMPLETED).
+  • Premium table with Framer Motion `motion.tr` rows staggered (initial={{opacity:0,x:-6}} → animate={{opacity:1,x:0}}), columns: Investment (name+email subtitle), User (with avatar), Invested, Current, P&L (color + ROI%), Status (custom animated badge), Start Date, Actions (View/Edit/Close/Cancel with conditional visibility + Tooltips).
+  • Loading skeleton (SkeletonMetric × 4 + SkeletonTable).
+  • EmptyState with PiggyBank icon + "Create Investment" CTA.
+  • Create Dialog: Select-user dropdown (from /api/admin/users), read-only fund field (auto-filled from /api/portfolio), investment name, invested/current value with $ prefix, start/end date with Calendar icon, auto-computed duration days, notes textarea. Validates required fields with toast.error.
+  • Edit Dialog: pre-fills all fields (user/fund read-only), live P&L/ROI/Change preview card that updates as currentValue changes, PUT on submit.
+  • Detail Dialog (sm:max-w-2xl): fetches full record via GET /api/admin/investments/:id, shows P&L summary (4 tiles), metadata grid (investor, fund, status, dates, duration, created/updated, createdBy), notes card, Recharts LineChart of value-over-time built from history entries + current value, and a scrollable valuation history table.
+  • Close Confirmation Dialog: optional final value (defaults to current) + notes, POST /close.
+  • Cancel Confirmation Dialog: warning banner + optional notes, POST /cancel.
+  • All mutations invalidate `admin-investments` + `admin-dashboard` query keys.
+- Modified `src/components/admin/settings.tsx` — inserted new "04 Deposit Limits" section after "03 Fee Structure":
+  • Added Minimum INR Deposit (UPI) field with ₹ prefix (step 100, default 1000) writing to `minInrDeposit`.
+  • Added Minimum Crypto Deposit (USD equivalent) field with $ prefix (step 1, default 10) writing to `minCryptoDepositUsd`.
+  • Gold-bordered info card listing supported methods (BTC · LTC · USDT TRC20) and CoinGecko/USDT validation note, matching the Fee Preview card style.
+  • Renumbered Notifications 04→05 (delay 0.11→0.13) and Danger Zone 05→06 (delay 0.13→0.15).
+- Modified `src/components/admin/transactions.tsx` — added method column + crypto amount display:
+  • New `MethodBadge` component: UPI (gold), BTC (₿ warning/amber), LTC (Ł info), USDT (₮ profit/green), falls back to UPI when undefined.
+  • New `formatCryptoAmount` helper for proper decimal precision per coin (BTC 8dp, LTC 6dp, USDT 2dp).
+  • Amount cell now shows "INR" pill for UPI transactions or `"<amount> <SYMBOL>"` subtitle for crypto transactions under the USD amount.
+  • Inserted a "Method" column between Amount and Investor in each transaction row.
+  • Added a Method field to the Review modal grid (badge + crypto amount + "INR via UPI" note for UPI) for consistency.
+  • All existing functionality (bulk select/approve/reject, tabs, notes) preserved untouched.
+- Ran `bun run lint` — passes cleanly with 0 errors and 0 warnings across all touched files.
+- Verified dev server log: `✓ Compiled in 470ms` after files were created (earlier "Module not found" errors in log were pre-creation snapshots).
+
+Stage Summary:
+- Files created/modified:
+  • CREATED: `src/components/admin/investments.tsx` (~830 lines — full AdminInvestments page)
+  • MODIFIED: `src/components/admin/settings.tsx` (added 04 Deposit Limits section, renumbered 05/06)
+  • MODIFIED: `src/components/admin/transactions.tsx` (added MethodBadge + formatCryptoAmount helpers, Method column, INR/crypto subtitle on amount, Method field in review modal)
+- Components built:
+  • `AdminInvestments` — full admin investment lifecycle page (table, create/edit/detail/close/cancel flows, metrics, history chart)
+  • `InvestmentStatusBadge` — color-coded status pill for PENDING/ACTIVE/COMPLETED/CLOSED/CANCELLED
+  • `MethodBadge` — UPI/BTC/LTC/USDT colored badge with coin symbol prefix
+  • `formatCryptoAmount` — coin-aware decimal-precision formatter
+  • `Meta` — small label/value/sub metadata cell for the detail dialog
+  • `Field`, `ToggleField`, `SettingsSectionHeader` — reused from existing settings module
+
+---
+Task ID: 9
+Agent: full-stack-developer (Investor UI)
+Task: Build investor My Investments page + deposit method selector + min-deposit warning card
+
+Work Log:
+- Read worklog.md (Round 11 institutional redesign status), existing investor/transactions.tsx, investor/portfolio.tsx, investor/dashboard.tsx, brand/primitives.tsx (GlassCard, MetricTile, FadeIn, EmptyState, SectionTitle, StatusPill, TypePill, SkeletonCard/Metric/Table), lib/format.ts (fmtUSD/fmtPct/fmtNum/fmtDate), lib/api-client.ts, lib/store.ts (Route type includes "investments"), and brand/two-factor-modal.tsx props to lock down the exact patterns to mirror.
+- Confirmed page.tsx already wired `case "investments": return <InvestorInvestments />;` importing from `@/components/investor/investments` — the file was missing and breaking the build (dev.log showed Module not found). Created the file.
+- Created src/components/investor/investments.tsx (InvestorInvestments):
+  • Strict-typed Investment + InvestmentHistory interfaces (no `any`).
+  • InvestmentStatusBadge component with STATUS_META map for PENDING/ACTIVE/COMPLETED/CLOSED/CANCELLED — colored pills with lucide icons (Hourglass, Activity, CheckCircle2, CircleSlash, XCircle).
+  • progressPct() + durationLabel() helpers for the timeline bar.
+  • InvestmentsSkeleton using SkeletonMetric + SkeletonCard grid for loading.
+  • InvestmentDetailDialog with: 3-tile hero (Invested/Current Value/P&L), 4-cell metadata grid, animated gold progress bar, notes block, Recharts AreaChart for value-over-time (gold gradient stroke + area fill, dark-theme tooltip), Recharts LineChart for ROI growth (profit-green line), and a scrollable history table with prev→new value/ROI transitions.
+  • InvestmentCard with hover-lift gold-glow-hover, name+status header, fund subtitle, invested/current grid, P&L row with ROI pill, animated gold progress bar, footer dates + "View Details" button. Framer Motion staggered entrance (delay = idx * 0.06).
+  • Main page: header with "Investor Portal" eyebrow + active count badge, 4 MetricTiles (Total Invested, Current Value, Total P&L, Overall ROI weighted by investedAmount), positions grid (1/2/3 col responsive), EmptyState with PiggyBank icon for no-data, lazy detail fetch via useQuery enabled by selectedId.
+- Updated src/components/investor/transactions.tsx — kept ALL existing functionality (2FA, search, filter, CSV export, status badges, quick amounts) and added:
+  • Added AlertTriangle, Bitcoin, Coins, Banknote to lucide imports.
+  • New DepositMethod type + METHOD_META config (label, prefix, placeholder, quickAmounts, minInr/minUsd) for UPI/BTC/LTC/USDT.
+  • New MethodPill component (UPI=info/blue, BTC=amber, LTC=slate, USDT=emerald) with method icons.
+  • Added `method` state (default "UPI") and market-prices useQuery + priceMap memo (USDT defaults to 1).
+  • submit() now sends `method` (DEPOSIT only) and `cryptoAmount` (crypto deposits only); amount = usdEquivalent for crypto, raw INR/USD for UPI/withdrawals.
+  • handleSubmitWith2FA uses usdEquivalent for the $50k HIGH_VALUE_THRESHOLD check on crypto deposits.
+  • handleOpenDialog resets method/amount/notes to UPI so each open starts clean.
+  • Dialog body rebuilt: gold-bordered Minimum Deposits warning card (DEPOSITS only, AlertTriangle icon, lists ₹1000 + $10 crypto), method selector pills row, dynamic amount input with prefix glyph (₹/₿/Ł/₮), live USD-equivalent line for crypto, method-aware quick-amount chips, live minimum validation (green check / red AlertTriangle text), submit button disabled when !meetsMinimum.
+  • Table now has a Method column; crypto rows show cryptoAmount as a subtitle under the USD amount.
+  • CSV export updated to include Method + Crypto Amount columns.
+  • TwoFactorModal purpose string now method-aware (₹ for UPI, $USD-equivalent for crypto, $ for withdrawals).
+  • All colSpan bumped 6 → 7 to match new column count.
+  • All existing 2FA flow, search/filter pills, skeleton, and EmptyState preserved verbatim.
+- Ran `bun run lint` — clean (no errors, no warnings). Confirmed dev.log shows "✓ Compiled in 470ms" with the investor investments module now resolved. The remaining `Module not found: '@/components/admin/investments'` is for AdminInvestments being built by a parallel agent — out of scope per task brief.
+
+Stage Summary:
+- Files created: src/components/investor/investments.tsx (NEW — InvestorInvestments)
+- Files modified: src/components/investor/transactions.tsx (deposit method selector + min-deposit warning card + Method column + method-aware 2FA threshold)
+- Components built: InvestorInvestments (page), InvestmentCard, InvestmentDetailDialog (with Recharts value + ROI charts and history table), InvestmentStatusBadge, InvestmentsSkeleton, MethodPill, METHOD_META config.
+- Lint: PASS (clean) on both files.
+
+---
+Task ID: 12
+Agent: main (Round 12 orchestrator)
+Task: PATCH SPEC — Minimum Deposit Rules + Investment Management Engine
+
+Work Log:
+- Analyzed existing codebase (prisma schema, transactions route, admin nav, settings, market lib, auth, audit, api helpers)
+- Updated prisma/schema.prisma: added Investment + InvestmentHistory models, added method/cryptoAmount/usdValue fields to Transaction, added investments relation to User + Fund, extended LedgerEntry type enum to include INVESTMENT_ALLOC | INVESTMENT_RELEASE
+- Ran db:push — schema applied cleanly, Prisma client regenerated
+- Updated src/lib/store.ts: added "investments" (investor) + "admin-investments" (admin) routes
+- Updated src/lib/market.ts: extended COINS map with LTC (litecoin) + USDT (tether), added getCryptoPriceUsd() helper for single-coin live price lookup with DB cache + hardcoded fallback
+- Updated src/lib/db.ts: bumped PRISMA_SCHEMA_VERSION to "v12-investments" to bust stale in-memory client
+- Updated src/app/api/admin/settings/route.ts: added minInrDeposit (default 1000) + minCryptoDepositUsd (default 10) to DEFAULT_SETTINGS + SETTING_CATEGORIES ("deposits" category)
+- Updated src/components/brand/portal-shell.tsx: added "My Investments" (PiggyBank icon) to investor nav, added "Investments" to admin nav after Deposits, renamed admin "Transactions" to "Deposits"
+- Updated src/app/page.tsx: wired admin-investments + investments routes to new components
+- Launched 3 parallel subagents (Task 7 Backend, Task 8 Admin UI, Task 9 Investor UI) — all completed with clean lint
+- Restarted dev server to pick up new Prisma client (stale in-memory client was causing deposit-limits 500)
+- Agent-browser QA: verified admin investments page (create dialog, table, ledger integration, audit log), investor My Investments page (cards, metrics), deposit dialog (method selector UPI/BTC/LTC/USDT, live USD equivalent, min validation ₹1000/$10, warning card), admin settings deposit limits section (editable thresholds)
+
+Stage Summary:
+- Files modified (main agent): prisma/schema.prisma, src/lib/store.ts, src/lib/market.ts, src/lib/db.ts, src/app/api/admin/settings/route.ts, src/components/brand/portal-shell.tsx, src/app/page.tsx
+- Files created (subagents): src/app/api/admin/investments/route.ts, src/app/api/admin/investments/[id]/route.ts, src/app/api/admin/investments/[id]/close/route.ts, src/app/api/admin/investments/[id]/cancel/route.ts, src/app/api/investments/route.ts, src/app/api/investments/[id]/route.ts, src/app/api/deposit-limits/route.ts, src/components/admin/investments.tsx, src/components/investor/investments.tsx
+- Files modified (subagents): src/app/api/transactions/route.ts (deposit min validation), src/lib/realtime.ts (new event types), src/components/admin/settings.tsx (deposit limits section), src/components/admin/transactions.tsx (method column), src/components/investor/transactions.tsx (method selector + warning card + live validation)
+- QA verified end-to-end:
+  * Admin can create investment → appears in table, INVESTMENT_ALLOC ledger entry created, INVESTMENT_CREATED audit log recorded
+  * Investor sees their investments in "My Investments" page with cards + metrics
+  * Deposit dialog: UPI/BTC/LTC/USDT selector, live CoinGecko USD equivalent for crypto, min validation (₹1000 INR / $10 crypto) with red error + disabled submit, green "Meets minimum" when valid
+  * Admin settings: Deposit Limits section with editable minInrDeposit + minCryptoDepositUsd fields, changes persist to DB and reflected in /api/deposit-limits
+  * Admin deposits table: Method column shows UPI/BTC/LTC/USDT badge
+- Lint: clean (0 errors, 0 warnings)
+- Dev server: running on port 3000, all API routes 200, no runtime errors
+- Known pre-existing: Welcome modal focus-trap with agent-browser (real users unaffected); WebSocket realtime timeout in sandbox (works via Caddy gateway)

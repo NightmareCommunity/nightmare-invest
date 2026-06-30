@@ -25,7 +25,9 @@ import { AdminDocuments } from "@/components/admin/documents";
 import { SystemHealth } from "@/components/admin/system-health";
 import { AdminCommunications } from "@/components/admin/communications";
 import { AdminSettings } from "@/components/admin/settings";
+import { AdminInvestments } from "@/components/admin/investments";
 import { InvestorInbox } from "@/components/investor/inbox";
+import { InvestorInvestments } from "@/components/investor/investments";
 import { WatchlistPage } from "@/components/investor/watchlist";
 import { CalculatorPage } from "@/components/investor/calculator";
 import { WelcomeModal } from "@/components/brand/welcome-modal";
@@ -131,6 +133,7 @@ function renderInvestor(name: string) {
     case "portfolio": return <PortfolioPage />;
     case "analytics": return <AnalyticsPage />;
     case "transactions": return <TransactionsPage />;
+    case "investments": return <InvestorInvestments />;
     case "reports": return <ReportsPage />;
     case "documents": return <InvestorDocuments />;
     case "settings": return <SettingsPage />;
@@ -148,6 +151,7 @@ function renderAdmin(name: string) {
     case "admin-fund": return <AdminFund />;
     case "admin-nav": return <AdminNav />;
     case "admin-transactions": return <AdminTransactions />;
+    case "admin-investments": return <AdminInvestments />;
     case "admin-kyc": return <AdminKyc />;
     case "admin-ledger": return <AdminLedger />;
     case "admin-audit": return <AdminAudit />;

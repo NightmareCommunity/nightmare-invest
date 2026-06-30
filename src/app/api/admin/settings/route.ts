@@ -84,6 +84,9 @@ const SETTING_CATEGORIES: Record<string, string> = {
   performanceFeePct: "fees",
   highWaterMark: "fees",
   minInvestment: "fees",
+  // deposits — minimum deposit thresholds
+  minInrDeposit: "deposits",
+  minCryptoDepositUsd: "deposits",
   // notifications
   emailNotifications: "notifications",
   adminAlertEmail: "notifications",
@@ -108,6 +111,9 @@ const DEFAULT_SETTINGS: Record<string, unknown> = {
   performanceFeePct: 20,
   highWaterMark: true,
   minInvestment: 50000,
+  // deposits — minimum deposit thresholds (INR ₹1000, Crypto $10 USD)
+  minInrDeposit: 1000,
+  minCryptoDepositUsd: 10,
   // notifications
   emailNotifications: true,
   adminAlertEmail: "ops@nightmare.invest",
