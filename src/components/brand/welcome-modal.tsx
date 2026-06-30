@@ -85,7 +85,7 @@ export function WelcomeModal() {
     <Dialog open={open} onOpenChange={(v) => { if (!v) handleDismiss(); }}>
       <DialogContent
         showCloseButton={false}
-        className="border-gold/20 bg-card/95 backdrop-blur-xl sm:max-w-lg"
+        className="border-gold/20 bg-card/95 backdrop-blur-xl max-w-[95vw] sm:max-w-lg max-h-[90vh] overflow-y-auto overscroll-contain p-5 sm:p-6 safe-area-bottom"
       >
         <AnimatePresence>
           {open && (
@@ -94,21 +94,21 @@ export function WelcomeModal() {
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
             >
-              <DialogHeader className="items-center text-center">
+              <DialogHeader className="items-center text-center sm:items-center">
                 <motion.div
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.15, duration: 0.4 }}
-                  className="mx-auto mb-2 flex h-14 w-14 items-center justify-center rounded-full border border-gold/30 bg-gold/10"
+                  className="mx-auto mb-2 flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-full border border-gold/30 bg-gold/10"
                 >
-                  <Shield className="h-7 w-7 text-gold" />
+                  <Shield className="h-6 w-6 sm:h-7 sm:w-7 text-gold" />
                 </motion.div>
                 <motion.div
                   initial={{ opacity: 0, y: -6 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.25, duration: 0.4 }}
                 >
-                  <DialogTitle className="text-2xl font-bold tracking-tight">
+                  <DialogTitle className="text-xl sm:text-2xl font-bold tracking-tight">
                     Welcome to{" "}
                     <span className="bg-gradient-to-r from-gold via-yellow-400 to-gold bg-clip-text text-transparent">
                       Nightmare Invest
@@ -120,7 +120,7 @@ export function WelcomeModal() {
                   animate={{ opacity: 1 }}
                   transition={{ delay: 0.35, duration: 0.4 }}
                 >
-                  <DialogDescription className="mt-2 text-sm text-muted-foreground">
+                  <DialogDescription className="mt-2 text-sm text-muted-foreground px-2">
                     Your private portal to the Nightmare Alpha Crypto Fund is ready. Here&apos;s what you can do:
                   </DialogDescription>
                 </motion.div>
@@ -130,7 +130,7 @@ export function WelcomeModal() {
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.45, duration: 0.5 }}
-                className="mt-6 grid grid-cols-2 gap-3"
+                className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3"
               >
                 {features.map((f, i) => (
                   <motion.div
@@ -138,11 +138,13 @@ export function WelcomeModal() {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.5 + i * 0.08, duration: 0.35 }}
-                    className="rounded-xl border border-border/60 bg-white/[0.02] p-4 transition-colors hover:border-gold/20 hover:bg-gold/[0.03]"
+                    className="flex items-start gap-3 rounded-xl border border-border/60 bg-white/[0.02] p-3 sm:p-4 transition-colors hover:border-gold/20 hover:bg-gold/[0.03] min-w-0"
                   >
-                    <f.icon className="h-5 w-5 text-gold/80" />
-                    <div className="mt-2 text-sm font-semibold text-foreground">{f.title}</div>
-                    <div className="mt-0.5 text-[11px] leading-snug text-muted-foreground">{f.description}</div>
+                    <f.icon className="h-5 w-5 shrink-0 text-gold/80" />
+                    <div className="min-w-0">
+                      <div className="text-sm font-semibold text-foreground">{f.title}</div>
+                      <div className="mt-0.5 text-[11px] leading-snug text-muted-foreground break-words-mobile">{f.description}</div>
+                    </div>
                   </motion.div>
                 ))}
               </motion.div>
@@ -155,7 +157,7 @@ export function WelcomeModal() {
               >
                 <Button
                   onClick={handleDismiss}
-                  className="bg-gold-gradient px-8 py-2.5 text-sm font-semibold text-black hover:opacity-90"
+                  className="w-full sm:w-auto bg-gold-gradient px-8 h-12 text-sm font-semibold text-black hover:opacity-90 tap-target btn-full-mobile"
                 >
                   Enter Portal
                 </Button>

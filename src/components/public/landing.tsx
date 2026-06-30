@@ -1,6 +1,6 @@
 "use client";
-import { useRef, useEffect, useState, useCallback } from "react";
-import { motion, useInView, useAnimation, AnimatePresence } from "framer-motion";
+import { useRef, useEffect, useState } from "react";
+import { motion, useInView, AnimatePresence } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api-client";
 import { useApp } from "@/lib/store";
@@ -27,9 +27,8 @@ import {
   Scale,
   Gauge,
   Users,
-  Landmark,
-  Server,
-  Hexagon,
+  Menu,
+  X,
 } from "lucide-react";
 import { fmtUSD, fmtPct, fmtNum } from "@/lib/format";
 import {
@@ -363,23 +362,26 @@ function ScrollReveal({
 
 export function Landing() {
   const setRoute = useApp((s) => s.setRoute);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const scrollTo = (id: string) => {
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
+  const navItems = [
+    { label: "Strategy", href: "strategy" },
+    { label: "Performance", href: "performance" },
+    { label: "Security", href: "security" },
+  ];
+
   return (
     <div className="min-h-screen flex flex-col">
       {/* ---- Sticky nav ---- */}
-      <header className="fixed top-0 left-0 right-0 z-50 topbar-glow-line glass-strong">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+      <header className="fixed top-0 left-0 right-0 z-50 topbar-glow-line glass-strong safe-area-top">
+        <div className="mx-auto flex h-14 sm:h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <Logo />
           <nav className="hidden items-center gap-8 md:flex">
-            {[
-              { label: "Strategy", href: "strategy" },
-              { label: "Performance", href: "performance" },
-              { label: "Security", href: "security" },
-            ].map((n) => (
+            {navItems.map((n) => (
               <button
                 key={n.label}
                 onClick={() => scrollTo(n.href)}
@@ -393,24 +395,71 @@ export function Landing() {
             <Button
               variant="ghost"
               onClick={() => setRoute({ name: "login" })}
-              className="text-foreground/60 hover:text-foreground transition-colors"
+              className="hidden sm:inline-flex text-foreground/60 hover:text-foreground transition-colors tap-target-sm"
             >
               Login
             </Button>
             <Button
               onClick={() => setRoute({ name: "signup" })}
-              className="bg-gold-gradient text-black hover:opacity-90 font-semibold transition-all hover:scale-[1.02] active:scale-[0.98]"
+              className="bg-gold-gradient text-black hover:opacity-90 font-semibold transition-all hover:scale-[1.02] active:scale-[0.98] tap-target-sm"
             >
               Request Access
             </Button>
+            {/* Mobile menu toggle */}
+            <button
+              type="button"
+              onClick={() => setMobileNavOpen((v) => !v)}
+              aria-label="Toggle menu"
+              aria-expanded={mobileNavOpen}
+              className="md:hidden inline-flex h-10 w-10 items-center justify-center rounded-md text-foreground/70 hover:bg-gold/10 hover:text-gold transition-colors tap-target-sm"
+            >
+              {mobileNavOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </button>
           </div>
         </div>
+
+        {/* Mobile dropdown nav */}
+        <AnimatePresence>
+          {mobileNavOpen && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+              className="md:hidden overflow-hidden border-t border-border/40 bg-[#0a0a0b]/95 backdrop-blur-xl"
+            >
+              <div className="px-4 py-3 space-y-1">
+                {navItems.map((n) => (
+                  <button
+                    key={n.label}
+                    onClick={() => {
+                      scrollTo(n.href);
+                      setMobileNavOpen(false);
+                    }}
+                    className="block w-full text-left px-3 py-2.5 rounded-md text-sm text-foreground/70 hover:bg-gold/10 hover:text-gold transition-colors tap-target-sm"
+                  >
+                    {n.label}
+                  </button>
+                ))}
+                <button
+                  onClick={() => {
+                    setRoute({ name: "login" });
+                    setMobileNavOpen(false);
+                  }}
+                  className="block w-full text-left px-3 py-2.5 rounded-md text-sm text-foreground/70 hover:bg-gold/10 hover:text-gold transition-colors tap-target-sm sm:hidden"
+                >
+                  Login
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </header>
 
       {/* ============================================================ */}
       {/*  HERO — Full viewport with particle canvas                   */}
       {/* ============================================================ */}
-      <section className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden">
+      <section className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden pt-16 sm:pt-20">
         {/* Animated particle canvas */}
         <ParticleCanvas />
         {/* Gold scanning line */}
@@ -420,46 +469,47 @@ export function Landing() {
         <div className="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-[#0a0a0b] to-transparent z-[2]" />
 
         {/* Content */}
-        <div className="relative z-10 mx-auto max-w-5xl px-4 pt-20 text-center sm:px-6 lg:px-8">
+        <div className="relative z-10 mx-auto max-w-5xl px-4 pt-12 pb-10 text-center sm:px-6 sm:pt-20 sm:pb-12 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
           >
             {/* Badge — enhanced with better padding, rounded corners, subtle shadow */}
-            <div className="premium-chip mx-auto mb-8 shimmer-badge rounded-full shadow-[0_0_16px_rgba(212,175,55,0.15),0_2px_8px_rgba(0,0,0,0.3)] px-5 py-2">
+            <div className="premium-chip mx-auto mb-6 sm:mb-8 shimmer-badge rounded-full shadow-[0_0_16px_rgba(212,175,55,0.15),0_2px_8px_rgba(0,0,0,0.3)] px-4 py-2 sm:px-5">
               <span className="relative flex h-2 w-2">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-gold opacity-60" />
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-gold-bright shadow-[0_0_8px_rgba(212,175,55,0.8)]" />
               </span>
-              Nightmare Alpha Crypto Fund · Now Accepting Allocations
+              <span className="break-words-mobile">Nightmare Alpha Crypto Fund · Now Accepting Allocations</span>
             </div>
 
             {/* Headline — gold shimmer on main text only */}
-            <h1 className="text-balance text-5xl font-extrabold leading-[1.04] tracking-tight sm:text-6xl lg:text-7xl">
+            <h1 className="h1-responsive text-balance font-extrabold tracking-tight">
               <span className="text-gold-shimmer text-glow-gold">NIGHTMARE ALPHA</span>
-              <span className="mx-3 inline-block h-6 w-px translate-y-[-4px] bg-gradient-to-b from-transparent via-gold/50 to-transparent sm:mx-4 sm:h-8" />
+              <span className="mx-2 inline-block h-5 w-px translate-y-[-3px] bg-gradient-to-b from-transparent via-gold/50 to-transparent sm:mx-3 sm:h-6 lg:mx-4 lg:h-8" />
               <span className="font-black tracking-tight text-foreground drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)]">
                 CRYPTO FUND
               </span>
             </h1>
 
             {/* Subheadline — larger, better spacing */}
-            <p className="mx-auto mt-8 max-w-2xl text-pretty text-xl leading-relaxed text-foreground/65 sm:text-2xl sm:leading-relaxed">
+            <p className="body-responsive mx-auto mt-5 sm:mt-8 max-w-2xl text-pretty leading-relaxed text-foreground/65 sm:text-xl sm:leading-relaxed">
               Institutional-Grade Digital Asset Management for Accredited Investors
             </p>
 
             {/* CTAs — with micro-animation enhancements */}
-            <div className="mt-12 flex flex-col items-center justify-center gap-4 sm:flex-row">
+            <div className="mt-8 sm:mt-12 flex flex-col items-stretch sm:flex-row justify-center gap-3 sm:gap-4">
               <motion.div
                 whileHover={{ scale: 1.04 }}
                 whileTap={{ scale: 0.97 }}
                 transition={{ type: "spring", stiffness: 400, damping: 17 }}
+                className="w-full sm:w-auto"
               >
                 <Button
                   size="lg"
                   onClick={() => setRoute({ name: "signup" })}
-                  className="group h-14 rounded-lg bg-gold-gradient px-8 text-base font-bold text-black shadow-[0_0_32px_rgba(212,175,55,0.25)] hover:shadow-[0_0_48px_rgba(212,175,55,0.4)] transition-shadow cta-gold-sweep"
+                  className="group h-12 sm:h-14 rounded-lg bg-gold-gradient px-6 sm:px-8 text-sm sm:text-base font-bold text-black shadow-[0_0_32px_rgba(212,175,55,0.25)] hover:shadow-[0_0_48px_rgba(212,175,55,0.4)] transition-shadow cta-gold-sweep w-full tap-target"
                 >
                   Request Access
                   <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1.5" />
@@ -469,19 +519,20 @@ export function Landing() {
                 whileHover={{ scale: 1.04 }}
                 whileTap={{ scale: 0.97 }}
                 transition={{ type: "spring", stiffness: 400, damping: 17 }}
+                className="w-full sm:w-auto"
               >
                 <Button
                   size="lg"
                   variant="outline"
                   onClick={() => scrollTo("strategy")}
-                  className="group h-14 rounded-lg border-gold/30 px-8 text-base text-gold hover:bg-gold/10 transition-all"
+                  className="group h-12 sm:h-14 rounded-lg border-gold/30 px-6 sm:px-8 text-sm sm:text-base text-gold hover:bg-gold/10 transition-all w-full tap-target"
                 >
                   Learn More
                   <ChevronDown className="ml-2 h-4 w-4 translate-y-px transition-transform group-hover:translate-y-1" />
                 </Button>
               </motion.div>
             </div>
-            <p className="mt-5 text-xs uppercase tracking-[0.18em] text-foreground/45">
+            <p className="mt-4 sm:mt-5 text-[11px] sm:text-xs uppercase tracking-[0.16em] sm:tracking-[0.18em] text-foreground/45 break-words-mobile">
               For accredited investors only · Minimum commitment $50,000
             </p>
           </motion.div>
@@ -491,7 +542,7 @@ export function Landing() {
             initial={{ opacity: 0, y: 32 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
-            className="mt-16 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4"
+            className="mt-12 sm:mt-16 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4"
           >
             {heroStats.map((s) => {
               const Icon = s.icon;
@@ -499,15 +550,15 @@ export function Landing() {
                 <GlassCard
                   key={s.label}
                   gold
-                  className="stat-card-gold gold-corner-accent glass-card-hover p-4 text-left sm:p-5"
+                  className="stat-card-gold gold-corner-accent glass-card-hover p-3 sm:p-4 lg:p-5 text-left min-w-0"
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-[0.16em] text-muted-foreground sm:text-[11px]">
-                      <Icon className="h-3 w-3 text-gold/70" />
-                      {s.label}
+                  <div className="flex items-center justify-between gap-2 min-w-0">
+                    <div className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-[0.12em] sm:tracking-[0.16em] text-muted-foreground min-w-0 [overflow-wrap:anywhere]">
+                      <Icon className="h-3 w-3 shrink-0 text-gold/70" />
+                      <span className="truncate sm:truncate-none">{s.label}</span>
                     </div>
                   </div>
-                  <div className="mt-2 font-metric text-xl font-bold sm:text-2xl lg:text-3xl">
+                  <div className="mt-2 font-metric text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold break-words-mobile">
                     <AnimatedCounter
                       value={s.value}
                       prefix={s.prefix}
@@ -515,7 +566,7 @@ export function Landing() {
                       decimals={s.decimals}
                     />
                   </div>
-                  <div className="mt-1 text-[11px] text-muted-foreground">{s.sub}</div>
+                  <div className="mt-1 text-[10px] sm:text-[11px] text-muted-foreground break-words-mobile">{s.sub}</div>
                 </GlassCard>
               );
             })}
@@ -526,21 +577,21 @@ export function Landing() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.5 }}
-            className="mt-16 flex flex-col items-center gap-5"
+            className="mt-12 sm:mt-16 flex flex-col items-center gap-4 sm:gap-5"
           >
-            <span className="text-[11px] font-semibold uppercase tracking-[0.32em] text-gold/60">
+            <span className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-[0.24em] sm:tracking-[0.32em] text-gold/60 text-center">
               Backed by Leading Institutions
             </span>
-            <div className="flex flex-wrap items-center justify-center gap-4">
+            <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center justify-center gap-3 sm:gap-4 w-full">
               {backedByLogos.map((b) => (
                 <div
                   key={b.name}
-                  className="group flex flex-col items-center justify-center rounded-xl border border-white/[0.06] bg-white/[0.02] px-6 py-4 transition-all duration-300 hover:border-gold/25 hover:bg-gold/[0.04] hover:shadow-[0_0_20px_rgba(212,175,55,0.08)] min-w-[140px]"
+                  className="group flex flex-col items-center justify-center rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3 sm:px-6 sm:py-4 transition-all duration-300 hover:border-gold/25 hover:bg-gold/[0.04] hover:shadow-[0_0_20px_rgba(212,175,55,0.08)] min-w-0"
                 >
-                  <span className="font-mono text-base font-bold tracking-[0.16em] text-foreground/40 transition-colors duration-300 group-hover:text-foreground/70">
+                  <span className="font-mono text-xs sm:text-base font-bold tracking-[0.12em] sm:tracking-[0.16em] text-foreground/40 transition-colors duration-300 group-hover:text-foreground/70 text-center break-words-mobile">
                     {b.name}
                   </span>
-                  <span className="mt-1 text-[9px] font-medium uppercase tracking-[0.2em] text-muted-foreground/35 transition-colors duration-300 group-hover:text-gold/60">
+                  <span className="mt-1 text-[9px] font-medium uppercase tracking-[0.16em] sm:tracking-[0.2em] text-muted-foreground/35 transition-colors duration-300 group-hover:text-gold/60">
                     {b.sub}
                   </span>
                 </div>
@@ -553,19 +604,19 @@ export function Landing() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.8, delay: 0.65 }}
-            className="mt-10 flex flex-col items-center gap-3"
+            className="mt-8 sm:mt-10 flex flex-col items-center gap-3"
           >
-            <span className="text-[10px] font-medium uppercase tracking-[0.28em] text-muted-foreground/50">
+            <span className="text-[10px] font-medium uppercase tracking-[0.24em] sm:tracking-[0.28em] text-muted-foreground/50">
               As featured in
             </span>
             <div className="press-logo-marquee-container relative w-full max-w-3xl overflow-hidden">
               <div className="press-logo-marquee">
                 {[0, 1].map((set) => (
-                  <div key={set} className="inline-flex items-center gap-10 px-5">
+                  <div key={set} className="inline-flex items-center gap-6 sm:gap-10 px-3 sm:px-5">
                     {pressLogos.map((logo) => (
                       <span
                         key={`${set}-${logo}`}
-                        className="press-logo-item font-metric text-sm font-bold tracking-[0.18em] text-muted-foreground/40 transition-colors hover:text-foreground/70"
+                        className="press-logo-item font-metric text-xs sm:text-sm font-bold tracking-[0.16em] sm:tracking-[0.18em] text-muted-foreground/40 transition-colors hover:text-foreground/70 whitespace-nowrap"
                       >
                         {logo}
                       </span>
@@ -585,7 +636,7 @@ export function Landing() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.6, delay: 0.9 }}
-          className="scroll-indicator absolute bottom-6 left-1/2 z-10 -translate-x-1/2"
+          className="scroll-indicator absolute bottom-4 sm:bottom-6 left-1/2 z-10 -translate-x-1/2"
         >
           <ChevronDown className="h-5 w-5" />
         </motion.button>
@@ -601,50 +652,50 @@ export function Landing() {
       {/* ============================================================ */}
       <section id="strategy" className="relative overflow-hidden">
         <div className="absolute inset-0 bg-grid bg-grid-fade opacity-40" />
-        <div className="relative mx-auto max-w-7xl px-4 py-28 sm:px-6 lg:px-8 lg:py-36">
+        <div className="relative mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-24 lg:px-8 lg:py-36">
           <ScrollReveal>
             <div className="mx-auto max-w-2xl text-center">
               <div className="section-gold-accent inline-block text-left mx-auto">
-                <span className="text-xs font-semibold uppercase tracking-[0.2em] text-gold">
+                <span className="text-[11px] sm:text-xs font-semibold uppercase tracking-[0.18em] sm:tracking-[0.2em] text-gold">
                   Fund Strategy
                 </span>
-                <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
+                <h2 className="mt-3 h2-responsive font-bold tracking-tight">
                   Disciplined, Multi-Asset Allocation
                 </h2>
               </div>
-              <p className="mt-5 text-muted-foreground leading-relaxed">
+              <p className="body-responsive mt-4 sm:mt-5 text-muted-foreground leading-relaxed">
                 Actively managed across five strategic buckets, rebalanced by the Nightmare investment
                 committee to capture asymmetric upside while preserving capital through market cycles.
               </p>
             </div>
           </ScrollReveal>
 
-          <div className="mt-16 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-10 sm:mt-16 grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
             {strategyCards.map((card, i) => (
               <ScrollReveal key={card.asset} delay={i * 0.08}>
                 <GlassCard
                   gold={card.weight >= 25}
                   hover
-                  className="h-full p-6"
+                  className="h-full p-5 sm:p-6 min-w-0"
                 >
-                  <div className="flex items-start justify-between">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-white/[0.06] bg-white/[0.03]" style={{ boxShadow: `inset 0 0 12px ${card.color}15` }}>
-                      <card.icon className="h-6 w-6" style={{ color: card.color }} />
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex h-10 w-10 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-xl border border-white/[0.06] bg-white/[0.03]" style={{ boxShadow: `inset 0 0 12px ${card.color}15` }}>
+                      <card.icon className="h-5 w-5 sm:h-6 sm:w-6" style={{ color: card.color }} />
                     </div>
                     <span
-                      className="font-metric text-3xl font-extrabold"
+                      className="font-metric text-2xl sm:text-3xl font-extrabold break-words-mobile"
                       style={{ color: card.color }}
                     >
                       {card.weight}%
                     </span>
                   </div>
-                  <div className="mt-4">
+                  <div className="mt-4 min-w-0">
                     <h3 className="text-base font-semibold text-foreground">{card.asset}</h3>
-                    <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                    <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground break-words-mobile">
                       {card.ticker}
                     </span>
                   </div>
-                  <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+                  <p className="body-responsive mt-3 leading-relaxed text-muted-foreground">
                     {card.note}
                   </p>
                   {/* Allocation bar */}
@@ -665,14 +716,14 @@ export function Landing() {
 
           {/* Fee structure */}
           <ScrollReveal delay={0.3}>
-            <div className="mt-12 flex flex-wrap items-center justify-center gap-6 text-sm text-muted-foreground">
+            <div className="mt-8 sm:mt-12 flex flex-wrap items-center justify-center gap-3 sm:gap-6 text-xs sm:text-sm text-muted-foreground">
               {[
                 "2% Management Fee",
                 "20% Performance Fee (High-Water Mark)",
                 "Monthly Liquidity Windows",
               ].map((item) => (
                 <div key={item} className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-gold" />
+                  <CheckCircle2 className="h-4 w-4 shrink-0 text-gold" />
                   <span>{item}</span>
                 </div>
               ))}
@@ -685,18 +736,18 @@ export function Landing() {
       {/*  PERFORMANCE — NAV chart + metrics                           */}
       {/* ============================================================ */}
       <section id="performance" className="relative border-y border-border/60 bg-black/30">
-        <div className="mx-auto max-w-7xl px-4 py-28 sm:px-6 lg:px-8 lg:py-36">
+        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-24 lg:px-8 lg:py-36">
           <ScrollReveal>
             <div className="mx-auto max-w-2xl text-center">
               <div className="section-gold-accent inline-block text-left mx-auto">
-                <span className="text-xs font-semibold uppercase tracking-[0.2em] text-gold">
+                <span className="text-[11px] sm:text-xs font-semibold uppercase tracking-[0.18em] sm:tracking-[0.2em] text-gold">
                   Track Record
                 </span>
-                <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
+                <h2 className="mt-3 h2-responsive font-bold tracking-tight">
                   Consistent, Risk-Adjusted Returns
                 </h2>
               </div>
-              <p className="mt-5 text-muted-foreground leading-relaxed">
+              <p className="body-responsive mt-4 sm:mt-5 text-muted-foreground leading-relaxed">
                 Net Asset Value trajectory since inception — net of all fees and expenses.
               </p>
             </div>
@@ -704,15 +755,15 @@ export function Landing() {
 
           {/* NAV Area Chart */}
           <ScrollReveal delay={0.15}>
-            <GlassCard className="mt-14 p-4 sm:p-6 lg:p-8 gold-border-sweep">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-semibold text-foreground">Net Asset Value</h3>
-                  <p className="text-sm text-muted-foreground">Since inception · NAV per share</p>
+            <GlassCard className="mt-8 sm:mt-14 p-3 sm:p-6 lg:p-8 gold-border-sweep min-w-0">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <h3 className="text-base sm:text-lg font-semibold text-foreground truncate">Net Asset Value</h3>
+                  <p className="text-xs sm:text-sm text-muted-foreground">Since inception · NAV per share</p>
                 </div>
-                <Zap className="h-6 w-6 text-gold" />
+                <Zap className="h-5 w-5 sm:h-6 sm:w-6 shrink-0 text-gold" />
               </div>
-              <div className="mt-6 h-72 sm:h-80">
+              <div className="mt-4 sm:mt-6 h-56 sm:h-80 chart-mobile">
                 <NavChart />
               </div>
             </GlassCard>
@@ -720,18 +771,18 @@ export function Landing() {
 
           {/* Stat cards */}
           <ScrollReveal delay={0.25}>
-            <div className="mt-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
+            <div className="mt-6 sm:mt-8 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
               {[
                 { label: "Annual Return", value: "+42.6%", accent: "text-profit" },
                 { label: "Sharpe Ratio", value: "2.31", accent: "text-gold" },
                 { label: "Max Drawdown", value: "-8.4%", accent: "text-loss" },
                 { label: "CAGR", value: "+38.9%", accent: "text-profit" },
               ].map((m) => (
-                <GlassCard key={m.label} gold className="stat-card-gold p-5 text-center">
-                  <div className="text-[10px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+                <GlassCard key={m.label} gold className="stat-card-gold p-3 sm:p-5 text-center min-w-0">
+                  <div className="text-[10px] font-medium uppercase tracking-[0.12em] sm:tracking-[0.16em] text-muted-foreground break-words-mobile">
                     {m.label}
                   </div>
-                  <div className={`mt-2 font-metric text-2xl font-bold ${m.accent} sm:text-3xl`}>
+                  <div className={`mt-2 font-metric text-xl sm:text-2xl font-bold ${m.accent} lg:text-3xl break-words-mobile`}>
                     {m.value}
                   </div>
                 </GlassCard>
@@ -741,16 +792,16 @@ export function Landing() {
 
           {/* Period returns */}
           <ScrollReveal delay={0.35}>
-            <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="mt-4 sm:mt-6 grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-4">
               {[
                 { label: "Daily", value: "+0.84%" },
                 { label: "Weekly", value: "+3.21%" },
                 { label: "Monthly", value: "+8.47%" },
                 { label: "YTD", value: "+31.2%" },
               ].map((r) => (
-                <div key={r.label} className="rounded-lg border border-border/60 bg-white/[0.02] p-3 text-center">
+                <div key={r.label} className="rounded-lg border border-border/60 bg-white/[0.02] p-3 text-center min-w-0">
                   <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{r.label}</div>
-                  <div className="mt-1 font-metric text-lg font-semibold text-profit">{r.value}</div>
+                  <div className="mt-1 font-metric text-base sm:text-lg font-semibold text-profit break-words-mobile">{r.value}</div>
                 </div>
               ))}
             </div>
@@ -763,33 +814,33 @@ export function Landing() {
       {/* ============================================================ */}
       <section id="security" className="relative overflow-hidden">
         <div className="absolute inset-0 bg-grid bg-grid-fade opacity-30" />
-        <div className="relative mx-auto max-w-7xl px-4 py-28 sm:px-6 lg:px-8 lg:py-36">
+        <div className="relative mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-24 lg:px-8 lg:py-36">
           <ScrollReveal>
             <div className="mx-auto max-w-2xl text-center">
               <div className="section-gold-accent inline-block text-left mx-auto">
-                <span className="text-xs font-semibold uppercase tracking-[0.2em] text-gold">
+                <span className="text-[11px] sm:text-xs font-semibold uppercase tracking-[0.18em] sm:tracking-[0.2em] text-gold">
                   Security & Compliance
                 </span>
-                <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
+                <h2 className="mt-3 h2-responsive font-bold tracking-tight">
                   Institutional-Grade Protection
                 </h2>
               </div>
-              <p className="mt-5 text-muted-foreground leading-relaxed">
+              <p className="body-responsive mt-4 sm:mt-5 text-muted-foreground leading-relaxed">
                 Every layer of the platform reflects institutional standards — from custody and
                 compliance to encryption and auditability.
               </p>
             </div>
           </ScrollReveal>
 
-          <div className="mt-16 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-10 sm:mt-16 grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
             {securityItems.map((item, i) => (
               <ScrollReveal key={item.title} delay={i * 0.1}>
-                <GlassCard hover className="h-full p-6">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gold/10 text-gold">
-                    <item.icon className="h-6 w-6" />
+                <GlassCard hover className="h-full p-5 sm:p-6 min-w-0">
+                  <div className="flex h-10 w-10 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-xl bg-gold/10 text-gold">
+                    <item.icon className="h-5 w-5 sm:h-6 sm:w-6" />
                   </div>
-                  <h3 className="mt-4 text-base font-semibold text-foreground">{item.title}</h3>
-                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{item.desc}</p>
+                  <h3 className="mt-3 sm:mt-4 text-base font-semibold text-foreground">{item.title}</h3>
+                  <p className="body-responsive mt-2 leading-relaxed text-muted-foreground">{item.desc}</p>
                 </GlassCard>
               </ScrollReveal>
             ))}
@@ -801,26 +852,26 @@ export function Landing() {
       {/*  TESTIMONIAL & TRUST                                         */}
       {/* ============================================================ */}
       <section className="relative border-y border-border/60 bg-black/30">
-        <div className="mx-auto max-w-7xl px-4 py-28 sm:px-6 lg:px-8 lg:py-36">
-          <div className="grid gap-8 lg:grid-cols-2 lg:items-center">
+        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-24 lg:px-8 lg:py-36">
+          <div className="grid gap-6 sm:gap-8 lg:grid-cols-2 lg:items-center">
             {/* Testimonial */}
             <ScrollReveal>
-              <GlassCard gold glow className="relative overflow-hidden p-8 sm:p-10">
+              <GlassCard gold glow className="relative overflow-hidden p-6 sm:p-8 lg:p-10 min-w-0">
                 <div className="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-gold/10 blur-3xl" />
-                <Quote className="h-10 w-10 text-gold/40" />
-                <blockquote className="mt-4 text-lg leading-relaxed text-foreground/90 sm:text-xl">
+                <Quote className="h-8 w-8 sm:h-10 sm:w-10 text-gold/40" />
+                <blockquote className="mt-3 sm:mt-4 text-base sm:text-lg lg:text-xl leading-relaxed text-foreground/90 break-words-mobile">
                   &ldquo;Nightmare Invest delivers the institutional rigor and confidentiality our
                   family office demands. The transparency of daily NAV reporting combined with
                   their disciplined risk management sets a new standard for digital-asset
                   fund administration.&rdquo;
                 </blockquote>
-                <div className="mt-6 flex items-center gap-4">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gold-gradient text-black font-bold text-lg avatar-gold-ring">
+                <div className="mt-5 sm:mt-6 flex items-center gap-3 sm:gap-4">
+                  <div className="flex h-10 w-10 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-full bg-gold-gradient text-black font-bold text-base sm:text-lg avatar-gold-ring">
                     M
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <div className="text-sm font-semibold text-foreground">Marcus Chen</div>
-                    <div className="text-xs text-muted-foreground">
+                    <div className="text-xs text-muted-foreground break-words-mobile">
                       Chief Investment Officer · Meridian Family Office, Geneva
                     </div>
                   </div>
@@ -833,31 +884,31 @@ export function Landing() {
 
             {/* Trust badges + onboarding */}
             <ScrollReveal delay={0.15}>
-              <div className="space-y-6">
+              <div className="space-y-5 sm:space-y-6">
                 <div className="section-gold-accent">
-                  <span className="text-xs font-semibold uppercase tracking-[0.2em] text-gold">
+                  <span className="text-[11px] sm:text-xs font-semibold uppercase tracking-[0.18em] sm:tracking-[0.2em] text-gold">
                     Trusted Infrastructure
                   </span>
-                  <h3 className="mt-2 text-2xl font-bold text-foreground">
+                  <h3 className="mt-2 text-xl sm:text-2xl font-bold text-foreground break-words-mobile">
                     Built for Capital That Demands Certainty
                   </h3>
                 </div>
 
                 {/* Trust badges */}
-                <div className="flex flex-wrap gap-4">
+                <div className="flex flex-wrap gap-2 sm:gap-4">
                   {trustBadges.map((b) => (
                     <div
                       key={b.label}
-                      className="flex items-center gap-2.5 rounded-lg border border-gold/20 bg-gold/[0.04] px-4 py-3 transition-all hover:border-gold/40 hover:bg-gold/[0.08]"
+                      className="flex items-center gap-2 sm:gap-2.5 rounded-lg border border-gold/20 bg-gold/[0.04] px-3 py-2 sm:px-4 sm:py-3 transition-all hover:border-gold/40 hover:bg-gold/[0.08]"
                     >
-                      <b.icon className="h-5 w-5 text-gold" />
-                      <span className="text-sm font-medium text-foreground">{b.label}</span>
+                      <b.icon className="h-4 w-4 sm:h-5 sm:w-5 shrink-0 text-gold" />
+                      <span className="text-xs sm:text-sm font-medium text-foreground">{b.label}</span>
                     </div>
                   ))}
                 </div>
 
                 {/* Process steps */}
-                <div className="space-y-4">
+                <div className="space-y-3 sm:space-y-4">
                   {[
                     { step: "01", title: "Request Access", desc: "Submit credentials for accredited-investor verification." },
                     { step: "02", title: "Capital Commitment", desc: "Confirm allocation and execute subscription agreement." },
@@ -865,11 +916,11 @@ export function Landing() {
                     { step: "04", title: "Liquidity Windows", desc: "Request deposits or withdrawals during scheduled windows." },
                   ].map((p, i) => (
                     <ScrollReveal key={p.step} delay={i * 0.1}>
-                      <div className="flex items-start gap-4">
-                        <span className="number-badge">{p.step}</span>
-                        <div>
+                      <div className="flex items-start gap-3 sm:gap-4">
+                        <span className="number-badge shrink-0">{p.step}</span>
+                        <div className="min-w-0">
                           <div className="text-sm font-semibold text-foreground">{p.title}</div>
-                          <div className="text-xs text-muted-foreground">{p.desc}</div>
+                          <div className="text-xs text-muted-foreground break-words-mobile">{p.desc}</div>
                         </div>
                       </div>
                     </ScrollReveal>
@@ -887,30 +938,31 @@ export function Landing() {
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 hero-dot-grid opacity-30" />
         <div className="absolute left-1/2 top-1/2 h-[500px] w-[800px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-gold/[0.06] blur-[160px]" />
-        <div className="relative mx-auto max-w-7xl px-4 py-28 sm:px-6 lg:px-8 lg:py-36">
+        <div className="relative mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-24 lg:px-8 lg:py-36">
           <ScrollReveal>
-            <GlassCard gold glow className="relative overflow-hidden p-10 text-center sm:p-16 lg:p-20 gold-border-sweep hero-glow-pulse">
+            <GlassCard gold glow className="relative overflow-hidden p-6 sm:p-12 lg:p-20 text-center gold-border-sweep hero-glow-pulse min-w-0">
               <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-gold/20 blur-3xl" />
               <div className="absolute -bottom-20 -left-20 h-48 w-48 rounded-full bg-gold/10 blur-3xl" />
               <div className="relative">
-                <h2 className="text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
+                <h2 className="h2-responsive sm:text-4xl lg:text-5xl font-bold tracking-tight break-words-mobile">
                   Begin Your{" "}
                   <span className="text-gold-gradient text-glow-gold">Investment Journey</span>
                 </h2>
-                <p className="mx-auto mt-6 max-w-xl text-muted-foreground leading-relaxed">
+                <p className="body-responsive mx-auto mt-4 sm:mt-6 max-w-xl text-muted-foreground leading-relaxed">
                   Capital allocation is selective. Submit your access request and our investor
                   relations team will respond within 48 hours.
                 </p>
-                <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
+                <div className="mt-8 sm:mt-10 flex flex-col items-stretch sm:flex-row justify-center gap-3 sm:gap-4">
                   <motion.div
                     whileHover={{ scale: 1.04 }}
                     whileTap={{ scale: 0.97 }}
                     transition={{ type: "spring", stiffness: 400, damping: 17 }}
+                    className="w-full sm:w-auto"
                   >
                     <Button
                       size="lg"
                       onClick={() => setRoute({ name: "signup" })}
-                      className="group h-14 rounded-lg bg-gold-gradient px-10 text-base font-bold text-black shadow-[0_0_32px_rgba(212,175,55,0.25)] hover:shadow-[0_0_48px_rgba(212,175,55,0.4)] transition-shadow cta-gold-sweep"
+                      className="group h-12 sm:h-14 rounded-lg bg-gold-gradient px-6 sm:px-10 text-sm sm:text-base font-bold text-black shadow-[0_0_32px_rgba(212,175,55,0.25)] hover:shadow-[0_0_48px_rgba(212,175,55,0.4)] transition-shadow cta-gold-sweep w-full tap-target"
                     >
                       Begin Access Request
                       <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1.5" />
@@ -920,18 +972,19 @@ export function Landing() {
                     whileHover={{ scale: 1.04 }}
                     whileTap={{ scale: 0.97 }}
                     transition={{ type: "spring", stiffness: 400, damping: 17 }}
+                    className="w-full sm:w-auto"
                   >
                     <Button
                       size="lg"
                       variant="outline"
                       onClick={() => setRoute({ name: "legal", doc: "risk" })}
-                      className="h-14 rounded-lg border-gold/30 px-8 text-base text-foreground hover:bg-gold/10 transition-all"
+                      className="h-12 sm:h-14 rounded-lg border-gold/30 px-6 sm:px-8 text-sm sm:text-base text-foreground hover:bg-gold/10 transition-all w-full tap-target"
                     >
                       Risk Disclosure
                     </Button>
                   </motion.div>
                 </div>
-                <p className="mt-6 text-xs text-muted-foreground">
+                <p className="mt-5 sm:mt-6 text-xs text-muted-foreground">
                   For accredited investors only. Minimum investment $50,000.
                 </p>
               </div>
@@ -943,47 +996,47 @@ export function Landing() {
       {/* ============================================================ */}
       {/*  PREMIUM FOOTER                                              */}
       {/* ============================================================ */}
-      <footer className="mt-auto bg-black/40">
+      <footer className="mt-auto bg-black/40 safe-area-bottom">
         {/* Gold gradient separator */}
         <div className="footer-gold-separator" />
 
-        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-          <div className="grid gap-10 md:grid-cols-4">
-            <div className="md:col-span-2">
+        <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-16 lg:px-8">
+          <div className="grid gap-8 sm:gap-10 grid-cols-1 sm:grid-cols-2 md:grid-cols-4">
+            <div className="sm:col-span-2 md:col-span-2">
               <Logo />
-              <p className="mt-5 max-w-sm text-sm leading-relaxed text-muted-foreground">
+              <p className="mt-4 sm:mt-5 max-w-sm text-sm leading-relaxed text-muted-foreground break-words-mobile">
                 Nightmare Invest is a private institutional crypto hedge fund portal for accredited
                 investors. This is not a retail product.
               </p>
-              <p className="mt-4 text-xs text-muted-foreground/50 tracking-wide">
+              <p className="mt-3 sm:mt-4 text-xs text-muted-foreground/50 tracking-wide">
                 Built with institutional-grade infrastructure
               </p>
             </div>
             <div>
               <div className="text-xs font-semibold uppercase tracking-wider text-foreground/70">Legal</div>
               <ul className="mt-4 space-y-3 text-sm">
-                <li><button onClick={() => setRoute({ name: "legal", doc: "tos" })} className="text-muted-foreground footer-link-gold">Terms of Service</button></li>
-                <li><button onClick={() => setRoute({ name: "legal", doc: "privacy" })} className="text-muted-foreground footer-link-gold">Privacy Policy</button></li>
-                <li><button onClick={() => setRoute({ name: "legal", doc: "cookies" })} className="text-muted-foreground footer-link-gold">Cookie Policy</button></li>
-                <li><button onClick={() => setRoute({ name: "legal", doc: "risk" })} className="text-muted-foreground footer-link-gold">Risk Disclosure</button></li>
+                <li><button onClick={() => setRoute({ name: "legal", doc: "tos" })} className="text-muted-foreground footer-link-gold tap-target-sm inline-block">Terms of Service</button></li>
+                <li><button onClick={() => setRoute({ name: "legal", doc: "privacy" })} className="text-muted-foreground footer-link-gold tap-target-sm inline-block">Privacy Policy</button></li>
+                <li><button onClick={() => setRoute({ name: "legal", doc: "cookies" })} className="text-muted-foreground footer-link-gold tap-target-sm inline-block">Cookie Policy</button></li>
+                <li><button onClick={() => setRoute({ name: "legal", doc: "risk" })} className="text-muted-foreground footer-link-gold tap-target-sm inline-block">Risk Disclosure</button></li>
               </ul>
             </div>
             <div>
               <div className="text-xs font-semibold uppercase tracking-wider text-foreground/70">Investor Relations</div>
               <ul className="mt-4 space-y-3 text-sm text-muted-foreground">
-                <li className="footer-link-gold">ir@nightmare.invest</li>
-                <li>Zug · Geneva · Singapore</li>
-                <li className="pt-2"><button onClick={() => setRoute({ name: "login" })} className="text-gold hover:underline transition-colors">Investor Login →</button></li>
+                <li className="footer-link-gold break-words-mobile">ir@nightmare.invest</li>
+                <li className="break-words-mobile">Zug · Geneva · Singapore</li>
+                <li className="pt-2"><button onClick={() => setRoute({ name: "login" })} className="text-gold hover:underline transition-colors tap-target-sm inline-block">Investor Login →</button></li>
               </ul>
             </div>
           </div>
 
           {/* Gold divider before bottom bar */}
-          <div className="footer-gold-separator mt-12" />
+          <div className="footer-gold-separator mt-10 sm:mt-12" />
 
-          <div className="mt-8 flex flex-col items-start justify-between gap-4 pt-2 text-xs text-muted-foreground sm:flex-row sm:items-center">
+          <div className="mt-6 sm:mt-8 flex flex-col items-start justify-between gap-3 sm:gap-4 pt-2 text-xs text-muted-foreground sm:flex-row sm:items-center">
             <span>© {new Date().getFullYear()} Nightmare Invest. All rights reserved.</span>
-            <span className="max-w-md text-right">This platform is intended for accredited investors. Digital assets are subject to high volatility and risk of loss.</span>
+            <span className="max-w-md sm:text-right break-words-mobile">This platform is intended for accredited investors. Digital assets are subject to high volatility and risk of loss.</span>
           </div>
         </div>
       </footer>

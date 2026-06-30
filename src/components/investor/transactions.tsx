@@ -259,7 +259,7 @@ export function TransactionsPage() {
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-5 lg:space-y-6">
         <FadeIn>
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
@@ -270,12 +270,12 @@ export function TransactionsPage() {
           </div>
         </FadeIn>
         <FadeIn delay={0.05}>
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid gap-3 sm:gap-4 sm:grid-cols-3">
             {[0, 1, 2].map((i) => <SkeletonMetric key={i} className="h-24" />)}
           </div>
         </FadeIn>
         <FadeIn delay={0.1}>
-          <GlassCard className="p-5">
+          <GlassCard className="p-4 sm:p-5">
             <SectionTitle title="Request History" subtitle="All deposit and withdrawal requests" />
             <div className="mt-4">
               <SkeletonTable rows={5} cols={6} />
@@ -287,33 +287,33 @@ export function TransactionsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-5 lg:space-y-6">
       <FadeIn>
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
+          <div className="min-w-0">
             <span className="text-xs font-medium uppercase tracking-[0.18em] text-gold">Investor Portal</span>
-            <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">Transactions</h1>
+            <h1 className="h2-responsive mt-1 font-bold tracking-tight">Transactions</h1>
             <p className="text-sm text-muted-foreground">Submit and track capital movements</p>
           </div>
-          <div className="flex flex-col items-end gap-1.5">
-            <div className="flex gap-2">
-              <Button onClick={() => handleOpenDialog("DEPOSIT")} className="bg-gold-gradient text-black hover:opacity-90 press-scale">
+          <div className="flex flex-col gap-1.5 sm:items-end">
+            <div className="flex flex-wrap gap-2">
+              <Button onClick={() => handleOpenDialog("DEPOSIT")} className="tap-target bg-gold-gradient text-black hover:opacity-90 press-scale">
                 <ArrowDownToLine className="mr-1.5 h-4 w-4" /> Deposit
               </Button>
-              <Button onClick={() => handleOpenDialog("WITHDRAWAL")} variant="outline" className="border-gold/30 hover:bg-gold/10 press-scale">
+              <Button onClick={() => handleOpenDialog("WITHDRAWAL")} variant="outline" className="tap-target border-gold/30 hover:bg-gold/10 press-scale">
                 <ArrowUpFromLine className="mr-1.5 h-4 w-4" /> Withdraw
               </Button>
             </div>
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
               <Info className="h-3 w-3 shrink-0" />
-              <span>Deposits are reviewed within 24 hours. Minimum commitment $50,000.</span>
+              <span>Deposits reviewed within 24h.</span>
             </div>
           </div>
         </div>
       </FadeIn>
 
       <FadeIn delay={0.05}>
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-3">
           <GlassCard className="border-gold/30 p-4 hover-lift gold-glow-hover">
             <div className="flex items-center gap-2">
               <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Pending Requests</div>
@@ -339,17 +339,17 @@ export function TransactionsPage() {
       </FadeIn>
 
       <FadeIn delay={0.1}>
-        <GlassCard className="p-5">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <GlassCard className="p-3 sm:p-4 lg:p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <SectionTitle title="Request History" subtitle="All deposit and withdrawal requests" className="mb-0" />
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
               {/* Export CSV Button */}
               {txns.length > 0 && (
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={exportCSV}
-                  className="border-gold/30 bg-gold-gradient text-black hover:opacity-90 press-scale gap-1.5 font-semibold shadow-[0_0_12px_rgba(212,175,55,0.15)]"
+                  className="tap-target-sm border-gold/30 bg-gold-gradient text-black hover:opacity-90 press-scale gap-1.5 font-semibold shadow-[0_0_12px_rgba(212,175,55,0.15)]"
                 >
                   <FileDown className="h-3.5 w-3.5" /> Export CSV
                 </Button>
@@ -359,7 +359,7 @@ export function TransactionsPage() {
 
           {/* Search and Filter Bar */}
           <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div className="relative flex-1">
+            <div className="relative flex-1 min-w-0">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder="Search transactions..."
@@ -368,14 +368,14 @@ export function TransactionsPage() {
                 className="border-border/60 bg-black/30 pl-9 text-sm"
               />
             </div>
-            <div className="flex items-center gap-2">
-              <Filter className="h-4 w-4 text-muted-foreground" />
+            <div className="flex items-center gap-2 overflow-x-auto scroll-row sm:overflow-visible">
+              <Filter className="h-4 w-4 text-muted-foreground shrink-0" />
               <div className="flex rounded-lg border border-border/60 bg-black/30 p-0.5">
                 {(["ALL", "DEPOSIT", "WITHDRAWAL"] as const).map((t) => (
                   <button
                     key={t}
                     onClick={() => setFilterType(t)}
-                    className={`rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors ${
+                    className={`tap-target-sm rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors ${
                       filterType === t ? "bg-gold-gradient text-black" : "text-muted-foreground hover:text-foreground"
                     }`}
                   >
@@ -388,7 +388,7 @@ export function TransactionsPage() {
                   <button
                     key={s}
                     onClick={() => setFilterStatus(s)}
-                    className={`rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors ${
+                    className={`tap-target-sm rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors ${
                       filterStatus === s ? "bg-gold-gradient text-black" : "text-muted-foreground hover:text-foreground"
                     }`}
                   >
@@ -399,7 +399,7 @@ export function TransactionsPage() {
             </div>
           </div>
 
-          <div className="mt-4 overflow-x-auto scroll-luxury">
+          <div className="table-mobile-card mt-4 overflow-x-auto scroll-luxury">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border/60 text-left text-[11px] uppercase tracking-wider text-muted-foreground">
@@ -421,8 +421,8 @@ export function TransactionsPage() {
                     transition={{ delay: idx * 0.03, duration: 0.25 }}
                     className={`investor-row-hover border-b border-border/40 last:border-0 ${idx % 2 === 0 ? "bg-white/[0.01]" : ""}`}
                   >
-                    <td className="py-3 pr-4"><TypePill type={t.type} /></td>
-                    <td className="py-3 pr-4 font-metric font-semibold">
+                    <td data-label="Type" className="py-3 pr-4"><TypePill type={t.type} /></td>
+                    <td data-label="Amount" className="py-3 pr-4 font-metric font-semibold">
                       <div>{fmtUSD(t.amount)}</div>
                       {t.cryptoAmount ? (
                         <div className="text-[10.5px] font-normal text-muted-foreground">
@@ -431,11 +431,11 @@ export function TransactionsPage() {
                         </div>
                       ) : null}
                     </td>
-                    <td className="py-3 pr-4"><MethodPill method={t.method} /></td>
-                    <td className="py-3 pr-4"><AnimatedStatusBadge status={t.status} /></td>
-                    <td className="py-3 pr-4 text-muted-foreground">{fmtDate(t.createdAt, true)}</td>
-                    <td className="py-3 pr-4 text-muted-foreground">{t.processor?.name ?? "—"}</td>
-                    <td className="py-3 max-w-xs truncate text-muted-foreground" title={t.notes ?? ""}>{t.notes ?? "—"}</td>
+                    <td data-label="Method" className="py-3 pr-4"><MethodPill method={t.method} /></td>
+                    <td data-label="Status" className="py-3 pr-4"><AnimatedStatusBadge status={t.status} /></td>
+                    <td data-label="Date" className="py-3 pr-4 text-muted-foreground">{fmtDate(t.createdAt, true)}</td>
+                    <td data-label="Processed By" className="py-3 pr-4 text-muted-foreground">{t.processor?.name ?? "—"}</td>
+                    <td data-label="Notes" className="py-3 max-w-xs truncate text-muted-foreground break-words-mobile" title={t.notes ?? ""}>{t.notes ?? "—"}</td>
                   </motion.tr>
                 ))}
                 {txns.length === 0 && allTxns.length > 0 && (
@@ -443,7 +443,7 @@ export function TransactionsPage() {
                     <div className="flex flex-col items-center gap-2 py-8 text-center">
                       <Search className="h-6 w-6 text-muted-foreground/40" />
                       <p className="text-sm text-muted-foreground">No transactions match your filters</p>
-                      <Button variant="ghost" size="sm" onClick={() => { setSearchQuery(""); setFilterType("ALL"); setFilterStatus("ALL"); }} className="text-gold">
+                      <Button variant="ghost" size="sm" onClick={() => { setSearchQuery(""); setFilterType("ALL"); setFilterStatus("ALL"); }} className="tap-target text-gold">
                         Clear filters
                       </Button>
                     </div>
@@ -456,7 +456,7 @@ export function TransactionsPage() {
                       title="Begin Your Investment Journey"
                       description="Submit your first deposit request to allocate capital into the Nightmare Alpha Crypto Fund."
                       action={
-                        <Button onClick={() => handleOpenDialog("DEPOSIT")} className="bg-gold-gradient text-black hover:opacity-90 press-scale">
+                        <Button onClick={() => handleOpenDialog("DEPOSIT")} className="tap-target bg-gold-gradient text-black hover:opacity-90 press-scale">
                           <Plus className="mr-1.5 h-4 w-4" /> New Deposit
                         </Button>
                       }
@@ -471,13 +471,13 @@ export function TransactionsPage() {
 
       {/* Request modal */}
       <Dialog open={open !== null} onOpenChange={(o) => !o && setOpen(null)}>
-        <DialogContent className="border-gold/20 bg-card/95 backdrop-blur-xl sm:max-w-md">
+        <DialogContent className="max-w-[95vw] border-gold/20 bg-card/95 backdrop-blur-xl sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               {open === "DEPOSIT" ? <ArrowDownToLine className="h-5 w-5 text-profit" /> : <ArrowUpFromLine className="h-5 w-5 text-info" />}
               {open === "DEPOSIT" ? "Request Deposit" : "Request Withdrawal"}
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="break-words-mobile">
               {open === "DEPOSIT"
                 ? `Minimum commitment ${portfolio ? fmtUSD(portfolio.fund.minInvest) : "$50,000"}. Your request will be reviewed by the fund administrator.`
                 : `Available balance: ${portfolio ? fmtUSD(portfolio.summary.currentValue) : "—"}. Withdrawals processed during scheduled liquidity windows.`}
@@ -489,9 +489,9 @@ export function TransactionsPage() {
               <div className="rounded-lg border border-gold/30 bg-gold/5 p-3">
                 <div className="flex items-start gap-2.5">
                   <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-gold" />
-                  <div className="flex-1">
+                  <div className="flex-1 min-w-0">
                     <div className="text-xs font-semibold uppercase tracking-wider text-gold">Minimum Deposits</div>
-                    <ul className="mt-1 space-y-0.5 text-[11px] text-foreground/80">
+                    <ul className="mt-1 space-y-0.5 text-[11px] text-foreground/80 break-words-mobile">
                       <li>• INR (UPI): <span className="font-metric font-semibold text-gold">₹1000</span></li>
                       <li>• Crypto: <span className="font-metric font-semibold text-gold">$10 equivalent</span> <span className="text-muted-foreground">(BTC · LTC · USDT TRC20)</span></li>
                     </ul>
@@ -504,12 +504,12 @@ export function TransactionsPage() {
             {open === "DEPOSIT" && (
               <div className="space-y-1.5">
                 <Label className="text-xs uppercase tracking-wider text-muted-foreground">Deposit Method</Label>
-                <div className="flex flex-wrap gap-1.5">
+                <div className="scroll-row flex-wrap sm:flex-wrap">
                   {(Object.keys(METHOD_META) as DepositMethod[]).map((m) => (
                     <button
                       key={m}
                       onClick={() => { setMethod(m); setAmount(""); }}
-                      className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-medium transition-all press-scale ${
+                      className={`tap-target inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium transition-all press-scale ${
                         method === m
                           ? "border-gold/40 bg-gold/15 text-gold shadow-[0_0_12px_rgba(212,175,55,0.15)]"
                           : "border-border/60 bg-black/20 text-muted-foreground hover:border-gold/30 hover:text-foreground"
@@ -532,7 +532,7 @@ export function TransactionsPage() {
                 {open === "DEPOSIT" ? methodMeta.label : "Amount (USD)"}
               </Label>
               <div className="relative">
-                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 font-metric text-lg font-semibold text-gold/80">
+                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 font-metric text-base sm:text-lg font-semibold text-gold/80">
                   {open === "DEPOSIT" ? methodMeta.prefix : "$"}
                 </span>
                 <Input
@@ -541,13 +541,13 @@ export function TransactionsPage() {
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
                   placeholder={open === "DEPOSIT" ? methodMeta.placeholder : "50000"}
-                  className="border-border/60 bg-black/30 pl-8 font-metric text-lg"
+                  className="tap-target border-border/60 bg-black/30 pl-8 font-metric text-base sm:text-lg"
                 />
               </div>
 
               {/* Live USD equivalent for crypto deposits */}
               {isCryptoDeposit && currentAmount > 0 && (
-                <div className="text-[11px] text-muted-foreground">
+                <div className="text-[11px] text-muted-foreground break-words-mobile">
                   ≈ <span className="font-metric font-semibold text-gold">{fmtUSD(usdEquivalent, { decimals: 2 })}</span> USD
                   {method !== "USDT" && (
                     <span className="ml-1.5 text-muted-foreground/70">
@@ -564,7 +564,7 @@ export function TransactionsPage() {
                     <button
                       key={v}
                       onClick={() => setAmount(String(v))}
-                      className="rounded-md border border-border/60 px-2 py-0.5 text-xs text-muted-foreground hover:border-gold/40 hover:text-gold press-scale"
+                      className="tap-target-sm rounded-md border border-border/60 px-2 py-1 text-xs text-muted-foreground hover:border-gold/40 hover:text-gold press-scale"
                     >
                       {method === "UPI" ? `₹${v.toLocaleString()}` : method === "USDT" ? `₮${v}` : `${methodMeta.prefix}${v}`}
                     </button>
@@ -577,7 +577,7 @@ export function TransactionsPage() {
                     <button
                       key={v}
                       onClick={() => setAmount(String(v))}
-                      className="rounded-md border border-border/60 px-2 py-0.5 text-xs text-muted-foreground hover:border-gold/40 hover:text-gold press-scale"
+                      className="tap-target-sm rounded-md border border-border/60 px-2 py-1 text-xs text-muted-foreground hover:border-gold/40 hover:text-gold press-scale"
                     >
                       {fmtUSD(v, { compact: true })}
                     </button>
@@ -610,9 +610,9 @@ export function TransactionsPage() {
 
             {/* 2FA Required Notice for high-value operations */}
             {isHighValue && (
-              <div className="flex items-center gap-2 rounded-lg border border-gold/20 bg-gold/5 px-3 py-2.5 text-xs">
-                <ShieldCheck className="h-4 w-4 shrink-0 text-gold" />
-                <span className="text-foreground/90">
+              <div className="flex items-start gap-2 rounded-lg border border-gold/20 bg-gold/5 px-3 py-2.5 text-xs">
+                <ShieldCheck className="h-4 w-4 shrink-0 text-gold mt-0.5" />
+                <span className="text-foreground/90 break-words-mobile">
                   {userHas2FA
                     ? "2FA verification will be required for this high-value transaction."
                     : "2FA must be enabled to submit transactions over $50,000. Enable it in your account settings."}
@@ -632,12 +632,12 @@ export function TransactionsPage() {
               />
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setOpen(null)}>Cancel</Button>
+          <DialogFooter className="sticky-mobile-cta flex-col gap-2 sm:flex-row sm:gap-2 safe-area-bottom">
+            <Button variant="ghost" onClick={() => setOpen(null)} className="tap-target w-full sm:w-auto">Cancel</Button>
             <Button
               onClick={handleSubmitWith2FA}
               disabled={submitting || (open === "DEPOSIT" && !meetsMinimum)}
-              className="bg-gold-gradient text-black hover:opacity-90 press-scale"
+              className="tap-target w-full sm:w-auto bg-gold-gradient text-black hover:opacity-90 press-scale"
             >
               {submitting ? "Submitting…" : isHighValue ? "Submit with 2FA" : "Submit Request"}
             </Button>

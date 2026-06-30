@@ -379,23 +379,23 @@ export function AdminInvestments() {
   // ─────────────────────────────────────────────────────────────────────
   if (isLoading) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         <FadeIn>
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            <div>
+          <div className="flex flex-wrap items-end justify-between gap-3 sm:gap-4">
+            <div className="min-w-0">
               <span className="text-xs font-medium uppercase tracking-[0.18em] text-gold">Admin Console</span>
-              <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">Investment Management</h1>
-              <p className="text-sm text-muted-foreground">Create and manage investor positions</p>
+              <h1 className="h2-responsive mt-1 font-bold tracking-tight">Investment Management</h1>
+              <p className="body-responsive text-muted-foreground">Create and manage investor positions</p>
             </div>
           </div>
         </FadeIn>
         <FadeIn delay={0.05}>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
             {[0, 1, 2, 3].map((i) => <SkeletonMetric key={i} className="h-28" />)}
           </div>
         </FadeIn>
         <FadeIn delay={0.1}>
-          <GlassCard className="p-5">
+          <GlassCard className="p-3 sm:p-4 lg:p-5">
             <SectionTitle title="Investments" subtitle="Loading…" />
             <div className="mt-4">
               <SkeletonTable rows={6} cols={8} />
@@ -407,18 +407,18 @@ export function AdminInvestments() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header */}
       <FadeIn>
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
+        <div className="flex flex-wrap items-end justify-between gap-3 sm:gap-4">
+          <div className="min-w-0">
             <span className="text-xs font-medium uppercase tracking-[0.18em] text-gold">Admin Console</span>
-            <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">Investment Management</h1>
-            <p className="text-sm text-muted-foreground">Create and manage investor positions</p>
+            <h1 className="h2-responsive mt-1 font-bold tracking-tight">Investment Management</h1>
+            <p className="body-responsive text-muted-foreground">Create and manage investor positions</p>
           </div>
           <Button
             onClick={() => { setCreateForm(emptyForm(fund?.id ?? "")); setCreateOpen(true); }}
-            className="bg-gold-gradient text-black hover:opacity-90 press-scale gap-1.5"
+            className="bg-gold-gradient text-black hover:opacity-90 press-scale gap-1.5 tap-target-sm btn-full-mobile sm:btn-auto"
           >
             <Plus className="h-4 w-4" /> Create Investment
           </Button>
@@ -427,31 +427,31 @@ export function AdminInvestments() {
 
       {/* Metric tiles */}
       <FadeIn delay={0.05}>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <GlassCard className="p-4 hover-lift gold-glow-hover">
+        <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+          <GlassCard className="card-p sm:p-4 hover-lift gold-glow-hover">
             <div className="flex items-center gap-2 text-muted-foreground">
               <PiggyBank className="h-4 w-4" />
               <span className="text-[11px] uppercase tracking-wider">Total Investments</span>
             </div>
-            <div className="mt-1 font-metric text-2xl font-bold text-foreground">{investments.length}</div>
+            <div className="mt-1 font-metric text-xl sm:text-2xl font-bold text-foreground">{investments.length}</div>
             <div className="text-[11px] text-muted-foreground">{active.length} active</div>
           </GlassCard>
 
-          <GlassCard className="p-4 hover-lift gold-glow-hover">
+          <GlassCard className="card-p sm:p-4 hover-lift gold-glow-hover">
             <div className="flex items-center gap-2 text-muted-foreground">
               <Wallet className="h-4 w-4 text-gold" />
               <span className="text-[11px] uppercase tracking-wider">Capital Allocated</span>
             </div>
-            <div className="mt-1 font-metric text-2xl font-bold text-gold">{fmtUSD(totalCapital, { compact: true })}</div>
+            <div className="mt-1 font-metric text-xl sm:text-2xl font-bold text-gold">{fmtUSD(totalCapital, { compact: true })}</div>
             <div className="text-[11px] text-muted-foreground">Across {active.length} position{active.length !== 1 ? "s" : ""}</div>
           </GlassCard>
 
-          <GlassCard className="p-4 hover-lift gold-glow-hover">
+          <GlassCard className="card-p sm:p-4 hover-lift gold-glow-hover">
             <div className="flex items-center gap-2 text-muted-foreground">
               {totalPL >= 0 ? <TrendingUp className="h-4 w-4 text-profit" /> : <TrendingDown className="h-4 w-4 text-loss" />}
               <span className="text-[11px] uppercase tracking-wider">Active P&amp;L</span>
             </div>
-            <div className={`mt-1 font-metric text-2xl font-bold ${totalPL >= 0 ? "text-profit" : "text-loss"}`}>
+            <div className={`mt-1 font-metric text-xl sm:text-2xl font-bold ${totalPL >= 0 ? "text-profit" : "text-loss"}`}>
               {fmtUSD(totalPL, { compact: true })}
             </div>
             <div className={`text-[11px] ${totalPL >= 0 ? "text-profit/70" : "text-loss/70"}`}>
@@ -459,12 +459,12 @@ export function AdminInvestments() {
             </div>
           </GlassCard>
 
-          <GlassCard className="p-4 hover-lift gold-glow-hover">
+          <GlassCard className="card-p sm:p-4 hover-lift gold-glow-hover">
             <div className="flex items-center gap-2 text-muted-foreground">
               <Target className="h-4 w-4 text-gold" />
               <span className="text-[11px] uppercase tracking-wider">Avg ROI</span>
             </div>
-            <div className={`mt-1 font-metric text-2xl font-bold ${avgRoi >= 0 ? "text-profit" : "text-loss"}`}>
+            <div className={`mt-1 font-metric text-xl sm:text-2xl font-bold ${avgRoi >= 0 ? "text-profit" : "text-loss"}`}>
               {fmtPct(avgRoi)}
             </div>
             <div className="text-[11px] text-muted-foreground">Capital-weighted</div>
@@ -474,7 +474,7 @@ export function AdminInvestments() {
 
       {/* Search + filter bar */}
       <FadeIn delay={0.08}>
-        <GlassCard className="p-4">
+        <GlassCard className="p-3 sm:p-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="relative w-full sm:max-w-xs">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -482,15 +482,15 @@ export function AdminInvestments() {
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 placeholder="Search by name or email…"
-                className="border-border/60 bg-black/30 pl-9"
+                className="tap-target-sm border-border/60 bg-black/30 pl-9"
               />
             </div>
-            <div className="flex flex-wrap items-center gap-1.5">
+            <div className="scroll-row -mx-1 px-1 sm:mx-0 sm:px-0 sm:flex sm:flex-wrap sm:items-center sm:gap-1.5">
               {STATUS_TABS.map((s) => (
                 <button
                   key={s}
                   onClick={() => setStatus(s)}
-                  className={`rounded-full border px-3 py-1 text-[11px] font-medium uppercase tracking-wider transition-all press-scale ${
+                  className={`rounded-full border px-3 py-1.5 text-[11px] font-medium uppercase tracking-wider transition-all press-scale tap-target-sm ${
                     status === s
                       ? "border-gold/50 bg-gold/10 text-gold shadow-[0_0_12px_rgba(212,175,55,0.15)]"
                       : "border-border/40 bg-black/20 text-muted-foreground hover:border-gold/30 hover:text-foreground"
@@ -506,7 +506,7 @@ export function AdminInvestments() {
 
       {/* Investments table */}
       <FadeIn delay={0.12}>
-        <GlassCard className="p-5">
+        <GlassCard className="p-3 sm:p-4 lg:p-5">
           <SectionTitle title="Investments" subtitle={`${investments.length} position${investments.length !== 1 ? "s" : ""}`} />
           {investments.length === 0 ? (
             <EmptyState
@@ -516,24 +516,24 @@ export function AdminInvestments() {
               action={
                 <Button
                   onClick={() => { setCreateForm(emptyForm(fund?.id ?? "")); setCreateOpen(true); }}
-                  className="bg-gold-gradient text-black hover:opacity-90 gap-1.5"
+                  className="bg-gold-gradient text-black hover:opacity-90 gap-1.5 tap-target-sm"
                 >
                   <Plus className="h-4 w-4" /> Create Investment
                 </Button>
               }
             />
           ) : (
-            <div className="mt-4 overflow-x-auto scroll-luxury">
+            <div className="mt-4 table-mobile-card overflow-x-auto scroll-x-allowed lg:overflow-visible">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border/60 text-left text-[11px] uppercase tracking-wider text-muted-foreground">
                     <th className="pb-2 pr-4 font-medium">Investment</th>
-                    <th className="pb-2 pr-4 font-medium">User</th>
+                    <th className="pb-2 pr-4 font-medium hide-mobile">User</th>
                     <th className="pb-2 pr-4 font-medium">Invested</th>
                     <th className="pb-2 pr-4 font-medium">Current</th>
                     <th className="pb-2 pr-4 font-medium">P&amp;L</th>
                     <th className="pb-2 pr-4 font-medium">Status</th>
-                    <th className="pb-2 pr-4 font-medium">Start</th>
+                    <th className="pb-2 pr-4 font-medium hide-mobile">Start</th>
                     <th className="pb-2 font-medium text-right">Actions</th>
                   </tr>
                 </thead>
@@ -551,11 +551,12 @@ export function AdminInvestments() {
                         transition={{ duration: 0.35, delay: Math.min(idx * 0.04, 0.4), ease: [0.22, 1, 0.36, 1] }}
                         className="border-b border-border/40 last:border-0 hover:bg-gold/[0.04]"
                       >
-                        <td className="py-3 pr-4">
-                          <div className="font-medium text-foreground">{inv.investmentName}</div>
-                          <div className="text-[11px] text-muted-foreground">{inv.user?.email ?? "—"}</div>
+                        <td data-label="Investment" className="py-3 pr-4">
+                          <div className="font-medium text-foreground break-words-mobile">{inv.investmentName}</div>
+                          <div className="text-[11px] text-muted-foreground break-words-mobile">{inv.user?.email ?? "—"}</div>
+                          <div className="text-[11px] text-muted-foreground show-mobile">{inv.user?.name ?? "—"}</div>
                         </td>
-                        <td className="py-3 pr-4">
+                        <td data-label="User" className="py-3 pr-4 hide-mobile">
                           <div className="flex items-center gap-2">
                             <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gold-gradient text-[10px] font-bold text-black">
                               {(inv.user?.name ?? "?").charAt(0).toUpperCase()}
@@ -563,9 +564,9 @@ export function AdminInvestments() {
                             <span className="text-foreground">{inv.user?.name ?? "—"}</span>
                           </div>
                         </td>
-                        <td className="py-3 pr-4 font-metric text-muted-foreground">{fmtUSD(inv.investedAmount)}</td>
-                        <td className="py-3 pr-4 font-metric font-semibold text-foreground">{fmtUSD(inv.currentValue)}</td>
-                        <td className="py-3 pr-4">
+                        <td data-label="Invested" className="py-3 pr-4 font-metric text-muted-foreground">{fmtUSD(inv.investedAmount)}</td>
+                        <td data-label="Current" className="py-3 pr-4 font-metric font-semibold text-foreground">{fmtUSD(inv.currentValue)}</td>
+                        <td data-label="P&L" className="py-3 pr-4">
                           <div className={`font-metric font-semibold ${positive ? "text-profit" : "text-loss"}`}>
                             {positive ? "+" : ""}{fmtUSD(pl)}
                           </div>
@@ -573,14 +574,14 @@ export function AdminInvestments() {
                             ({fmtPct(inv.roiPercent)})
                           </div>
                         </td>
-                        <td className="py-3 pr-4"><InvestmentStatusBadge status={inv.status} /></td>
-                        <td className="py-3 pr-4 text-muted-foreground">{fmtDate(inv.startDate)}</td>
-                        <td className="py-3">
-                          <div className="flex items-center justify-end gap-1">
+                        <td data-label="Status" className="py-3 pr-4"><InvestmentStatusBadge status={inv.status} /></td>
+                        <td data-label="Start" className="py-3 pr-4 text-muted-foreground hide-mobile">{fmtDate(inv.startDate)}</td>
+                        <td data-label="Actions" className="cell-actions py-3">
+                          <div className="flex items-center justify-end gap-1 flex-wrap">
                             <TooltipProvider delayDuration={200}>
                               <Tooltip>
                                 <TooltipTrigger asChild>
-                                  <Button size="sm" variant="ghost" onClick={() => setViewing(inv)} className="text-muted-foreground hover:text-gold hover:bg-gold/10 press-scale h-8 w-8 p-0">
+                                  <Button size="sm" variant="ghost" onClick={() => setViewing(inv)} className="text-muted-foreground hover:text-gold hover:bg-gold/10 press-scale h-9 w-9 p-0 tap-target-sm">
                                     <Eye className="h-4 w-4" />
                                   </Button>
                                 </TooltipTrigger>
@@ -590,7 +591,7 @@ export function AdminInvestments() {
                             <TooltipProvider delayDuration={200}>
                               <Tooltip>
                                 <TooltipTrigger asChild>
-                                  <Button size="sm" variant="ghost" onClick={() => setEditing(inv)} className="text-muted-foreground hover:text-gold hover:bg-gold/10 press-scale h-8 w-8 p-0">
+                                  <Button size="sm" variant="ghost" onClick={() => setEditing(inv)} className="text-muted-foreground hover:text-gold hover:bg-gold/10 press-scale h-9 w-9 p-0 tap-target-sm">
                                     <Pencil className="h-4 w-4" />
                                   </Button>
                                 </TooltipTrigger>
@@ -601,7 +602,7 @@ export function AdminInvestments() {
                               <TooltipProvider delayDuration={200}>
                                 <Tooltip>
                                   <TooltipTrigger asChild>
-                                    <Button size="sm" variant="ghost" onClick={() => setClosing(inv)} className="text-muted-foreground hover:text-info hover:bg-info/10 press-scale h-8 w-8 p-0">
+                                    <Button size="sm" variant="ghost" onClick={() => setClosing(inv)} className="text-muted-foreground hover:text-info hover:bg-info/10 press-scale h-9 w-9 p-0 tap-target-sm">
                                       <Lock className="h-4 w-4" />
                                     </Button>
                                   </TooltipTrigger>
@@ -613,7 +614,7 @@ export function AdminInvestments() {
                               <TooltipProvider delayDuration={200}>
                                 <Tooltip>
                                   <TooltipTrigger asChild>
-                                    <Button size="sm" variant="ghost" onClick={() => setCancelling(inv)} className="text-muted-foreground hover:text-loss hover:bg-loss/10 press-scale h-8 w-8 p-0">
+                                    <Button size="sm" variant="ghost" onClick={() => setCancelling(inv)} className="text-muted-foreground hover:text-loss hover:bg-loss/10 press-scale h-9 w-9 p-0 tap-target-sm">
                                       <X className="h-4 w-4" />
                                     </Button>
                                   </TooltipTrigger>
@@ -635,7 +636,7 @@ export function AdminInvestments() {
 
       {/* ─────────── Create Investment Dialog ─────────── */}
       <Dialog open={createOpen} onOpenChange={(o) => !o && setCreateOpen(false)}>
-        <DialogContent className="border-gold/20 bg-card/95 backdrop-blur-xl sm:max-w-lg max-h-[90vh] overflow-y-auto scroll-luxury">
+        <DialogContent className="border-gold/20 bg-card/95 backdrop-blur-xl max-w-[95vw] sm:max-w-lg max-h-[90vh] overflow-y-auto scroll-luxury">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2"><Plus className="h-5 w-5 text-gold" /> Create Investment</DialogTitle>
             <DialogDescription>Open a new investor position in the fund</DialogDescription>
@@ -762,12 +763,12 @@ export function AdminInvestments() {
               />
             </div>
           </div>
-          <DialogFooter className="gap-2 sm:gap-2">
-            <Button variant="ghost" onClick={() => setCreateOpen(false)}>Cancel</Button>
+          <DialogFooter className="gap-2 sm:gap-2 flex-col sm:flex-row">
+            <Button variant="ghost" onClick={() => setCreateOpen(false)} className="btn-full-mobile tap-target-sm">Cancel</Button>
             <Button
               onClick={handleCreate}
               disabled={creating}
-              className="bg-gold-gradient text-black hover:opacity-90 press-scale gap-1.5"
+              className="bg-gold-gradient text-black hover:opacity-90 press-scale gap-1.5 btn-full-mobile tap-target-sm"
             >
               {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
               {creating ? "Creating…" : "Create Investment"}
@@ -778,7 +779,7 @@ export function AdminInvestments() {
 
       {/* ─────────── Edit Investment Dialog ─────────── */}
       <Dialog open={editing !== null} onOpenChange={(o) => !o && setEditing(null)}>
-        <DialogContent className="border-gold/20 bg-card/95 backdrop-blur-xl sm:max-w-lg max-h-[90vh] overflow-y-auto scroll-luxury">
+        <DialogContent className="border-gold/20 bg-card/95 backdrop-blur-xl max-w-[95vw] sm:max-w-lg max-h-[90vh] overflow-y-auto scroll-luxury">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2"><Pencil className="h-5 w-5 text-gold" /> Edit Investment</DialogTitle>
             <DialogDescription>Update position details and current value</DialogDescription>
@@ -904,12 +905,12 @@ export function AdminInvestments() {
               </div>
             </div>
           )}
-          <DialogFooter className="gap-2 sm:gap-2">
-            <Button variant="ghost" onClick={() => setEditing(null)}>Cancel</Button>
+          <DialogFooter className="gap-2 sm:gap-2 flex-col sm:flex-row">
+            <Button variant="ghost" onClick={() => setEditing(null)} className="btn-full-mobile tap-target-sm">Cancel</Button>
             <Button
               onClick={handleEditSave}
               disabled={saving}
-              className="bg-gold-gradient text-black hover:opacity-90 press-scale gap-1.5"
+              className="bg-gold-gradient text-black hover:opacity-90 press-scale gap-1.5 btn-full-mobile tap-target-sm"
             >
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Pencil className="h-4 w-4" />}
               {saving ? "Saving…" : "Save Changes"}
@@ -920,7 +921,7 @@ export function AdminInvestments() {
 
       {/* ─────────── Detail Dialog ─────────── */}
       <Dialog open={viewing !== null} onOpenChange={(o) => !o && setViewing(null)}>
-        <DialogContent className="border-gold/20 bg-card/95 backdrop-blur-xl sm:max-w-2xl max-h-[90vh] overflow-y-auto scroll-luxury">
+        <DialogContent className="border-gold/20 bg-card/95 backdrop-blur-xl max-w-[95vw] sm:max-w-2xl max-h-[90vh] overflow-y-auto scroll-luxury">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2"><Eye className="h-5 w-5 text-gold" /> Investment Detail</DialogTitle>
             <DialogDescription>{detail?.investmentName ?? "Loading…"}</DialogDescription>
@@ -928,7 +929,7 @@ export function AdminInvestments() {
           {detail ? (
             <div className="space-y-5 py-2">
               {/* P&L summary card */}
-              <div className="grid grid-cols-2 gap-3 rounded-xl border border-gold/20 bg-gold/[0.04] p-4 sm:grid-cols-4">
+              <div className="grid grid-cols-2 gap-3 rounded-xl border border-gold/20 bg-gold/[0.04] p-3 sm:p-4 sm:grid-cols-4">
                 <div>
                   <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Invested</div>
                   <div className="mt-0.5 font-metric text-base font-bold text-foreground">{fmtUSD(detail.investedAmount)}</div>
@@ -952,7 +953,7 @@ export function AdminInvestments() {
               </div>
 
               {/* Metadata grid */}
-              <div className="grid grid-cols-2 gap-3 rounded-lg border border-border/60 bg-black/20 p-4 sm:grid-cols-3">
+              <div className="grid grid-cols-2 gap-3 rounded-lg border border-border/60 bg-black/20 p-3 sm:p-4 sm:grid-cols-3">
                 <Meta label="Investor" value={detail.user?.name ?? "—"} sub={detail.user?.email} />
                 <Meta label="Fund" value={detail.fund?.name ?? "—"} />
                 <Meta label="Status" value={<InvestmentStatusBadge status={detail.status} />} />
@@ -977,7 +978,7 @@ export function AdminInvestments() {
                   <BarChart3 className="h-4 w-4 text-gold" />
                   <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Value History</h4>
                 </div>
-                <div className="h-44 rounded-lg border border-border/40 bg-black/20 p-3">
+                <div className="chart-mobile rounded-lg border border-border/40 bg-black/20 p-3">
                   {chartData.length >= 2 ? (
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={chartData} margin={{ top: 6, right: 8, left: 0, bottom: 0 }}>
@@ -1019,6 +1020,7 @@ export function AdminInvestments() {
                   <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Valuation History</h4>
                 </div>
                 <div className="max-h-56 overflow-y-auto scroll-luxury rounded-lg border border-border/60">
+                  <div className="table-mobile-card overflow-x-auto scroll-x-allowed">
                   <table className="w-full text-xs">
                     <thead className="sticky top-0 bg-card/95 backdrop-blur">
                       <tr className="border-b border-border/60 text-left uppercase tracking-wider text-muted-foreground">
@@ -1036,17 +1038,18 @@ export function AdminInvestments() {
                       ) : (
                         (detail.history ?? []).map((h) => (
                           <tr key={h.id} className="border-b border-border/40 last:border-0 hover:bg-gold/[0.04]">
-                            <td className="p-2 text-muted-foreground">{fmtDate(h.createdAt, true)}</td>
-                            <td className="p-2 font-metric text-muted-foreground">{fmtUSD(h.previousValue)}</td>
-                            <td className="p-2 font-metric font-semibold text-foreground">{fmtUSD(h.newValue)}</td>
-                            <td className="p-2 font-metric text-muted-foreground">{fmtPct(h.previousRoi)}</td>
-                            <td className={`p-2 font-metric font-semibold ${h.newRoi >= h.previousRoi ? "text-profit" : "text-loss"}`}>{fmtPct(h.newRoi)}</td>
-                            <td className="p-2 text-muted-foreground">{h.updatedBy ?? "system"}</td>
+                            <td data-label="Date" className="p-2 text-muted-foreground">{fmtDate(h.createdAt, true)}</td>
+                            <td data-label="Prev Value" className="p-2 font-metric text-muted-foreground">{fmtUSD(h.previousValue)}</td>
+                            <td data-label="New Value" className="p-2 font-metric font-semibold text-foreground">{fmtUSD(h.newValue)}</td>
+                            <td data-label="Prev ROI" className="p-2 font-metric text-muted-foreground">{fmtPct(h.previousRoi)}</td>
+                            <td data-label="New ROI" className={`p-2 font-metric font-semibold ${h.newRoi >= h.previousRoi ? "text-profit" : "text-loss"}`}>{fmtPct(h.newRoi)}</td>
+                            <td data-label="By" className="p-2 text-muted-foreground">{h.updatedBy ?? "system"}</td>
                           </tr>
                         ))
                       )}
                     </tbody>
                   </table>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1055,15 +1058,15 @@ export function AdminInvestments() {
               <Loader2 className="h-6 w-6 animate-spin text-gold" />
             </div>
           )}
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setViewing(null)}>Close</Button>
+          <DialogFooter className="gap-2 sm:gap-2 flex-col sm:flex-row">
+            <Button variant="ghost" onClick={() => setViewing(null)} className="btn-full-mobile tap-target-sm">Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* ─────────── Close Confirmation Dialog ─────────── */}
       <Dialog open={closing !== null} onOpenChange={(o) => !o && !closingBusy && setClosing(null)}>
-        <DialogContent className="border-gold/20 bg-card/95 backdrop-blur-xl sm:max-w-md">
+        <DialogContent className="border-gold/20 bg-card/95 backdrop-blur-xl max-w-[95vw] sm:max-w-md max-h-[90vh] overflow-y-auto scroll-luxury">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2"><Lock className="h-5 w-5 text-info" /> Close Investment</DialogTitle>
             <DialogDescription>
@@ -1108,13 +1111,13 @@ export function AdminInvestments() {
               </div>
             </div>
           )}
-          <DialogFooter className="gap-2 sm:gap-2">
-            <Button variant="ghost" onClick={() => setClosing(null)} disabled={closingBusy}>Cancel</Button>
+          <DialogFooter className="gap-2 sm:gap-2 flex-col sm:flex-row">
+            <Button variant="ghost" onClick={() => setClosing(null)} disabled={closingBusy} className="btn-full-mobile tap-target-sm">Cancel</Button>
             <Button
               onClick={handleClose}
               disabled={closingBusy}
               variant="outline"
-              className="border-info/40 text-info hover:bg-info/10 gap-1.5 press-scale"
+              className="border-info/40 text-info hover:bg-info/10 gap-1.5 press-scale btn-full-mobile tap-target-sm"
             >
               {closingBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Lock className="h-4 w-4" />}
               {closingBusy ? "Closing…" : "Confirm Close"}
@@ -1125,7 +1128,7 @@ export function AdminInvestments() {
 
       {/* ─────────── Cancel Confirmation Dialog ─────────── */}
       <Dialog open={cancelling !== null} onOpenChange={(o) => !o && !cancellingBusy && setCancelling(null)}>
-        <DialogContent className="border-gold/20 bg-card/95 backdrop-blur-xl sm:max-w-md">
+        <DialogContent className="border-gold/20 bg-card/95 backdrop-blur-xl max-w-[95vw] sm:max-w-md max-h-[90vh] overflow-y-auto scroll-luxury">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2"><X className="h-5 w-5 text-loss" /> Cancel Investment</DialogTitle>
             <DialogDescription>
@@ -1149,13 +1152,13 @@ export function AdminInvestments() {
               </div>
             </div>
           )}
-          <DialogFooter className="gap-2 sm:gap-2">
-            <Button variant="ghost" onClick={() => setCancelling(null)} disabled={cancellingBusy}>Keep Position</Button>
+          <DialogFooter className="gap-2 sm:gap-2 flex-col sm:flex-row">
+            <Button variant="ghost" onClick={() => setCancelling(null)} disabled={cancellingBusy} className="btn-full-mobile tap-target-sm">Keep Position</Button>
             <Button
               onClick={handleCancel}
               disabled={cancellingBusy}
               variant="outline"
-              className="border-loss/40 text-loss hover:bg-loss/10 gap-1.5 press-scale"
+              className="border-loss/40 text-loss hover:bg-loss/10 gap-1.5 press-scale btn-full-mobile tap-target-sm"
             >
               {cancellingBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
               {cancellingBusy ? "Cancelling…" : "Confirm Cancel"}

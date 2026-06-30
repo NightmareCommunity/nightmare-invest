@@ -1,0 +1,564 @@
+   600→      {/*  FUND STRATEGY — Allocation cards                            */}
+   601→      {/* ============================================================ */}
+   602→      <section id="strategy" className="relative overflow-hidden">
+   603→        <div className="absolute inset-0 bg-grid bg-grid-fade opacity-40" />
+   604→        <div className="relative mx-auto max-w-7xl px-4 py-28 sm:px-6 lg:px-8 lg:py-36">
+   605→          <ScrollReveal>
+   606→            <div className="mx-auto max-w-2xl text-center">
+   607→              <div className="section-gold-accent inline-block text-left mx-auto">
+   608→                <span className="text-xs font-semibold uppercase tracking-[0.2em] text-gold">
+   609→                  Fund Strategy
+   610→                </span>
+   611→                <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
+   612→                  Disciplined, Multi-Asset Allocation
+   613→                </h2>
+   614→              </div>
+   615→              <p className="mt-5 text-muted-foreground leading-relaxed">
+   616→                Actively managed across five strategic buckets, rebalanced by the Nightmare investment
+   617→                committee to capture asymmetric upside while preserving capital through market cycles.
+   618→              </p>
+   619→            </div>
+   620→          </ScrollReveal>
+   621→
+   622→          <div className="mt-16 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+   623→            {strategyCards.map((card, i) => (
+   624→              <ScrollReveal key={card.asset} delay={i * 0.08}>
+   625→                <GlassCard
+   626→                  gold={card.weight >= 25}
+   627→                  hover
+   628→                  className="h-full p-6"
+   629→                >
+   630→                  <div className="flex items-start justify-between">
+   631→                    <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-white/[0.06] bg-white/[0.03]" style={{ boxShadow: `inset 0 0 12px ${card.color}15` }}>
+   632→                      <card.icon className="h-6 w-6" style={{ color: card.color }} />
+   633→                    </div>
+   634→                    <span
+   635→                      className="font-metric text-3xl font-extrabold"
+   636→                      style={{ color: card.color }}
+   637→                    >
+   638→                      {card.weight}%
+   639→                    </span>
+   640→                  </div>
+   641→                  <div className="mt-4">
+   642→                    <h3 className="text-base font-semibold text-foreground">{card.asset}</h3>
+   643→                    <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+   644→                      {card.ticker}
+   645→                    </span>
+   646→                  </div>
+   647→                  <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+   648→                    {card.note}
+   649→                  </p>
+   650→                  {/* Allocation bar */}
+   651→                  <div className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-white/[0.05]">
+   652→                    <motion.div
+   653→                      initial={{ width: 0 }}
+   654→                      whileInView={{ width: `${card.weight}%` }}
+   655→                      viewport={{ once: true }}
+   656→                      transition={{ duration: 1.2, delay: 0.3 + i * 0.08, ease: "easeOut" }}
+   657→                      className="h-full rounded-full"
+   658→                      style={{ background: `linear-gradient(90deg, ${card.color}cc, ${card.color}66)` }}
+   659→                    />
+   660→                  </div>
+   661→                </GlassCard>
+   662→              </ScrollReveal>
+   663→            ))}
+   664→          </div>
+   665→
+   666→          {/* Fee structure */}
+   667→          <ScrollReveal delay={0.3}>
+   668→            <div className="mt-12 flex flex-wrap items-center justify-center gap-6 text-sm text-muted-foreground">
+   669→              {[
+   670→                "2% Management Fee",
+   671→                "20% Performance Fee (High-Water Mark)",
+   672→                "Monthly Liquidity Windows",
+   673→              ].map((item) => (
+   674→                <div key={item} className="flex items-center gap-2">
+   675→                  <CheckCircle2 className="h-4 w-4 text-gold" />
+   676→                  <span>{item}</span>
+   677→                </div>
+   678→              ))}
+   679→            </div>
+   680→          </ScrollReveal>
+   681→        </div>
+   682→      </section>
+   683→
+   684→      {/* ============================================================ */}
+   685→      {/*  PERFORMANCE — NAV chart + metrics                           */}
+   686→      {/* ============================================================ */}
+   687→      <section id="performance" className="relative border-y border-border/60 bg-black/30">
+   688→        <div className="mx-auto max-w-7xl px-4 py-28 sm:px-6 lg:px-8 lg:py-36">
+   689→          <ScrollReveal>
+   690→            <div className="mx-auto max-w-2xl text-center">
+   691→              <div className="section-gold-accent inline-block text-left mx-auto">
+   692→                <span className="text-xs font-semibold uppercase tracking-[0.2em] text-gold">
+   693→                  Track Record
+   694→                </span>
+   695→                <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
+   696→                  Consistent, Risk-Adjusted Returns
+   697→                </h2>
+   698→              </div>
+   699→              <p className="mt-5 text-muted-foreground leading-relaxed">
+   700→                Net Asset Value trajectory since inception — net of all fees and expenses.
+   701→              </p>
+   702→            </div>
+   703→          </ScrollReveal>
+   704→
+   705→          {/* NAV Area Chart */}
+   706→          <ScrollReveal delay={0.15}>
+   707→            <GlassCard className="mt-14 p-4 sm:p-6 lg:p-8 gold-border-sweep">
+   708→              <div className="flex items-center justify-between">
+   709→                <div>
+   710→                  <h3 className="text-lg font-semibold text-foreground">Net Asset Value</h3>
+   711→                  <p className="text-sm text-muted-foreground">Since inception · NAV per share</p>
+   712→                </div>
+   713→                <Zap className="h-6 w-6 text-gold" />
+   714→              </div>
+   715→              <div className="mt-6 h-72 sm:h-80">
+   716→                <NavChart />
+   717→              </div>
+   718→            </GlassCard>
+   719→          </ScrollReveal>
+   720→
+   721→          {/* Stat cards */}
+   722→          <ScrollReveal delay={0.25}>
+   723→            <div className="mt-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
+   724→              {[
+   725→                { label: "Annual Return", value: "+42.6%", accent: "text-profit" },
+   726→                { label: "Sharpe Ratio", value: "2.31", accent: "text-gold" },
+   727→                { label: "Max Drawdown", value: "-8.4%", accent: "text-loss" },
+   728→                { label: "CAGR", value: "+38.9%", accent: "text-profit" },
+   729→              ].map((m) => (
+   730→                <GlassCard key={m.label} gold className="stat-card-gold p-5 text-center">
+   731→                  <div className="text-[10px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+   732→                    {m.label}
+   733→                  </div>
+   734→                  <div className={`mt-2 font-metric text-2xl font-bold ${m.accent} sm:text-3xl`}>
+   735→                    {m.value}
+   736→                  </div>
+   737→                </GlassCard>
+   738→              ))}
+   739→            </div>
+   740→          </ScrollReveal>
+   741→
+   742→          {/* Period returns */}
+   743→          <ScrollReveal delay={0.35}>
+   744→            <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+   745→              {[
+   746→                { label: "Daily", value: "+0.84%" },
+   747→                { label: "Weekly", value: "+3.21%" },
+   748→                { label: "Monthly", value: "+8.47%" },
+   749→                { label: "YTD", value: "+31.2%" },
+   750→              ].map((r) => (
+   751→                <div key={r.label} className="rounded-lg border border-border/60 bg-white/[0.02] p-3 text-center">
+   752→                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{r.label}</div>
+   753→                  <div className="mt-1 font-metric text-lg font-semibold text-profit">{r.value}</div>
+   754→                </div>
+   755→              ))}
+   756→            </div>
+   757→          </ScrollReveal>
+   758→        </div>
+   759→      </section>
+   760→
+   761→      {/* ============================================================ */}
+   762→      {/*  SECURITY & COMPLIANCE — sequential reveal                   */}
+   763→      {/* ============================================================ */}
+   764→      <section id="security" className="relative overflow-hidden">
+   765→        <div className="absolute inset-0 bg-grid bg-grid-fade opacity-30" />
+   766→        <div className="relative mx-auto max-w-7xl px-4 py-28 sm:px-6 lg:px-8 lg:py-36">
+   767→          <ScrollReveal>
+   768→            <div className="mx-auto max-w-2xl text-center">
+   769→              <div className="section-gold-accent inline-block text-left mx-auto">
+   770→                <span className="text-xs font-semibold uppercase tracking-[0.2em] text-gold">
+   771→                  Security & Compliance
+   772→                </span>
+   773→                <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
+   774→                  Institutional-Grade Protection
+   775→                </h2>
+   776→              </div>
+   777→              <p className="mt-5 text-muted-foreground leading-relaxed">
+   778→                Every layer of the platform reflects institutional standards — from custody and
+   779→                compliance to encryption and auditability.
+   780→              </p>
+   781→            </div>
+   782→          </ScrollReveal>
+   783→
+   784→          <div className="mt-16 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+   785→            {securityItems.map((item, i) => (
+   786→              <ScrollReveal key={item.title} delay={i * 0.1}>
+   787→                <GlassCard hover className="h-full p-6">
+   788→                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gold/10 text-gold">
+   789→                    <item.icon className="h-6 w-6" />
+   790→                  </div>
+   791→                  <h3 className="mt-4 text-base font-semibold text-foreground">{item.title}</h3>
+   792→                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{item.desc}</p>
+   793→                </GlassCard>
+   794→              </ScrollReveal>
+   795→            ))}
+   796→          </div>
+   797→        </div>
+   798→      </section>
+   799→
+   800→      {/* ============================================================ */}
+   801→      {/*  TESTIMONIAL & TRUST                                         */}
+   802→      {/* ============================================================ */}
+   803→      <section className="relative border-y border-border/60 bg-black/30">
+   804→        <div className="mx-auto max-w-7xl px-4 py-28 sm:px-6 lg:px-8 lg:py-36">
+   805→          <div className="grid gap-8 lg:grid-cols-2 lg:items-center">
+   806→            {/* Testimonial */}
+   807→            <ScrollReveal>
+   808→              <GlassCard gold glow className="relative overflow-hidden p-8 sm:p-10">
+   809→                <div className="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-gold/10 blur-3xl" />
+   810→                <Quote className="h-10 w-10 text-gold/40" />
+   811→                <blockquote className="mt-4 text-lg leading-relaxed text-foreground/90 sm:text-xl">
+   812→                  &ldquo;Nightmare Invest delivers the institutional rigor and confidentiality our
+   813→                  family office demands. The transparency of daily NAV reporting combined with
+   814→                  their disciplined risk management sets a new standard for digital-asset
+   815→                  fund administration.&rdquo;
+   816→                </blockquote>
+   817→                <div className="mt-6 flex items-center gap-4">
+   818→                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gold-gradient text-black font-bold text-lg avatar-gold-ring">
+   819→                    M
+   820→                  </div>
+   821→                  <div>
+   822→                    <div className="text-sm font-semibold text-foreground">Marcus Chen</div>
+   823→                    <div className="text-xs text-muted-foreground">
+   824→                      Chief Investment Officer · Meridian Family Office, Geneva
+   825→                    </div>
+   826→                  </div>
+   827→                </div>
+   828→                <div className="mt-4 text-[11px] text-muted-foreground/60">
+   829→                  AUM: $1.2B · Invested since 2023
+   830→                </div>
+   831→              </GlassCard>
+   832→            </ScrollReveal>
+   833→
+   834→            {/* Trust badges + onboarding */}
+   835→            <ScrollReveal delay={0.15}>
+   836→              <div className="space-y-6">
+   837→                <div className="section-gold-accent">
+   838→                  <span className="text-xs font-semibold uppercase tracking-[0.2em] text-gold">
+   839→                    Trusted Infrastructure
+   840→                  </span>
+   841→                  <h3 className="mt-2 text-2xl font-bold text-foreground">
+   842→                    Built for Capital That Demands Certainty
+   843→                  </h3>
+   844→                </div>
+   845→
+   846→                {/* Trust badges */}
+   847→                <div className="flex flex-wrap gap-4">
+   848→                  {trustBadges.map((b) => (
+   849→                    <div
+   850→                      key={b.label}
+   851→                      className="flex items-center gap-2.5 rounded-lg border border-gold/20 bg-gold/[0.04] px-4 py-3 transition-all hover:border-gold/40 hover:bg-gold/[0.08]"
+   852→                    >
+   853→                      <b.icon className="h-5 w-5 text-gold" />
+   854→                      <span className="text-sm font-medium text-foreground">{b.label}</span>
+   855→                    </div>
+   856→                  ))}
+   857→                </div>
+   858→
+   859→                {/* Process steps */}
+   860→                <div className="space-y-4">
+   861→                  {[
+   862→                    { step: "01", title: "Request Access", desc: "Submit credentials for accredited-investor verification." },
+   863→                    { step: "02", title: "Capital Commitment", desc: "Confirm allocation and execute subscription agreement." },
+   864→                    { step: "03", title: "Monitor Performance", desc: "Track NAV, holdings, and analytics in your private portal." },
+   865→                    { step: "04", title: "Liquidity Windows", desc: "Request deposits or withdrawals during scheduled windows." },
+   866→                  ].map((p, i) => (
+   867→                    <ScrollReveal key={p.step} delay={i * 0.1}>
+   868→                      <div className="flex items-start gap-4">
+   869→                        <span className="number-badge">{p.step}</span>
+   870→                        <div>
+   871→                          <div className="text-sm font-semibold text-foreground">{p.title}</div>
+   872→                          <div className="text-xs text-muted-foreground">{p.desc}</div>
+   873→                        </div>
+   874→                      </div>
+   875→                    </ScrollReveal>
+   876→                  ))}
+   877→                </div>
+   878→              </div>
+   879→            </ScrollReveal>
+   880→          </div>
+   881→        </div>
+   882→      </section>
+   883→
+   884→      {/* ============================================================ */}
+   885→      {/*  FINAL CTA                                                   */}
+   886→      {/* ============================================================ */}
+   887→      <section className="relative overflow-hidden">
+   888→        <div className="absolute inset-0 hero-dot-grid opacity-30" />
+   889→        <div className="absolute left-1/2 top-1/2 h-[500px] w-[800px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-gold/[0.06] blur-[160px]" />
+   890→        <div className="relative mx-auto max-w-7xl px-4 py-28 sm:px-6 lg:px-8 lg:py-36">
+   891→          <ScrollReveal>
+   892→            <GlassCard gold glow className="relative overflow-hidden p-10 text-center sm:p-16 lg:p-20 gold-border-sweep hero-glow-pulse">
+   893→              <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-gold/20 blur-3xl" />
+   894→              <div className="absolute -bottom-20 -left-20 h-48 w-48 rounded-full bg-gold/10 blur-3xl" />
+   895→              <div className="relative">
+   896→                <h2 className="text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
+   897→                  Begin Your{" "}
+   898→                  <span className="text-gold-gradient text-glow-gold">Investment Journey</span>
+   899→                </h2>
+   900→                <p className="mx-auto mt-6 max-w-xl text-muted-foreground leading-relaxed">
+   901→                  Capital allocation is selective. Submit your access request and our investor
+   902→                  relations team will respond within 48 hours.
+   903→                </p>
+   904→                <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
+   905→                  <motion.div
+   906→                    whileHover={{ scale: 1.04 }}
+   907→                    whileTap={{ scale: 0.97 }}
+   908→                    transition={{ type: "spring", stiffness: 400, damping: 17 }}
+   909→                  >
+   910→                    <Button
+   911→                      size="lg"
+   912→                      onClick={() => setRoute({ name: "signup" })}
+   913→                      className="group h-14 rounded-lg bg-gold-gradient px-10 text-base font-bold text-black shadow-[0_0_32px_rgba(212,175,55,0.25)] hover:shadow-[0_0_48px_rgba(212,175,55,0.4)] transition-shadow cta-gold-sweep"
+   914→                    >
+   915→                      Begin Access Request
+   916→                      <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1.5" />
+   917→                    </Button>
+   918→                  </motion.div>
+   919→                  <motion.div
+   920→                    whileHover={{ scale: 1.04 }}
+   921→                    whileTap={{ scale: 0.97 }}
+   922→                    transition={{ type: "spring", stiffness: 400, damping: 17 }}
+   923→                  >
+   924→                    <Button
+   925→                      size="lg"
+   926→                      variant="outline"
+   927→                      onClick={() => setRoute({ name: "legal", doc: "risk" })}
+   928→                      className="h-14 rounded-lg border-gold/30 px-8 text-base text-foreground hover:bg-gold/10 transition-all"
+   929→                    >
+   930→                      Risk Disclosure
+   931→                    </Button>
+   932→                  </motion.div>
+   933→                </div>
+   934→                <p className="mt-6 text-xs text-muted-foreground">
+   935→                  For accredited investors only. Minimum investment $50,000.
+   936→                </p>
+   937→              </div>
+   938→            </GlassCard>
+   939→          </ScrollReveal>
+   940→        </div>
+   941→      </section>
+   942→
+   943→      {/* ============================================================ */}
+   944→      {/*  PREMIUM FOOTER                                              */}
+   945→      {/* ============================================================ */}
+   946→      <footer className="mt-auto bg-black/40">
+   947→        {/* Gold gradient separator */}
+   948→        <div className="footer-gold-separator" />
+   949→
+   950→        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+   951→          <div className="grid gap-10 md:grid-cols-4">
+   952→            <div className="md:col-span-2">
+   953→              <Logo />
+   954→              <p className="mt-5 max-w-sm text-sm leading-relaxed text-muted-foreground">
+   955→                Nightmare Invest is a private institutional crypto hedge fund portal for accredited
+   956→                investors. This is not a retail product.
+   957→              </p>
+   958→              <p className="mt-4 text-xs text-muted-foreground/50 tracking-wide">
+   959→                Built with institutional-grade infrastructure
+   960→              </p>
+   961→            </div>
+   962→            <div>
+   963→              <div className="text-xs font-semibold uppercase tracking-wider text-foreground/70">Legal</div>
+   964→              <ul className="mt-4 space-y-3 text-sm">
+   965→                <li><button onClick={() => setRoute({ name: "legal", doc: "tos" })} className="text-muted-foreground footer-link-gold">Terms of Service</button></li>
+   966→                <li><button onClick={() => setRoute({ name: "legal", doc: "privacy" })} className="text-muted-foreground footer-link-gold">Privacy Policy</button></li>
+   967→                <li><button onClick={() => setRoute({ name: "legal", doc: "cookies" })} className="text-muted-foreground footer-link-gold">Cookie Policy</button></li>
+   968→                <li><button onClick={() => setRoute({ name: "legal", doc: "risk" })} className="text-muted-foreground footer-link-gold">Risk Disclosure</button></li>
+   969→              </ul>
+   970→            </div>
+   971→            <div>
+   972→              <div className="text-xs font-semibold uppercase tracking-wider text-foreground/70">Investor Relations</div>
+   973→              <ul className="mt-4 space-y-3 text-sm text-muted-foreground">
+   974→                <li className="footer-link-gold">ir@nightmare.invest</li>
+   975→                <li>Zug · Geneva · Singapore</li>
+   976→                <li className="pt-2"><button onClick={() => setRoute({ name: "login" })} className="text-gold hover:underline transition-colors">Investor Login →</button></li>
+   977→              </ul>
+   978→            </div>
+   979→          </div>
+   980→
+   981→          {/* Gold divider before bottom bar */}
+   982→          <div className="footer-gold-separator mt-12" />
+   983→
+   984→          <div className="mt-8 flex flex-col items-start justify-between gap-4 pt-2 text-xs text-muted-foreground sm:flex-row sm:items-center">
+   985→            <span>© {new Date().getFullYear()} Nightmare Invest. All rights reserved.</span>
+   986→            <span className="max-w-md text-right">This platform is intended for accredited investors. Digital assets are subject to high volatility and risk of loss.</span>
+   987→          </div>
+   988→        </div>
+   989→      </footer>
+   990→    </div>
+   991→  );
+   992→}
+   993→
+   994→/* ------------------------------------------------------------------ */
+   995→/*  NAV CHART (Recharts)                                              */
+   996→/* ------------------------------------------------------------------ */
+   997→
+   998→function NavChart() {
+   999→  const { data: fundData } = useQuery<{
+  1000→    fund: { id: string } | null;
+  1001→    metrics: Record<string, number>;
+  1002→  }>({
+  1003→    queryKey: ["fund"],
+  1004→    queryFn: () => api.get("/api/fund"),
+  1005→    staleTime: 60000,
+  1006→  });
+  1007→
+  1008→  const { data: navHistory } = useQuery<{ date: string; nav: number; aum: number }[]>({
+  1009→    queryKey: ["nav-history", fundData?.fund?.id],
+  1010→    queryFn: () => api.get(`/api/fund/nav-history?fundId=${fundData!.fund!.id}&range=ALL`),
+  1011→    enabled: !!fundData?.fund?.id,
+  1012→    staleTime: 60000,
+  1013→  });
+  1014→
+  1015→  // Generate fallback deterministic data if no real data
+  1016→  const chartData = navHistory && navHistory.length > 0
+  1017→    ? navHistory.map((p) => ({
+  1018→        date: new Date(p.date).toLocaleDateString("en-US", { month: "short", year: "2-digit" }),
+  1019→        NAV: p.nav,
+  1020→      }))
+  1021→    : generateFallbackNav();
+  1022→
+  1023→  return (
+  1024→    <ResponsiveContainer width="100%" height="100%">
+  1025→      <AreaChart data={chartData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+  1026→        <defs>
+  1027→          <linearGradient id="navGradient" x1="0" y1="0" x2="0" y2="1">
+  1028→            <stop offset="0%" stopColor="#D4AF37" stopOpacity={0.35} />
+  1029→            <stop offset="50%" stopColor="#D4AF37" stopOpacity={0.1} />
+  1030→            <stop offset="100%" stopColor="#D4AF37" stopOpacity={0} />
+  1031→          </linearGradient>
+  1032→        </defs>
+  1033→        <XAxis
+  1034→          dataKey="date"
+  1035→          axisLine={false}
+  1036→          tickLine={false}
+  1037→          tick={{ fontSize: 11, fill: "rgba(255,255,255,0.35)" }}
+  1038→          interval="preserveStartEnd"
+  1039→        />
+  1040→        <YAxis
+  1041→          axisLine={false}
+  1042→          tickLine={false}
+  1043→          tick={{ fontSize: 11, fill: "rgba(255,255,255,0.35)" }}
+  1044→          tickFormatter={(v: number) => `$${fmtNum(v, 0)}`}
+  1045→          domain={["dataMin * 0.95", "dataMax * 1.02"]}
+  1046→        />
+  1047→        <Tooltip
+  1048→          contentStyle={{
+  1049→            backgroundColor: "rgba(20, 20, 22, 0.9)",
+  1050→            border: "1px solid rgba(212, 175, 55, 0.3)",
+  1051→            borderRadius: "8px",
+  1052→            fontSize: "12px",
+  1053→            color: "#f5f5f4",
+  1054→            backdropFilter: "blur(12px)",
+  1055→          }}
+  1056→          labelStyle={{ color: "rgba(255,255,255,0.5)", fontSize: "11px" }}
+  1057→          formatter={(value: number) => [fmtUSD(value, { decimals: 2 }), "NAV"]}
+  1058→        />
+  1059→        <Area
+  1060→          type="monotone"
+  1061→          dataKey="NAV"
+  1062→          stroke="#D4AF37"
+  1063→          strokeWidth={2}
+  1064→          fill="url(#navGradient)"
+  1065→          dot={false}
+  1066→          activeDot={{ r: 4, fill: "#FFD700", stroke: "#D4AF37", strokeWidth: 2 }}
+  1067→        />
+  1068→      </AreaChart>
+  1069→    </ResponsiveContainer>
+  1070→  );
+  1071→}
+  1072→
+  1073→function generateFallbackNav() {
+  1074→  const data: { date: string; NAV: number }[] = [];
+  1075→  let nav = 100;
+  1076→  const months = [
+  1077→    "Jan 23","Feb 23","Mar 23","Apr 23","May 23","Jun 23",
+  1078→    "Jul 23","Aug 23","Sep 23","Oct 23","Nov 23","Dec 23",
+  1079→    "Jan 24","Feb 24","Mar 24","Apr 24","May 24","Jun 24",
+  1080→    "Jul 24","Aug 24","Sep 24","Oct 24","Nov 24","Dec 24",
+  1081→    "Jan 25","Feb 25","Mar 25","Apr 25","May 25","Jun 25",
+  1082→  ];
+  1083→  // Use a seeded pseudo-random for deterministic output
+  1084→  let seed = 42;
+  1085→  const rand = () => {
+  1086→    seed = (seed * 16807 + 0) % 2147483647;
+  1087→    return seed / 2147483647;
+  1088→  };
+  1089→  for (const m of months) {
+  1090→    nav += (rand() * 8 - 1.5);
+  1091→    nav = Math.max(nav, 85);
+  1092→    data.push({ date: m, NAV: Math.round(nav * 100) / 100 });
+  1093→  }
+  1094→  return data;
+  1095→}
+  1096→
+  1097→/* ------------------------------------------------------------------ */
+  1098→/*  TICKER TAPE (live crypto prices)                                   */
+  1099→/* ------------------------------------------------------------------ */
+  1100→
+  1101→interface TickerPrice {
+  1102→  symbol: string;
+  1103→  name: string;
+  1104→  priceUsd: number;
+  1105→  change24h: number;
+  1106→}
+  1107→
+  1108→function TickerTape() {
+  1109→  const { data } = useQuery<{ prices: TickerPrice[]; updatedAt: string }>({
+  1110→    queryKey: ["market-prices"],
+  1111→    queryFn: () => api.get("/api/market/prices"),
+  1112→    refetchInterval: 30000,
+  1113→    staleTime: 15000,
+  1114→  });
+  1115→
+  1116→  const prices = data?.prices ?? [];
+  1117→
+  1118→  const renderItem = (p: TickerPrice, key: string) => (
+  1119→    <div key={key} className="flex items-center gap-2.5 px-5 text-[12px] font-medium">
+  1120→      <span className="font-semibold uppercase tracking-wide text-gold">{p.symbol}</span>
+  1121→      <span className="font-metric text-foreground/90">
+  1122→        {fmtUSD(p.priceUsd, { decimals: p.priceUsd > 1000 ? 0 : 2 })}
+  1123→      </span>
+  1124→      <span className={`font-metric ${p.change24h >= 0 ? "text-profit" : "text-loss"}`}>
+  1125→        {p.change24h >= 0 ? "▲" : "▼"} {fmtPct(Math.abs(p.change24h))}
+  1126→      </span>
+  1127→      <span className="ml-4 text-gold/20">│</span>
+  1128→    </div>
+  1129→  );
+  1130→
+  1131→  // Loading fallback
+  1132→  if (prices.length === 0) {
+  1133→    return (
+  1134→      <div className="flex h-9 items-center overflow-hidden border-y border-gold/15 bg-black/95 backdrop-blur-sm">
+  1135→        <div className="flex h-full shrink-0 items-center gap-1.5 border-r border-gold/15 bg-black px-4 text-[10px] font-bold uppercase tracking-[0.18em] text-gold">
+  1136→          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-gold" />
+  1137→          Live
+  1138→        </div>
+  1139→        <div className="flex-1 px-4 text-[12px] text-muted-foreground">
+  1140→          Loading live market prices…
+  1141→        </div>
+  1142→      </div>
+  1143→    );
+  1144→  }
+  1145→
+  1146→  return (
+  1147→    <div className="ticker-tape-container flex h-9 items-center overflow-hidden border-y border-gold/15 bg-black/95 backdrop-blur-sm">
+  1148→      <div className="flex h-full shrink-0 items-center gap-1.5 border-r border-gold/15 bg-black px-4 text-[10px] font-bold uppercase tracking-[0.18em] text-gold">
+  1149→        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-gold" />
+  1150→        Live
+  1151→      </div>
+  1152→      <div className="relative flex-1 overflow-hidden">
+  1153→        <div className="ticker-tape-track">
+  1154→          {prices.map((p) => renderItem(p, `a-${p.symbol}`))}
+  1155→          <div aria-hidden="true" className="inline-flex">
+  1156→            {prices.map((p) => renderItem(p, `b-${p.symbol}`))}
+  1157→          </div>
+  1158→        </div>
+  1159→      </div>
+  1160→    </div>
+  1161→  );
+  1162→}
+  1163→

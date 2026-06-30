@@ -230,46 +230,46 @@ export function PortfolioPage() {
     : 0;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-5 lg:space-y-6">
       {/* ─── 1. Page Header ─── */}
       <FadeIn>
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div className="min-w-0">
             <span className="text-xs font-medium uppercase tracking-[0.18em] text-gold">
               Investor Portal
             </span>
             <div className="mt-1 flex items-center gap-3">
-              <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Portfolio</h1>
+              <h1 className="h2-responsive font-bold tracking-tight">Portfolio</h1>
               <span className="shimmer-badge inline-flex items-center gap-1.5 rounded-full border border-profit/30 bg-profit/10 px-2.5 py-0.5 text-[11px] font-medium text-profit">
                 <span className="h-1.5 w-1.5 rounded-full bg-profit animate-pulse" />
                 Active
               </span>
             </div>
-            <div className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
-              <span>{fund.name}</span>
+            <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+              <span className="truncate">{fund.name}</span>
               <span className="text-foreground/20">•</span>
               <Clock className="h-3.5 w-3.5" />
-              <span>Updated {fmtDate(holding?.updatedAt ?? new Date().toISOString())}</span>
+              <span className="truncate">Updated {fmtDate(holding?.updatedAt ?? new Date().toISOString())}</span>
             </div>
           </div>
-          <div className="flex gap-3">
+          <div className="scroll-row sm:flex sm:flex-wrap sm:gap-3">
             <button
               onClick={() => setRoute({ name: "transactions" })}
-              className="inline-flex items-center gap-2 rounded-lg bg-gold-gradient px-4 py-2 text-sm font-semibold text-primary-foreground shadow-lg shadow-gold/20 transition-all duration-200 hover:shadow-gold/30 hover:brightness-110 active:scale-[0.97]"
+              className="tap-target inline-flex items-center gap-2 rounded-lg bg-gold-gradient px-4 py-2 text-sm font-semibold text-primary-foreground shadow-lg shadow-gold/20 transition-all duration-200 hover:shadow-gold/30 hover:brightness-110 active:scale-[0.97]"
             >
               <CircleDollarSign className="h-4 w-4" />
               Deposit
             </button>
             <button
               onClick={() => setRoute({ name: "transactions" })}
-              className="inline-flex items-center gap-2 rounded-lg border border-border/60 bg-white/[0.04] px-4 py-2 text-sm font-medium text-foreground/80 backdrop-blur-sm transition-all duration-200 hover:bg-white/[0.08] hover:text-foreground active:scale-[0.97]"
+              className="tap-target hide-mobile inline-flex items-center gap-2 rounded-lg border border-border/60 bg-white/[0.04] px-4 py-2 text-sm font-medium text-foreground/80 backdrop-blur-sm transition-all duration-200 hover:bg-white/[0.08] hover:text-foreground active:scale-[0.97]"
             >
               <BarChart3 className="h-4 w-4" />
               View Transactions
             </button>
             <button
               onClick={() => toast.info("Report generation will be available soon")}
-              className="inline-flex items-center gap-2 rounded-lg border border-gold/30 bg-gold/[0.06] px-4 py-2 text-sm font-semibold text-gold backdrop-blur-sm transition-all duration-200 hover:bg-gold/[0.12] hover:shadow-[0_0_16px_rgba(212,175,55,0.15)] active:scale-[0.97]"
+              className="tap-target inline-flex items-center gap-2 rounded-lg border border-gold/30 bg-gold/[0.06] px-4 py-2 text-sm font-semibold text-gold backdrop-blur-sm transition-all duration-200 hover:bg-gold/[0.12] hover:shadow-[0_0_16px_rgba(212,175,55,0.15)] active:scale-[0.97]"
             >
               <Download className="h-4 w-4" />
               Download Report
@@ -280,7 +280,7 @@ export function PortfolioPage() {
 
       {/* ─── 2. Summary Metrics ─── */}
       <FadeIn delay={0.05}>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
           <MetricTile
             label="Current Value"
             value={fmtUSD(s.currentValue)}
@@ -350,19 +350,19 @@ export function PortfolioPage() {
 
       {/* ─── 3. NAV Performance Chart ─── */}
       <FadeIn delay={0.1}>
-        <GlassCard className="p-5" glow>
+        <GlassCard className="p-3 sm:p-4 lg:p-5" glow>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <SectionTitle
               title="NAV Performance"
               subtitle="Net Asset Value over time"
               className="mb-0"
             />
-            <div className="flex gap-1 rounded-lg bg-white/[0.04] p-1">
+            <div className="scroll-row sm:flex sm:gap-1 sm:rounded-lg sm:bg-white/[0.04] sm:p-1">
               {(["1M", "3M", "6M", "1Y", "ALL"] as const).map((r) => (
                 <button
                   key={r}
                   onClick={() => setNavRange(r)}
-                  className={`rounded-md px-3 py-1 text-xs font-medium transition-all duration-200 ${
+                  className={`tap-target-sm rounded-md px-3 py-1 text-xs font-medium transition-all duration-200 ${
                     navRange === r
                       ? "bg-gold/20 text-gold shadow-sm"
                       : "text-muted-foreground hover:text-foreground/80"
@@ -373,7 +373,7 @@ export function PortfolioPage() {
               ))}
             </div>
           </div>
-          <div className="mt-4 h-72">
+          <div className="chart-mobile mt-4">
             {navChartData.length > 1 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={navChartData} margin={{ top: 6, right: 6, left: 6, bottom: 0 }}>
@@ -498,10 +498,10 @@ export function PortfolioPage() {
       {/* ─── 4. Asset Exposure + Position Detail ─── */}
       <div className="grid gap-4 lg:grid-cols-3">
         <FadeIn delay={0.15} className="lg:col-span-2">
-          <GlassCard className="p-5">
-            <div className="flex items-end justify-between">
+          <GlassCard className="p-3 sm:p-4 lg:p-5">
+            <div className="flex flex-wrap items-end justify-between gap-2">
               <SectionTitle title="Asset Exposure" subtitle="USD value across fund allocations" className="mb-0" />
-              <div className="text-right">
+              <div className="text-right shrink-0">
                 <span className="text-[10.5px] font-medium uppercase tracking-[0.12em] text-foreground/50">
                   Total Exposure
                 </span>
@@ -510,7 +510,7 @@ export function PortfolioPage() {
                 </div>
               </div>
             </div>
-            <div className="mt-4 h-72">
+            <div className="chart-mobile mt-4">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={exposureData} margin={{ top: 6, right: 6, left: 6, bottom: 0 }} barSize={48}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
@@ -570,10 +570,10 @@ export function PortfolioPage() {
 
         {/* ─── 5. Position Detail Card ─── */}
         <FadeIn delay={0.2}>
-          <GlassCard gold className="h-full p-5" glow>
+          <GlassCard gold className="h-full p-3 sm:p-4 lg:p-5" glow>
             {/* ROI Gauge */}
             <div className="mb-4 flex flex-col items-center">
-              <div className="relative h-28 w-28">
+              <div className="relative h-24 w-24 sm:h-28 sm:w-28">
                 <svg viewBox="0 0 100 100" className="h-full w-full -rotate-90">
                   <circle
                     cx="50"
@@ -644,14 +644,14 @@ export function PortfolioPage() {
 
       {/* ─── 6. Allocation Breakdown ─── */}
       <FadeIn delay={0.25}>
-        <GlassCard className="p-5">
-          <div className="flex items-end justify-between">
+        <GlassCard className="p-3 sm:p-4 lg:p-5">
+          <div className="flex flex-wrap items-end justify-between gap-2">
             <SectionTitle
               title="Allocation Breakdown"
               subtitle="Target weights set by the investment committee"
               className="mb-0"
             />
-            <div className="text-right">
+            <div className="text-right shrink-0">
               <span className="text-[10.5px] font-medium uppercase tracking-[0.12em] text-foreground/50">
                 Total Allocation
               </span>
@@ -660,7 +660,7 @@ export function PortfolioPage() {
               </div>
             </div>
           </div>
-          <div className="mt-5 space-y-4">
+          <div className="mt-4 sm:mt-5 space-y-3 sm:space-y-4">
             {allocations.map((a: any) => {
               const usdValue = (a.weight / 100) * s.currentValue;
               const targetWeight = a.targetWeight ?? a.weight;
@@ -716,20 +716,20 @@ export function PortfolioPage() {
 
       {/* ─── 7. Risk Exposure Summary ─── */}
       <FadeIn delay={0.3}>
-        <GlassCard className="p-5">
+        <GlassCard className="p-3 sm:p-4 lg:p-5">
           <SectionTitle
             title="Risk Exposure"
             subtitle="Key risk metrics for your portfolio"
             action={
               <button
                 onClick={() => setRoute({ name: "analytics" })}
-                className="inline-flex items-center gap-1 text-xs text-gold/70 transition-colors hover:text-gold"
+                className="tap-target-sm inline-flex items-center gap-1 text-xs text-gold/70 transition-colors hover:text-gold"
               >
                 View Full Analytics <ChevronRight className="h-3 w-3" />
               </button>
             }
           />
-          <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-4 sm:mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
             {riskMetrics.map((rm) => (
               <div
                 key={rm.label}
@@ -762,7 +762,7 @@ export function PortfolioPage() {
 
       {/* ─── 8. Portfolio Benchmarking ─── */}
       <FadeIn delay={0.33}>
-        <GlassCard className="p-5" glow>
+        <GlassCard className="p-3 sm:p-4 lg:p-5" glow>
           <SectionTitle
             title="Portfolio Benchmarking"
             subtitle="Compare fund performance against major indices"
@@ -781,23 +781,23 @@ export function PortfolioPage() {
               transition={{ duration: 0.5, delay: 0.15 }}
               className="mt-5"
             >
-              <div className="flex items-center gap-4 rounded-xl border border-gold/25 bg-gold/[0.06] p-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gold/10">
-                  <Trophy className="h-6 w-6 text-gold" />
+              <div className="flex flex-wrap items-center gap-3 rounded-xl border border-gold/25 bg-gold/[0.06] p-3 sm:p-4">
+                <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-xl bg-gold/10 shrink-0">
+                  <Trophy className="h-5 w-5 sm:h-6 sm:w-6 text-gold" />
                 </div>
-                <div>
+                <div className="min-w-0 flex-1">
                   <div className="text-[10.5px] font-medium uppercase tracking-[0.12em] text-foreground/50">
                     Alpha vs {BENCHMARKS[primaryBenchmark].label}
                   </div>
-                  <div className={`font-metric text-2xl font-bold ${alphaVsPrimary >= 0 ? "text-profit" : "text-loss"}`}>
+                  <div className={`font-metric text-xl sm:text-2xl font-bold ${alphaVsPrimary >= 0 ? "text-profit" : "text-loss"}`}>
                     {alphaVsPrimary >= 0 ? "+" : ""}{alphaVsPrimary.toFixed(2)}%
                   </div>
                 </div>
-                <div className="ml-auto text-right">
+                <div className="ml-auto text-right shrink-0">
                   <div className="text-[10.5px] font-medium uppercase tracking-[0.12em] text-foreground/50">
                     Active Benchmark
                   </div>
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5 justify-end">
                     <span className="h-2.5 w-2.5 rounded-sm" style={{ background: BENCHMARKS[primaryBenchmark].color }} />
                     <span className="text-sm font-medium text-foreground">{BENCHMARKS[primaryBenchmark].label}</span>
                   </div>
@@ -812,7 +812,7 @@ export function PortfolioPage() {
               <button
                 key={key}
                 onClick={() => toggleBenchmark(key)}
-                className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium transition-all duration-200 ${
+                className={`tap-target-sm inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium transition-all duration-200 ${
                   activeBenchmarks.has(key)
                     ? "border-gold/40 bg-gold/10 text-gold shadow-[0_0_12px_rgba(212,175,55,0.1)]"
                     : "border-border/40 bg-white/[0.02] text-muted-foreground hover:bg-white/[0.05] hover:text-foreground/80"
@@ -830,7 +830,7 @@ export function PortfolioPage() {
           </div>
 
           {/* Comparison chart */}
-          <div className="mt-5 h-80">
+          <div className="chart-mobile mt-5">
             {benchmarkChartData.length > 1 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart data={benchmarkChartData} margin={{ top: 6, right: 6, left: 6, bottom: 0 }}>

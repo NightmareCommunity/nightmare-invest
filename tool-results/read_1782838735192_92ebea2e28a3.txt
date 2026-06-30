@@ -1,0 +1,569 @@
+   442→                return (
+   443→                  <motion.div
+   444→                    key={s.label}
+   445→                    whileHover={{ x: 2 }}
+   446→                    className={`flex items-center gap-3 rounded-lg px-3 py-2.5 transition-colors ${
+   447→                      s.done ? "bg-white/[0.02] hover:bg-white/[0.04]" : "bg-gold/5 hover:bg-gold/[0.08]"
+   448→                    }`}
+   449→                  >
+   450→                    <div
+   451→                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border ${
+   452→                        s.done
+   453→                          ? "border-profit/20 bg-profit/10"
+   454→                          : "border-gold/20 bg-gold/5"
+   455→                      }`}
+   456→                    >
+   457→                      {s.done ? (
+   458→                        <CheckCircle2 className="h-4 w-4 text-profit" />
+   459→                      ) : (
+   460→                        <SIcon className="h-4 w-4 text-gold/70" />
+   461→                      )}
+   462→                    </div>
+   463→                    <span className={`text-sm flex-1 ${s.done ? "text-foreground/80" : "text-muted-foreground"}`}>
+   464→                      {s.label}
+   465→                    </span>
+   466→                    {!s.done && (
+   467→                      <ChevronRight className="h-3.5 w-3.5 text-gold/50" />
+   468→                    )}
+   469→                  </motion.div>
+   470→                );
+   471→              })}
+   472→
+   473→              {/* Strengthen suggestions */}
+   474→              {securityChecks.some((s) => !s.done) && (
+   475→                <div className="rounded-lg border border-gold/20 bg-gold/5 p-3">
+   476→                  <div className="text-xs font-semibold text-gold mb-1.5">Strengthen your account</div>
+   477→                  <ul className="space-y-1">
+   478→                    {securityChecks
+   479→                      .filter((s) => !s.done)
+   480→                      .map((s) => (
+   481→                        <li key={s.label} className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+   482→                          <ChevronRight className="h-3 w-3 text-gold/50" />
+   483→                          {s.label}
+   484→                        </li>
+   485→                      ))}
+   486→                  </ul>
+   487→                </div>
+   488→              )}
+   489→            </div>
+   490→          </div>
+   491→        </GlassCard>
+   492→      </FadeIn>
+   493→
+   494→      {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+   495→      {/*  SECURITY: 2FA + PASSWORD + SESSIONS                              */}
+   496→      {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+   497→
+   498→      <div className="grid gap-4 lg:grid-cols-3">
+   499→        {/* Left Column (2/3) */}
+   500→        <FadeIn delay={0.09} className="lg:col-span-2 space-y-4">
+   501→
+   502→          {/* 2FA Section */}
+   503→          <GlassCard className="glass-card-hover p-6 border-gold/15" gold>
+   504→            <div className="flex items-center justify-between gap-3">
+   505→              <div className="flex items-center gap-3">
+   506→                <div className={`flex h-10 w-10 items-center justify-center rounded-lg border ${
+   507→                  totpEnabled ? "border-profit/20 bg-profit/10" : "border-gold/20 bg-gold/5"
+   508→                }`}>
+   509→                  <ShieldCheck className={`h-5 w-5 ${totpEnabled ? "text-profit" : "text-gold"}`} />
+   510→                </div>
+   511→                <div>
+   512→                  <h3 className="text-base font-semibold text-foreground">Two-Factor Authentication</h3>
+   513→                  <p className="text-xs text-muted-foreground">
+   514→                    {totpEnabled ? "Authenticator app is enabled" : "Not configured — highly recommended"}
+   515→                  </p>
+   516→                </div>
+   517→              </div>
+   518→              <div className="flex items-center gap-2">
+   519→                <Switch
+   520→                  checked={totpEnabled}
+   521→                  className="switch-gold-glow data-[state=checked]:bg-gold data-[state=checked]:shadow-[0_0_12px_rgba(212,175,55,0.4)]"
+   522→                />
+   523→                <Badge
+   524→                  className={
+   525→                    totpEnabled
+   526→                      ? "border-profit/30 bg-profit/10 text-profit"
+   527→                      : "border-gold/30 bg-gold/10 text-gold"
+   528→                  }
+   529→                >
+   530→                  {totpEnabled ? "Enabled" : "Disabled"}
+   531→                </Badge>
+   532→              </div>
+   533→            </div>
+   534→          </GlassCard>
+   535→
+   536→          <TwoFactorSection enabled={totpEnabled} onChanged={refresh} />
+   537→
+   538→          {/* ---- Password Section ---- */}
+   539→          <GlassCard className="glass-card-hover p-6 border-gold/10">
+   540→            <SettingsSectionHeader
+   541→              num="02"
+   542→              title="Change Password"
+   543→              subtitle="Update your password"
+   544→              icon={<KeyRound className="h-4 w-4" />}
+   545→              action={
+   546→                <Button
+   547→                  variant="outline"
+   548→                  size="sm"
+   549→                  className="border-gold/30 text-gold hover:bg-gold/10 gap-1.5 text-xs"
+   550→                  onClick={() => setShowChangePassword(!showChangePassword)}
+   551→                >
+   552→                  {showChangePassword ? "Cancel" : <><Pencil className="h-3 w-3" /> Change</>}
+   553→                </Button>
+   554→              }
+   555→            />
+   556→
+   557→            <AnimatePresence>
+   558→              {showChangePassword && (
+   559→                <motion.div
+   560→                  initial={{ height: 0, opacity: 0 }}
+   561→                  animate={{ height: "auto", opacity: 1 }}
+   562→                  exit={{ height: 0, opacity: 0 }}
+   563→                  transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+   564→                  className="overflow-hidden"
+   565→                >
+   566→                  <div className="mt-4 space-y-4">
+   567→                    {/* Current Password */}
+   568→                    <div className="space-y-1.5">
+   569→                      <Label htmlFor="currentpass" className="text-xs uppercase tracking-wider text-muted-foreground">Current Password</Label>
+   570→                      <div className="relative">
+   571→                        <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+   572→                        <Input
+   573→                          id="currentpass"
+   574→                          type="password"
+   575→                          value={currentPass}
+   576→                          onChange={(e) => setCurrentPass(e.target.value)}
+   577→                          placeholder="••••••••"
+   578→                          className="border-border/60 bg-black/30 pl-9"
+   579→                        />
+   580→                      </div>
+   581→                    </div>
+   582→
+   583→                    {/* New Password */}
+   584→                    <div className="space-y-1.5">
+   585→                      <Label htmlFor="newpass" className="text-xs uppercase tracking-wider text-muted-foreground">New Password</Label>
+   586→                      <div className="relative">
+   587→                        <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+   588→                        <Input
+   589→                          id="newpass"
+   590→                          type={showPass ? "text" : "password"}
+   591→                          value={newPass}
+   592→                          onChange={(e) => setNewPass(e.target.value)}
+   593→                          placeholder="••••••••"
+   594→                          className="border-border/60 bg-black/30 pl-9 pr-10"
+   595→                        />
+   596→                        <button
+   597→                          type="button"
+   598→                          onClick={() => setShowPass(!showPass)}
+   599→                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+   600→                          aria-label={showPass ? "Hide password" : "Show password"}
+   601→                        >
+   602→                          {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+   603→                        </button>
+   604→                      </div>
+   605→                    </div>
+   606→
+   607→                    {/* Confirm Password */}
+   608→                    <div className="space-y-1.5">
+   609→                      <Label htmlFor="confirmpass" className="text-xs uppercase tracking-wider text-muted-foreground">Confirm New Password</Label>
+   610→                      <div className="relative">
+   611→                        <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+   612→                        <Input
+   613→                          id="confirmpass"
+   614→                          type="password"
+   615→                          value={confirmPass}
+   616→                          onChange={(e) => setConfirmPass(e.target.value)}
+   617→                          placeholder="••••••••"
+   618→                          className="border-border/60 bg-black/30 pl-9"
+   619→                        />
+   620→                        {confirmPass && newPass && (
+   621→                          <span className="absolute right-3 top-1/2 -translate-y-1/2">
+   622→                            {newPass === confirmPass ? (
+   623→                              <CheckCircle2 className="h-4 w-4 text-profit" />
+   624→                            ) : (
+   625→                              <CircleX className="h-4 w-4 text-loss" />
+   626→                            )}
+   627→                          </span>
+   628→                        )}
+   629→                      </div>
+   630→                    </div>
+   631→
+   632→                    {/* Password strength meter */}
+   633→                    {newPass.length > 0 && (
+   634→                      <motion.div
+   635→                        initial={{ opacity: 0, height: 0 }}
+   636→                        animate={{ opacity: 1, height: "auto" }}
+   637→                        transition={{ duration: 0.25 }}
+   638→                        className="space-y-3"
+   639→                      >
+   640→                        <div className="flex items-center justify-between">
+   641→                          <span className="text-xs text-muted-foreground">Password strength</span>
+   642→                          <span className={`text-xs font-semibold ${pwStrength.color}`}>{pwStrength.label}</span>
+   643→                        </div>
+   644→                        <div className="flex gap-1.5">
+   645→                          {[1, 2, 3, 4].map((level) => (
+   646→                            <motion.div
+   647→                              key={level}
+   648→                              className={`h-1.5 flex-1 rounded-full ${
+   649→                                pwStrength.score >= level
+   650→                                  ? pwStrength.score >= 3
+   651→                                    ? "bg-profit"
+   652→                                    : pwStrength.score >= 2
+   653→                                      ? "bg-gold"
+   654→                                      : "bg-loss"
+   655→                                  : "bg-white/5"
+   656→                              }`}
+   657→                              initial={{ scaleX: 0 }}
+   658→                              animate={{ scaleX: 1 }}
+   659→                              transition={{ duration: 0.3, delay: level * 0.05 }}
+   660→                              style={{ transformOrigin: "left" }}
+   661→                            />
+   662→                          ))}
+   663→                        </div>
+   664→
+   665→                        {/* Requirements checklist */}
+   666→                        <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
+   667→                          {pwRequirements.map((req) => (
+   668→                            <div key={req.label} className="flex items-center gap-1.5 text-[11px]">
+   669→                              {req.met ? (
+   670→                                <CheckCircle2 className="h-3 w-3 text-profit shrink-0" />
+   671→                              ) : (
+   672→                                <CircleDot className="h-3 w-3 text-muted-foreground/40 shrink-0" />
+   673→                              )}
+   674→                              <span className={req.met ? "text-foreground/80" : "text-muted-foreground/60"}>
+   675→                                {req.label}
+   676→                              </span>
+   677→                            </div>
+   678→                          ))}
+   679→                        </div>
+   680→                      </motion.div>
+   681→                    )}
+   682→
+   683→                    <Button onClick={reset} disabled={submitting || newPass.length < 8 || newPass !== confirmPass} className="bg-gold-gradient text-black hover:opacity-90">
+   684→                      <KeyRound className="mr-1.5 h-4 w-4" /> {submitting ? "Updating…" : "Update Password"}
+   685→                    </Button>
+   686→                  </div>
+   687→                </motion.div>
+   688→              )}
+   689→            </AnimatePresence>
+   690→          </GlassCard>
+   691→
+   692→          {/* KYC module temporarily disabled — section removed. */}
+   693→
+   694→          {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+   695→          {/*  SECTION C: NOTIFICATION PREFERENCES                             */}
+   696→          {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+   697→
+   698→          <GlassCard className="glass-card-hover p-6 border-gold/15" gold>
+   699→            <SettingsSectionHeader
+   700→              num="03"
+   701→              title="Notification Preferences"
+   702→              subtitle="Control what updates you receive"
+   703→              icon={<Bell className="h-4 w-4" />}
+   704→            />
+   705→            <div className="mt-5 space-y-3">
+   706→              {[
+   707→                {
+   708→                  id: "email",
+   709→                  label: "Email Notifications",
+   710→                  desc: "Transaction updates and account alerts delivered to your inbox",
+   711→                  icon: Mail,
+   712→                  checked: notifEmail,
+   713→                  onChange: setNotifEmail,
+   714→                },
+   715→                {
+   716→                  id: "push",
+   717→                  label: "Push Notifications",
+   718→                  desc: "Real-time price alerts and market movement notifications",
+   719→                  icon: Bell,
+   720→                  checked: notifPush,
+   721→                  onChange: setNotifPush,
+   722→                },
+   723→                {
+   724→                  id: "statement",
+   725→                  label: "Statement Generation Alerts",
+   726→                  desc: "Get notified when new monthly and quarterly statements are ready",
+   727→                  icon: ScrollText,
+   728→                  checked: notifStatement,
+   729→                  onChange: setNotifStatement,
+   730→                },
+   731→                {
+   732→                  id: "fund",
+   733→                  label: "Fund Update Announcements",
+   734→                  desc: "Strategy changes, performance commentary, and fund news",
+   735→                  icon: Newspaper,
+   736→                  checked: notifFund,
+   737→                  onChange: setNotifFund,
+   738→                },
+   739→              ].map((item) => {
+   740→                const Icon = item.icon;
+   741→                return (
+   742→                  <GlassCard key={item.id} className="p-3.5" hover glowOnHover>
+   743→                    <div className="flex items-center justify-between gap-4">
+   744→                      <div className="flex items-center gap-3 min-w-0">
+   745→                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-gold/25 bg-gradient-to-br from-gold/10 to-gold/5">
+   746→                          <Icon className="h-5 w-5 text-gold" />
+   747→                        </div>
+   748→                        <div className="min-w-0">
+   749→                          <div className="text-sm font-medium text-foreground">{item.label}</div>
+   750→                          <div className="text-[11px] text-muted-foreground truncate">{item.desc}</div>
+   751→                        </div>
+   752→                      </div>
+   753→                      <div className="flex items-center gap-2 shrink-0">
+   754→                        <Switch
+   755→                          checked={item.checked}
+   756→                          onCheckedChange={item.onChange}
+   757→                          className="switch-gold-glow data-[state=checked]:bg-gold data-[state=checked]:shadow-[0_0_12px_rgba(212,175,55,0.4)]"
+   758→                        />
+   759→                        <span className={`text-[10px] font-medium uppercase tracking-wider ${item.checked ? "text-gold" : "text-muted-foreground/50"}`}>
+   760→                          {item.checked ? "On" : "Off"}
+   761→                        </span>
+   762→                      </div>
+   763→                    </div>
+   764→                  </GlassCard>
+   765→                );
+   766→              })}
+   767→            </div>
+   768→          </GlassCard>
+   769→
+   770→          {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+   771→          {/*  SECTION D: ACTIVE SESSIONS                                       */}
+   772→          {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+   773→
+   774→          <GlassCard className="glass-card-hover p-6 border-gold/10">
+   775→            <SettingsSectionHeader
+   776→              num="04"
+   777→              title="Active Sessions"
+   778→              subtitle="Devices currently authenticated to your account"
+   779→              icon={<Monitor className="h-4 w-4" />}
+   780→            />
+   781→            <div className="mt-4 space-y-3">
+   782→              {ACTIVE_SESSIONS.map((session) => {
+   783→                const DeviceIcon = getDeviceIcon(session.device);
+   784→                return (
+   785→                  <motion.div
+   786→                    key={session.id}
+   787→                    whileHover={{ x: 2 }}
+   788→                    className={`flex items-center gap-4 rounded-xl border p-4 transition-all duration-300 ${
+   789→                      session.current
+   790→                        ? "border-profit/20 bg-profit/5 hover:bg-profit/[0.08]"
+   791→                        : "border-border/30 bg-white/[0.02] hover:bg-white/[0.04] hover:border-gold/20"
+   792→                    }`}
+   793→                  >
+   794→                    <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border ${
+   795→                      session.current ? "border-profit/20 bg-profit/10" : "border-border/40 bg-black/20"
+   796→                    }`}>
+   797→                      <DeviceIcon className={`h-5 w-5 ${session.current ? "text-profit" : "text-muted-foreground"}`} />
+   798→                    </div>
+   799→                    <div className="flex-1 min-w-0">
+   800→                      <div className="flex items-center gap-2">
+   801→                        <span className="text-sm font-medium text-foreground">{session.browser}</span>
+   802→                        {session.current && (
+   803→                          <span className="flex items-center gap-1 rounded-full border border-profit/30 bg-profit/10 px-2 py-0.5 text-[10px] font-medium text-profit">
+   804→                            <span className="h-1.5 w-1.5 rounded-full bg-profit animate-pulse" />
+   805→                            Active
+   806→                          </span>
+   807→                        )}
+   808→                      </div>
+   809→                      <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+   810→                        <span className="flex items-center gap-1"><Laptop className="h-3 w-3" /> {session.os}</span>
+   811→                        <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {session.ip}</span>
+   812→                        <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {fmtDate(session.lastActive)}</span>
+   813→                      </div>
+   814→                    </div>
+   815→                    {!session.current && (
+   816→                      <Button
+   817→                        variant="outline"
+   818→                        size="sm"
+   819→                        className="border-loss/30 text-loss hover:bg-loss/10 text-xs shrink-0"
+   820→                        onClick={() => toast.success("Session revoked")}
+   821→                      >
+   822→                        Revoke
+   823→                      </Button>
+   824→                    )}
+   825→                  </motion.div>
+   826→                );
+   827→              })}
+   828→              <Button variant="outline" onClick={logout} className="border-loss/30 text-loss hover:bg-loss/10 w-full">
+   829→                <LogOut className="mr-1.5 h-4 w-4" /> Sign out of all sessions
+   830→              </Button>
+   831→            </div>
+   832→          </GlassCard>
+   833→        </FadeIn>
+   834→
+   835→        {/* Right Column (1/3) */}
+   836→        <FadeIn delay={0.12}>
+   837→          <div className="space-y-4">
+   838→            {/* ---- Quick Status Metrics ---- */}
+   839→            <MetricTile
+   840→              label="2FA Status"
+   841→              value={totpEnabled ? "Enabled" : "Disabled"}
+   842→              sub={totpEnabled ? "Authenticator app configured" : "Not configured — recommended"}
+   843→              icon={<ShieldCheck className="h-4 w-4" />}
+   844→              accent={totpEnabled ? "profit" : "gold"}
+   845→            />
+   846→            <MetricTile
+   847→              label="Last Login"
+   848→              value={user.lastLogin ? fmtDate(user.lastLogin, true) : "—"}
+   849→              sub={user.lastLogin ? "Most recent session" : "First login"}
+   850→              icon={<Clock className="h-4 w-4" />}
+   851→              accent="gold"
+   852→            />
+   853→            <MetricTile
+   854→              label="Notifications"
+   855→              value={`${[notifEmail, notifPush, notifStatement, notifFund].filter(Boolean).length} of 4`}
+   856→              sub="Active notification channels"
+   857→              icon={<Bell className="h-4 w-4" />}
+   858→              accent={[notifEmail, notifPush, notifStatement, notifFund].filter(Boolean).length >= 2 ? "profit" : "gold"}
+   859→            />
+   860→
+   861→            {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+   862→            {/*  SECTION E: ACCOUNT & LEGAL                                      */}
+   863→            {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+   864→
+   865→            <GlassCard className="p-5 hover-lift">
+   866→              <div className="flex items-center gap-2 mb-4">
+   867→                <span className="number-badge">05</span>
+   868→                <h3 className="text-base font-semibold text-foreground">Account &amp; Legal</h3>
+   869→              </div>
+   870→              <div className="space-y-2.5">
+   871→                {/* Download my data */}
+   872→                <button
+   873→                  onClick={() => toast.success("Data export initiated — you will receive an email")}
+   874→                  className="flex w-full items-center gap-3 rounded-lg border border-gold/15 bg-gold/5 px-3.5 py-3 text-sm text-foreground transition-all hover:bg-gold/10 hover:border-gold/25 hover:glow-gold group"
+   875→                >
+   876→                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-gold/20 bg-gold/10">
+   877→                    <Download className="h-4 w-4 text-gold" />
+   878→                  </div>
+   879→                  <div className="flex-1 text-left">
+   880→                    <div className="font-medium">Download My Data</div>
+   881→                    <div className="text-[11px] text-muted-foreground">GDPR-style data export</div>
+   882→                  </div>
+   883→                  <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-gold transition-colors" />
+   884→                </button>
+   885→
+   886→                {/* Terms & Privacy */}
+   887→                <button
+   888→                  onClick={() => toast.info("Terms of Service opens in a new window")}
+   889→                  className="flex w-full items-center gap-3 rounded-lg border border-border/40 bg-white/[0.02] px-3.5 py-3 text-sm text-foreground transition-all hover:bg-white/[0.04] hover:border-gold/15 group"
+   890→                >
+   891→                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border/40 bg-black/20">
+   892→                    <ScrollText className="h-4 w-4 text-muted-foreground" />
+   893→                  </div>
+   894→                  <div className="flex-1 text-left">
+   895→                    <div className="font-medium">Terms of Service</div>
+   896→                    <div className="text-[11px] text-muted-foreground">View our terms and conditions</div>
+   897→                  </div>
+   898→                  <ExternalLink className="h-3.5 w-3.5 text-muted-foreground group-hover:text-gold transition-colors" />
+   899→                </button>
+   900→
+   901→                <button
+   902→                  onClick={() => toast.info("Privacy Policy opens in a new window")}
+   903→                  className="flex w-full items-center gap-3 rounded-lg border border-border/40 bg-white/[0.02] px-3.5 py-3 text-sm text-foreground transition-all hover:bg-white/[0.04] hover:border-gold/15 group"
+   904→                >
+   905→                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border/40 bg-black/20">
+   906→                    <FileText className="h-4 w-4 text-muted-foreground" />
+   907→                  </div>
+   908→                  <div className="flex-1 text-left">
+   909→                    <div className="font-medium">Privacy Policy</div>
+   910→                    <div className="text-[11px] text-muted-foreground">How we handle your information</div>
+   911→                  </div>
+   912→                  <ExternalLink className="h-3.5 w-3.5 text-muted-foreground group-hover:text-gold transition-colors" />
+   913→                </button>
+   914→
+   915→                {/* Danger Zone */}
+   916→                <Separator className="bg-loss/20 my-2" />
+   917→                <div className="rounded-lg border border-loss/20 bg-loss/5 p-3">
+   918→                  <div className="text-xs font-semibold text-loss mb-2 flex items-center gap-1.5">
+   919→                    <AlertTriangle className="h-3.5 w-3.5" /> Danger Zone
+   920→                  </div>
+   921→                  <button
+   922→                    onClick={() => toast.error("Account deletion requires contacting investor relations")}
+   923→                    className="flex w-full items-center gap-3 rounded-lg border border-loss/20 bg-loss/5 px-3 py-2.5 text-sm text-loss transition-all hover:bg-loss/10 hover:border-loss/30"
+   924→                  >
+   925→                    <Trash2 className="h-4 w-4" />
+   926→                    <span className="font-medium">Delete Account</span>
+   927→                  </button>
+   928→                  <p className="mt-1.5 text-[10px] text-muted-foreground">
+   929→                    This action is permanent and cannot be undone. Contact IR for assistance.
+   930→                  </p>
+   931→                </div>
+   932→              </div>
+   933→            </GlassCard>
+   934→          </div>
+   935→        </FadeIn>
+   936→      </div>
+   937→
+   938→      {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+   939→      {/*  SECTION F: ACTIVITY LOG                                          */}
+   940→      {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+   941→
+   942→      <FadeIn delay={0.15}>
+   943→        <GlassCard className="p-6 border-gold/10">
+   944→          <SettingsSectionHeader
+   945→            num="06"
+   946→            title="Activity Log"
+   947→            subtitle="Recent account activity and security events"
+   948→            icon={<Activity className="h-4 w-4" />}
+   949→            action={
+   950→              <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+   951→                {ACTIVITY_LOG.length} events
+   952→              </span>
+   953→            }
+   954→          />
+   955→
+   956→          <div className="mt-4 space-y-2">
+   957→            {visibleLog.map((log, idx) => {
+   958→              const LogIcon = log.icon;
+   959→              return (
+   960→                <motion.div
+   961→                  key={log.id}
+   962→                  initial={{ opacity: 0, x: -8 }}
+   963→                  animate={{ opacity: 1, x: 0 }}
+   964→                  transition={{ duration: 0.3, delay: idx * 0.04 }}
+   965→                  className="flex items-center gap-3 rounded-lg border border-border/30 bg-white/[0.02] p-3 transition-all hover:bg-white/[0.04] hover:border-gold/15"
+   966→                >
+   967→                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border/40 bg-black/20">
+   968→                    <LogIcon className="h-4 w-4 text-gold/70" />
+   969→                  </div>
+   970→                  <div className="flex-1 min-w-0">
+   971→                    <div className="text-sm font-medium text-foreground">{log.action}</div>
+   972→                    <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
+   973→                      <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {log.ip}</span>
+   974→                      <span className="flex items-center gap-1"><Monitor className="h-3 w-3" /> {log.device}</span>
+   975→                    </div>
+   976→                  </div>
+   977→                  <div className="text-[11px] text-muted-foreground shrink-0">
+   978→                    {fmtDate(log.timestamp)}
+   979→                  </div>
+   980→                </motion.div>
+   981→              );
+   982→            })}
+   983→          </div>
+   984→
+   985→          {ACTIVITY_LOG.length > 5 && (
+   986→            <button
+   987→              onClick={() => setShowAllActivity(!showAllActivity)}
+   988→              className="mt-3 flex w-full items-center justify-center gap-1.5 text-xs text-gold hover:text-gold-bright transition-colors"
+   989→            >
+   990→              {showAllActivity ? "Show less" : `Show all ${ACTIVITY_LOG.length} events`}
+   991→              <ChevronRight className={`h-3 w-3 transition-transform ${showAllActivity ? "rotate-[-90deg]" : "rotate-90"}`} />
+   992→            </button>
+   993→          )}
+   994→
+   995→          {/* Suspicious activity warning banner */}
+   996→          <div className="mt-4 flex items-start gap-2 rounded-lg border border-gold/15 bg-gold/5 p-3">
+   997→            <ShieldCheck className="mt-0.5 h-4 w-4 text-gold shrink-0" />
+   998→            <div>
+   999→              <div className="text-xs font-semibold text-gold">No suspicious activity detected</div>
+  1000→              <p className="text-[11px] text-muted-foreground mt-0.5">
+  1001→                We continuously monitor your account for unauthorized access. You will be notified immediately if any suspicious activity is detected.
+  1002→              </p>
+  1003→            </div>
+  1004→          </div>
+  1005→        </GlassCard>
+  1006→      </FadeIn>
+  1007→    </div>
+  1008→  );
+  1009→}
+  1010→

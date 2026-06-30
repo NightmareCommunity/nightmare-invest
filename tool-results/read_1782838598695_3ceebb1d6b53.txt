@@ -1,0 +1,811 @@
+     1→"use client";
+     2→import { useMemo, useState } from "react";
+     3→import { useQuery } from "@tanstack/react-query";
+     4→import { api } from "@/lib/api-client";
+     5→import {
+     6→  GlassCard,
+     7→  MetricTile,
+     8→  SectionTitle,
+     9→  FadeIn,
+    10→  SkeletonCard,
+    11→  SkeletonMetric,
+    12→  EmptyState,
+    13→} from "@/components/brand/primitives";
+    14→import { fmtUSD, fmtPct, fmtDate } from "@/lib/format";
+    15→import { Button } from "@/components/ui/button";
+    16→import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+    17→import { motion } from "framer-motion";
+    18→import {
+    19→  PiggyBank,
+    20→  TrendingUp,
+    21→  TrendingDown,
+    22→  Wallet,
+    23→  Activity,
+    24→  Target,
+    25→  Clock,
+    26→  Calendar,
+    27→  BarChart3,
+    28→  LineChart as LineChartIcon,
+    29→  Coins,
+    30→  ArrowRight,
+    31→  CheckCircle2,
+    32→  Hourglass,
+    33→  XCircle,
+    34→  CircleSlash,
+    35→} from "lucide-react";
+    36→import {
+    37→  ResponsiveContainer,
+    38→  AreaChart,
+    39→  Area,
+    40→  LineChart,
+    41→  Line,
+    42→  XAxis,
+    43→  YAxis,
+    44→  Tooltip,
+    45→  CartesianGrid,
+    46→} from "recharts";
+    47→
+    48→/* ------------------------------------------------------------------ */
+    49→/*  Types                                                              */
+    50→/* ------------------------------------------------------------------ */
+    51→
+    52→interface InvestmentHistory {
+    53→  id: string;
+    54→  previousValue: number;
+    55→  newValue: number;
+    56→  previousRoi: number;
+    57→  newRoi: number;
+    58→  createdAt: string;
+    59→}
+    60→
+    61→interface Investment {
+    62→  id: string;
+    63→  investmentName: string;
+    64→  investedAmount: number;
+    65→  currentValue: number;
+    66→  profitLoss: number;
+    67→  roiPercent: number;
+    68→  startDate: string;
+    69→  endDate: string | null;
+    70→  durationDays: number;
+    71→  status: "PENDING" | "ACTIVE" | "COMPLETED" | "CLOSED" | "CANCELLED" | string;
+    72→  notes: string | null;
+    73→  createdAt: string;
+    74→  updatedAt: string;
+    75→  fund?: { name: string };
+    76→  history?: InvestmentHistory[];
+    77→}
+    78→
+    79→interface InvestmentsResponse {
+    80→  investments: Investment[];
+    81→}
+    82→
+    83→interface InvestmentDetailResponse {
+    84→  investment: Investment;
+    85→}
+    86→
+    87→/* ------------------------------------------------------------------ */
+    88→/*  Status Badge                                                       */
+    89→/* ------------------------------------------------------------------ */
+    90→
+    91→const STATUS_META: Record<string, { label: string; cls: string; dot: string; icon: typeof CheckCircle2 }> = {
+    92→  PENDING: {
+    93→    label: "Pending",
+    94→    cls: "text-warning border-warning/30 bg-warning/10",
+    95→    dot: "bg-warning",
+    96→    icon: Hourglass,
+    97→  },
+    98→  ACTIVE: {
+    99→    label: "Active",
+   100→    cls: "text-profit border-profit/30 bg-profit/10",
+   101→    dot: "bg-profit",
+   102→    icon: Activity,
+   103→  },
+   104→  COMPLETED: {
+   105→    label: "Completed",
+   106→    cls: "text-gold border-gold/30 bg-gold/10",
+   107→    dot: "bg-gold",
+   108→    icon: CheckCircle2,
+   109→  },
+   110→  CLOSED: {
+   111→    label: "Closed",
+   112→    cls: "text-muted-foreground border-border/60 bg-muted/10",
+   113→    dot: "bg-muted-foreground",
+   114→    icon: CircleSlash,
+   115→  },
+   116→  CANCELLED: {
+   117→    label: "Cancelled",
+   118→    cls: "text-loss border-loss/30 bg-loss/10",
+   119→    dot: "bg-loss",
+   120→    icon: XCircle,
+   121→  },
+   122→};
+   123→
+   124→function InvestmentStatusBadge({ status }: { status: string }) {
+   125→  const meta = STATUS_META[status] ?? {
+   126→    label: status,
+   127→    cls: "text-muted-foreground border-border bg-muted",
+   128→    dot: "bg-muted-foreground",
+   129→    icon: CircleSlash,
+   130→  };
+   131→  const Icon = meta.icon;
+   132→  return (
+   133→    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-medium ${meta.cls}`}>
+   134→      <Icon className="h-3 w-3" />
+   135→      {meta.label}
+   136→    </span>
+   137→  );
+   138→}
+   139→
+   140→/* ------------------------------------------------------------------ */
+   141→/*  Helpers                                                            */
+   142→/* ------------------------------------------------------------------ */
+   143→
+   144→function progressPct(start: string, end: string | null): number {
+   145→  const startMs = new Date(start).getTime();
+   146→  const endMs = end ? new Date(end).getTime() : Date.now();
+   147→  if (!endMs || endMs <= startMs) return 0;
+   148→  const now = Date.now();
+   149→  if (now >= endMs) return 100;
+   150→  if (now <= startMs) return 0;
+   151→  return Math.min(100, Math.max(0, ((now - startMs) / (endMs - startMs)) * 100));
+   152→}
+   153→
+   154→function durationLabel(days: number): string {
+   155→  if (days <= 0) return "—";
+   156→  if (days < 30) return `${days}d`;
+   157→  if (days < 365) return `${Math.round(days / 30 * 10) / 10}mo`;
+   158→  return `${Math.round(days / 365 * 10) / 10}yr`;
+   159→}
+   160→
+   161→/* ------------------------------------------------------------------ */
+   162→/*  Loading Skeleton                                                   */
+   163→/* ------------------------------------------------------------------ */
+   164→
+   165→function InvestmentsSkeleton() {
+   166→  return (
+   167→    <div className="space-y-6">
+   168→      <FadeIn>
+   169→        <div className="flex flex-wrap items-end justify-between gap-4">
+   170→          <div>
+   171→            <span className="text-xs font-medium uppercase tracking-[0.18em] text-gold">Investor Portal</span>
+   172→            <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">My Investments</h1>
+   173→            <p className="text-sm text-muted-foreground">Your active positions and performance</p>
+   174→          </div>
+   175→        </div>
+   176→      </FadeIn>
+   177→      <FadeIn delay={0.05}>
+   178→        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+   179→          {[0, 1, 2, 3].map((i) => <SkeletonMetric key={i} className="h-28" />)}
+   180→        </div>
+   181→      </FadeIn>
+   182→      <FadeIn delay={0.1}>
+   183→        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+   184→          {[0, 1, 2, 3, 4, 5].map((i) => <SkeletonCard key={i} className="h-64" />)}
+   185→        </div>
+   186→      </FadeIn>
+   187→    </div>
+   188→  );
+   189→}
+   190→
+   191→/* ------------------------------------------------------------------ */
+   192→/*  Detail Dialog                                                      */
+   193→/* ------------------------------------------------------------------ */
+   194→
+   195→function InvestmentDetailDialog({
+   196→  investment,
+   197→  open,
+   198→  onOpenChange,
+   199→}: {
+   200→  investment: Investment | null;
+   201→  open: boolean;
+   202→  onOpenChange: (o: boolean) => void;
+   203→}) {
+   204→  // Build chart data: history entries + current value appended as latest point
+   205→  const valueChartData = useMemo(() => {
+   206→    if (!investment) return [];
+   207→    const points: { date: string; value: number; roi: number }[] = [];
+   208→    // Seed with the invested value at startDate as origin point
+   209→    points.push({
+   210→      date: new Date(investment.startDate).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+   211→      value: investment.investedAmount,
+   212→      roi: 0,
+   213→    });
+   214→    for (const h of investment.history ?? []) {
+   215→      points.push({
+   216→        date: new Date(h.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+   217→        value: h.newValue,
+   218→        roi: h.newRoi,
+   219→      });
+   220→    }
+   221→    // Append current value as the latest point if it differs
+   222→    const last = points[points.length - 1];
+   223→    if (!last || last.value !== investment.currentValue) {
+   224→      points.push({
+   225→        date: new Date(investment.updatedAt ?? Date.now()).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+   226→        value: investment.currentValue,
+   227→        roi: investment.roiPercent,
+   228→      });
+   229→    }
+   230→    return points;
+   231→  }, [investment]);
+   232→
+   233→  if (!investment) return null;
+   234→
+   235→  const profit = investment.profitLoss;
+   236→  const roi = investment.roiPercent;
+   237→  const progress = progressPct(investment.startDate, investment.endDate);
+   238→  const history = [...(investment.history ?? [])].reverse(); // newest first
+   239→
+   240→  return (
+   241→    <Dialog open={open} onOpenChange={onOpenChange}>
+   242→      <DialogContent className="border-gold/20 bg-card/95 backdrop-blur-xl sm:max-w-3xl">
+   243→        <DialogHeader>
+   244→          <DialogTitle className="flex items-center justify-between gap-3 pr-6">
+   245→            <span className="flex items-center gap-2">
+   246→              <Coins className="h-5 w-5 text-gold" />
+   247→              {investment.investmentName}
+   248→            </span>
+   249→            <InvestmentStatusBadge status={investment.status} />
+   250→          </DialogTitle>
+   251→          <DialogDescription>
+   252→            {investment.fund?.name ?? "Investment position"} · Created {fmtDate(investment.createdAt)}
+   253→          </DialogDescription>
+   254→        </DialogHeader>
+   255→
+   256→        <div className="max-h-[70vh] space-y-5 overflow-y-auto scroll-luxury pr-1">
+   257→          {/* ─── Hero P&L ─── */}
+   258→          <div className="grid gap-4 sm:grid-cols-3">
+   259→            <div className="rounded-xl border border-border/40 bg-black/30 p-4">
+   260→              <div className="text-[10.5px] font-medium uppercase tracking-[0.12em] text-muted-foreground">Invested</div>
+   261→              <div className="mt-1 font-metric text-xl font-bold">{fmtUSD(investment.investedAmount)}</div>
+   262→            </div>
+   263→            <div className="rounded-xl border border-gold/30 bg-gold/5 p-4">
+   264→              <div className="text-[10.5px] font-medium uppercase tracking-[0.12em] text-gold/80">Current Value</div>
+   265→              <div className="mt-1 font-metric text-xl font-bold text-gold">{fmtUSD(investment.currentValue)}</div>
+   266→            </div>
+   267→            <div className={`rounded-xl border p-4 ${profit >= 0 ? "border-profit/30 bg-profit/5" : "border-loss/30 bg-loss/5"}`}>
+   268→              <div className="text-[10.5px] font-medium uppercase tracking-[0.12em] text-muted-foreground">Profit / Loss</div>
+   269→              <div className={`mt-1 font-metric text-xl font-bold ${profit >= 0 ? "text-profit" : "text-loss"}`}>
+   270→                {profit >= 0 ? "+" : ""}{fmtUSD(profit)}
+   271→              </div>
+   272→              <div className={`mt-0.5 text-xs ${roi >= 0 ? "text-profit/80" : "text-loss/80"}`}>{fmtPct(roi)} ROI</div>
+   273→            </div>
+   274→          </div>
+   275→
+   276→          {/* ─── Metadata grid ─── */}
+   277→          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+   278→            <MetaItem icon={<Calendar className="h-3.5 w-3.5" />} label="Start Date" value={fmtDate(investment.startDate)} />
+   279→            <MetaItem
+   280→              icon={<Calendar className="h-3.5 w-3.5" />}
+   281→              label="End Date"
+   282→              value={investment.endDate ? fmtDate(investment.endDate) : "Open"}
+   283→            />
+   284→            <MetaItem icon={<Clock className="h-3.5 w-3.5" />} label="Duration" value={durationLabel(investment.durationDays)} />
+   285→            <MetaItem icon={<Activity className="h-3.5 w-3.5" />} label="Status" value={<InvestmentStatusBadge status={investment.status} />} />
+   286→          </div>
+   287→
+   288→          {/* ─── Progress bar ─── */}
+   289→          {investment.endDate && (
+   290→            <div className="rounded-xl border border-border/40 bg-black/20 p-4">
+   291→              <div className="mb-2 flex items-center justify-between text-[11px] text-muted-foreground">
+   292→                <span className="inline-flex items-center gap-1.5"><Target className="h-3 w-3 text-gold" />Position Timeline</span>
+   293→                <span className="font-metric text-gold">{progress.toFixed(1)}%</span>
+   294→              </div>
+   295→              <div className="h-2 w-full overflow-hidden rounded-full bg-border/40">
+   296→                <motion.div
+   297→                  initial={{ width: 0 }}
+   298→                  animate={{ width: `${progress}%` }}
+   299→                  transition={{ duration: 0.8, ease: "easeOut" }}
+   300→                  className="h-full rounded-full bg-gold-gradient"
+   301→                />
+   302→              </div>
+   303→              <div className="mt-1.5 flex justify-between text-[10.5px] text-muted-foreground">
+   304→                <span>{fmtDate(investment.startDate)}</span>
+   305→                <span>{fmtDate(investment.endDate)}</span>
+   306→              </div>
+   307→            </div>
+   308→          )}
+   309→
+   310→          {/* ─── Notes ─── */}
+   311→          {investment.notes && (
+   312→            <div className="rounded-xl border border-border/40 bg-black/20 p-4">
+   313→              <div className="text-[10.5px] font-medium uppercase tracking-[0.12em] text-muted-foreground">Notes</div>
+   314→              <p className="mt-1 text-sm text-foreground/90">{investment.notes}</p>
+   315→            </div>
+   316→          )}
+   317→
+   318→          {/* ─── Value chart ─── */}
+   319→          <div className="rounded-xl border border-border/40 bg-black/20 p-4">
+   320→            <div className="mb-3 flex items-center gap-2">
+   321→              <LineChartIcon className="h-4 w-4 text-gold" />
+   322→              <h3 className="text-sm font-semibold">Value Over Time</h3>
+   323→            </div>
+   324→            <div className="h-56">
+   325→              {valueChartData.length > 1 ? (
+   326→                <ResponsiveContainer width="100%" height="100%">
+   327→                  <AreaChart data={valueChartData} margin={{ top: 6, right: 6, left: 6, bottom: 0 }}>
+   328→                    <defs>
+   329→                      <linearGradient id="invValueGrad" x1="0" y1="0" x2="0" y2="1">
+   330→                        <stop offset="0%" stopColor="#D4AF37" stopOpacity={0.35} />
+   331→                        <stop offset="60%" stopColor="#D4AF37" stopOpacity={0.08} />
+   332→                        <stop offset="100%" stopColor="#D4AF37" stopOpacity={0} />
+   333→                      </linearGradient>
+   334→                      <linearGradient id="invValueStroke" x1="0" y1="0" x2="1" y2="0">
+   335→                        <stop offset="0%" stopColor="#b8860b" />
+   336→                        <stop offset="50%" stopColor="#D4AF37" />
+   337→                        <stop offset="100%" stopColor="#ffd700" />
+   338→                      </linearGradient>
+   339→                    </defs>
+   340→                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+   341→                    <XAxis
+   342→                      dataKey="date"
+   343→                      tick={{ fill: "#7A7A7A", fontSize: 11 }}
+   344→                      stroke="rgba(255,255,255,0.08)"
+   345→                      interval="preserveStartEnd"
+   346→                    />
+   347→                    <YAxis
+   348→                      tickFormatter={(v) => `$${v.toLocaleString()}`}
+   349→                      tick={{ fill: "#7A7A7A", fontSize: 11 }}
+   350→                      stroke="rgba(255,255,255,0.08)"
+   351→                      width={64}
+   352→                    />
+   353→                    <Tooltip
+   354→                      cursor={{ stroke: "rgba(212,175,55,0.3)", strokeDasharray: "4 4" }}
+   355→                      contentStyle={{
+   356→                        background: "rgba(20,20,22,0.95)",
+   357→                        border: "1px solid rgba(212,175,55,0.25)",
+   358→                        borderRadius: "10px",
+   359→                        boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
+   360→                      }}
+   361→                      formatter={(v: number) => [fmtUSD(v), "Value"]}
+   362→                      labelStyle={{ color: "#9a9a9a", fontSize: 12 }}
+   363→                    />
+   364→                    <Area
+   365→                      type="monotone"
+   366→                      dataKey="value"
+   367→                      stroke="url(#invValueStroke)"
+   368→                      strokeWidth={2.5}
+   369→                      fill="url(#invValueGrad)"
+   370→                      dot={false}
+   371→                      activeDot={{ r: 5, fill: "#D4AF37", stroke: "#0a0a0b", strokeWidth: 2 }}
+   372→                    />
+   373→                  </AreaChart>
+   374→                </ResponsiveContainer>
+   375→              ) : (
+   376→                <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+   377→                  <div className="flex flex-col items-center gap-2">
+   378→                    <BarChart3 className="h-8 w-8 text-gold/30" />
+   379→                    <span>Performance history will appear as the position is updated</span>
+   380→                  </div>
+   381→                </div>
+   382→              )}
+   383→            </div>
+   384→          </div>
+   385→
+   386→          {/* ─── ROI chart ─── */}
+   387→          <div className="rounded-xl border border-border/40 bg-black/20 p-4">
+   388→            <div className="mb-3 flex items-center gap-2">
+   389→              <TrendingUp className="h-4 w-4 text-gold" />
+   390→              <h3 className="text-sm font-semibold">ROI Growth</h3>
+   391→            </div>
+   392→            <div className="h-48">
+   393→              {valueChartData.length > 1 ? (
+   394→                <ResponsiveContainer width="100%" height="100%">
+   395→                  <LineChart data={valueChartData} margin={{ top: 6, right: 6, left: 6, bottom: 0 }}>
+   396→                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+   397→                    <XAxis
+   398→                      dataKey="date"
+   399→                      tick={{ fill: "#7A7A7A", fontSize: 11 }}
+   400→                      stroke="rgba(255,255,255,0.08)"
+   401→                      interval="preserveStartEnd"
+   402→                    />
+   403→                    <YAxis
+   404→                      tickFormatter={(v) => `${v.toFixed(1)}%`}
+   405→                      tick={{ fill: "#7A7A7A", fontSize: 11 }}
+   406→                      stroke="rgba(255,255,255,0.08)"
+   407→                      width={48}
+   408→                    />
+   409→                    <Tooltip
+   410→                      cursor={{ stroke: "rgba(212,175,55,0.3)", strokeDasharray: "4 4" }}
+   411→                      contentStyle={{
+   412→                        background: "rgba(20,20,22,0.95)",
+   413→                        border: "1px solid rgba(212,175,55,0.25)",
+   414→                        borderRadius: "10px",
+   415→                        boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
+   416→                      }}
+   417→                      formatter={(v: number) => [fmtPct(v), "ROI"]}
+   418→                      labelStyle={{ color: "#9a9a9a", fontSize: 12 }}
+   419→                    />
+   420→                    <Line
+   421→                      type="monotone"
+   422→                      dataKey="roi"
+   423→                      stroke="#00c896"
+   424→                      strokeWidth={2.5}
+   425→                      dot={false}
+   426→                      activeDot={{ r: 5, fill: "#00c896", stroke: "#0a0a0b", strokeWidth: 2 }}
+   427→                    />
+   428→                  </LineChart>
+   429→                </ResponsiveContainer>
+   430→              ) : (
+   431→                <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+   432→                  <span>ROI history will appear as the position matures</span>
+   433→                </div>
+   434→              )}
+   435→            </div>
+   436→          </div>
+   437→
+   438→          {/* ─── History table ─── */}
+   439→          <div className="rounded-xl border border-border/40 bg-black/20 p-4">
+   440→            <div className="mb-3 flex items-center gap-2">
+   441→              <Activity className="h-4 w-4 text-gold" />
+   442→              <h3 className="text-sm font-semibold">Update History</h3>
+   443→            </div>
+   444→            {history.length === 0 ? (
+   445→              <p className="py-6 text-center text-sm text-muted-foreground">No updates recorded yet</p>
+   446→            ) : (
+   447→              <div className="max-h-64 overflow-y-auto scroll-luxury">
+   448→                <table className="w-full text-sm">
+   449→                  <thead className="sticky top-0 bg-card/95 backdrop-blur">
+   450→                    <tr className="border-b border-border/60 text-left text-[11px] uppercase tracking-wider text-muted-foreground">
+   451→                      <th className="pb-2 pr-4 font-medium">Date</th>
+   452→                      <th className="pb-2 pr-4 font-medium">Value Change</th>
+   453→                      <th className="pb-2 pr-4 font-medium">ROI Change</th>
+   454→                    </tr>
+   455→                  </thead>
+   456→                  <tbody>
+   457→                    {history.map((h) => (
+   458→                      <tr key={h.id} className="border-b border-border/40 last:border-0">
+   459→                        <td className="py-2.5 pr-4 text-muted-foreground">{fmtDate(h.createdAt, true)}</td>
+   460→                        <td className="py-2.5 pr-4 font-metric">
+   461→                          <span className="text-muted-foreground">{fmtUSD(h.previousValue, { decimals: 2 })}</span>
+   462→                          <ArrowRight className="mx-1 inline h-3 w-3 text-gold/60" />
+   463→                          <span className="font-semibold text-gold">{fmtUSD(h.newValue, { decimals: 2 })}</span>
+   464→                        </td>
+   465→                        <td className="py-2.5 pr-4 font-metric">
+   466→                          <span className="text-muted-foreground">{fmtPct(h.previousRoi)}</span>
+   467→                          <ArrowRight className="mx-1 inline h-3 w-3 text-gold/60" />
+   468→                          <span className={`font-semibold ${h.newRoi >= 0 ? "text-profit" : "text-loss"}`}>{fmtPct(h.newRoi)}</span>
+   469→                        </td>
+   470→                      </tr>
+   471→                    ))}
+   472→                  </tbody>
+   473→                </table>
+   474→              </div>
+   475→            )}
+   476→          </div>
+   477→        </div>
+   478→      </DialogContent>
+   479→    </Dialog>
+   480→  );
+   481→}
+   482→
+   483→function MetaItem({
+   484→  icon,
+   485→  label,
+   486→  value,
+   487→}: {
+   488→  icon: React.ReactNode;
+   489→  label: string;
+   490→  value: React.ReactNode;
+   491→}) {
+   492→  return (
+   493→    <div className="rounded-lg border border-border/40 bg-black/20 p-3">
+   494→      <div className="flex items-center gap-1.5 text-[10.5px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+   495→        <span className="text-gold/70">{icon}</span>
+   496→        {label}
+   497→      </div>
+   498→      <div className="mt-1 text-sm font-medium text-foreground">{value}</div>
+   499→    </div>
+   500→  );
+   501→}
+   502→
+   503→/* ------------------------------------------------------------------ */
+   504→/*  Investment Card                                                    */
+   505→/* ------------------------------------------------------------------ */
+   506→
+   507→function InvestmentCard({
+   508→  investment,
+   509→  index,
+   510→  onView,
+   511→}: {
+   512→  investment: Investment;
+   513→  index: number;
+   514→  onView: () => void;
+   515→}) {
+   516→  const profit = investment.profitLoss;
+   517→  const roi = investment.roiPercent;
+   518→  const isProfit = profit >= 0;
+   519→  const progress = progressPct(investment.startDate, investment.endDate);
+   520→
+   521→  return (
+   522→    <motion.div
+   523→      initial={{ opacity: 0, y: 12 }}
+   524→      animate={{ opacity: 1, y: 0 }}
+   525→      transition={{ delay: index * 0.06, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+   526→    >
+   527→      <GlassCard className="h-full p-5 hover-lift gold-glow-hover">
+   528→        {/* Header: name + status */}
+   529→        <div className="flex items-start justify-between gap-2">
+   530→          <div className="min-w-0 flex-1">
+   531→            <h3 className="truncate text-base font-bold tracking-tight">{investment.investmentName}</h3>
+   532→            {investment.fund?.name && (
+   533→              <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{investment.fund.name}</p>
+   534→            )}
+   535→          </div>
+   536→          <InvestmentStatusBadge status={investment.status} />
+   537→        </div>
+   538→
+   539→        {/* Invested + current value */}
+   540→        <div className="mt-4 grid grid-cols-2 gap-3">
+   541→          <div>
+   542→            <div className="text-[10.5px] font-medium uppercase tracking-[0.12em] text-muted-foreground">Invested</div>
+   543→            <div className="mt-0.5 font-metric text-lg font-bold">{fmtUSD(investment.investedAmount)}</div>
+   544→          </div>
+   545→          <div>
+   546→            <div className="text-[10.5px] font-medium uppercase tracking-[0.12em] text-gold/80">Current Value</div>
+   547→            <div className="mt-0.5 font-metric text-lg font-bold text-gold">{fmtUSD(investment.currentValue)}</div>
+   548→          </div>
+   549→        </div>
+   550→
+   551→        {/* P&L + ROI pill */}
+   552→        <div className="mt-3 flex items-center justify-between gap-2 rounded-lg border border-border/40 bg-black/20 px-3 py-2">
+   553→          <div className="flex items-center gap-1.5">
+   554→            {isProfit ? (
+   555→              <TrendingUp className="h-3.5 w-3.5 text-profit" />
+   556→            ) : (
+   557→              <TrendingDown className="h-3.5 w-3.5 text-loss" />
+   558→            )}
+   559→            <span className={`font-metric text-sm font-semibold ${isProfit ? "text-profit" : "text-loss"}`}>
+   560→              {isProfit ? "+" : ""}{fmtUSD(profit)}
+   561→            </span>
+   562→          </div>
+   563→          <span
+   564→            className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold ${
+   565→              roi >= 0
+   566→                ? "border-profit/30 bg-profit/10 text-profit"
+   567→                : "border-loss/30 bg-loss/10 text-loss"
+   568→            }`}
+   569→          >
+   570→            {fmtPct(roi)}
+   571→          </span>
+   572→        </div>
+   573→
+   574→        {/* Progress bar */}
+   575→        {investment.endDate ? (
+   576→          <div className="mt-3">
+   577→            <div className="mb-1 flex items-center justify-between text-[10.5px] text-muted-foreground">
+   578→              <span>Progress</span>
+   579→              <span className="font-metric text-gold/80">{progress.toFixed(0)}%</span>
+   580→            </div>
+   581→            <div className="h-1.5 w-full overflow-hidden rounded-full bg-border/40">
+   582→              <motion.div
+   583→                initial={{ width: 0 }}
+   584→                animate={{ width: `${progress}%` }}
+   585→                transition={{ delay: index * 0.06 + 0.2, duration: 0.7, ease: "easeOut" }}
+   586→                className="h-full rounded-full bg-gold-gradient"
+   587→              />
+   588→            </div>
+   589→          </div>
+   590→        ) : (
+   591→          <div className="mt-3 h-[18px]" />
+   592→        )}
+   593→
+   594→        {/* Footer: dates + button */}
+   595→        <div className="mt-4 flex items-center justify-between gap-2 border-t border-border/40 pt-3">
+   596→          <div className="min-w-0 flex-1 text-[11px] text-muted-foreground">
+   597→            <div className="flex items-center gap-1">
+   598→              <Calendar className="h-3 w-3 shrink-0" />
+   599→              <span className="truncate">{fmtDate(investment.startDate)}</span>
+   600→            </div>
+   601→            <div className="mt-0.5 flex items-center gap-1">
+   602→              {investment.endDate ? (
+   603→                <>
+   604→                  <Clock className="h-3 w-3 shrink-0" />
+   605→                  <span className="truncate">{fmtDate(investment.endDate)}</span>
+   606→                </>
+   607→              ) : (
+   608→                <>
+   609→                  <span className="h-1.5 w-1.5 rounded-full bg-profit animate-pulse" />
+   610→                  <span className="text-profit/80">Active</span>
+   611→                </>
+   612→              )}
+   613→            </div>
+   614→          </div>
+   615→          <Button
+   616→            size="sm"
+   617→            variant="outline"
+   618→            onClick={onView}
+   619→            className="border-gold/30 hover:bg-gold/10 hover:text-gold press-scale"
+   620→          >
+   621→            View Details
+   622→            <ArrowRight className="ml-1 h-3.5 w-3.5" />
+   623→          </Button>
+   624→        </div>
+   625→      </GlassCard>
+   626→    </motion.div>
+   627→  );
+   628→}
+   629→
+   630→/* ------------------------------------------------------------------ */
+   631→/*  Main Investments Page                                              */
+   632→/* ------------------------------------------------------------------ */
+   633→
+   634→export function InvestorInvestments() {
+   635→  const [selectedId, setSelectedId] = useState<string | null>(null);
+   636→
+   637→  const { data, isLoading } = useQuery<InvestmentsResponse>({
+   638→    queryKey: ["investments"],
+   639→    queryFn: () => api.get("/api/investments"),
+   640→  });
+   641→
+   642→  // Fetch detail when an investment is selected
+   643→  const { data: detailData, isLoading: detailLoading } = useQuery<InvestmentDetailResponse>({
+   644→    queryKey: ["investment-detail", selectedId],
+   645→    queryFn: () => api.get(`/api/investments/${selectedId}`),
+   646→    enabled: !!selectedId,
+   647→  });
+   648→
+   649→  const investments = data?.investments ?? [];
+   650→
+   651→  // ─── Summary metrics ───
+   652→  const summary = useMemo(() => {
+   653→    const activeOrCompleted = investments.filter(
+   654→      (i) => i.status === "ACTIVE" || i.status === "COMPLETED"
+   655→    );
+   656→    const active = investments.filter((i) => i.status === "ACTIVE");
+   657→    const totalInvested = activeOrCompleted.reduce((a, i) => a + (i.investedAmount || 0), 0);
+   658→    const currentValue = active.reduce((a, i) => a + (i.currentValue || 0), 0);
+   659→    const totalPL = investments.reduce((a, i) => a + (i.profitLoss || 0), 0);
+   660→    const weightedRoi = totalInvested > 0
+   661→      ? investments
+   662→          .filter((i) => i.status === "ACTIVE" || i.status === "COMPLETED")
+   663→          .reduce((a, i) => a + (i.roiPercent || 0) * (i.investedAmount || 0), 0) / totalInvested
+   664→      : 0;
+   665→    return {
+   666→      totalInvested,
+   667→      currentValue,
+   668→      totalPL,
+   669→      weightedRoi,
+   670→      activeCount: active.length,
+   671→      totalCount: investments.length,
+   672→    };
+   673→  }, [investments]);
+   674→
+   675→  const handleView = (id: string) => {
+   676→    setSelectedId(id);
+   677→  };
+   678→
+   679→  const handleClose = () => {
+   680→    setSelectedId(null);
+   681→  };
+   682→
+   683→  if (isLoading) return <InvestmentsSkeleton />;
+   684→
+   685→  return (
+   686→    <div className="space-y-6">
+   687→      {/* ─── 1. Header ─── */}
+   688→      <FadeIn>
+   689→        <div className="flex flex-wrap items-end justify-between gap-4">
+   690→          <div>
+   691→            <span className="text-xs font-medium uppercase tracking-[0.18em] text-gold">Investor Portal</span>
+   692→            <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">My Investments</h1>
+   693→            <p className="text-sm text-muted-foreground">Your active positions and performance</p>
+   694→          </div>
+   695→          {investments.length > 0 && (
+   696→            <div className="flex items-center gap-2 rounded-lg border border-gold/20 bg-gold/5 px-3 py-1.5">
+   697→              <Coins className="h-4 w-4 text-gold" />
+   698→              <span className="text-sm font-medium">
+   699→                <span className="font-metric text-gold">{summary.activeCount}</span>
+   700→                <span className="text-muted-foreground"> of {summary.totalCount} active</span>
+   701→              </span>
+   702→            </div>
+   703→          )}
+   704→        </div>
+   705→      </FadeIn>
+   706→
+   707→      {/* ─── 2. Summary Metrics ─── */}
+   708→      {investments.length > 0 ? (
+   709→        <FadeIn delay={0.05}>
+   710→          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+   711→            <MetricTile
+   712→              label="Total Invested"
+   713→              value={fmtUSD(summary.totalInvested)}
+   714→              accent="neutral"
+   715→              icon={
+   716→                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-info/10">
+   717→                  <Wallet className="h-4 w-4 text-info" />
+   718→                </span>
+   719→              }
+   720→              sub={`${summary.totalCount} position${summary.totalCount === 1 ? "" : "s"}`}
+   721→              className="gold-glow-hover"
+   722→            />
+   723→            <MetricTile
+   724→              label="Current Value"
+   725→              value={fmtUSD(summary.currentValue)}
+   726→              accent="gold"
+   727→              icon={
+   728→                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gold/10">
+   729→                  <Coins className="h-4 w-4 text-gold" />
+   730→                </span>
+   731→              }
+   732→              sub={`${summary.activeCount} active`}
+   733→              className="gold-glow-hover"
+   734→            />
+   735→            <MetricTile
+   736→              label="Total P&L"
+   737→              value={`${summary.totalPL >= 0 ? "+" : ""}${fmtUSD(summary.totalPL)}`}
+   738→              accent={summary.totalPL >= 0 ? "profit" : "loss"}
+   739→              icon={
+   740→                <span className={`flex h-8 w-8 items-center justify-center rounded-lg ${summary.totalPL >= 0 ? "bg-profit/10" : "bg-loss/10"}`}>
+   741→                  {summary.totalPL >= 0 ? <TrendingUp className="h-4 w-4 text-profit" /> : <TrendingDown className="h-4 w-4 text-loss" />}
+   742→                </span>
+   743→              }
+   744→              sub={summary.totalPL >= 0 ? "Net unrealized gain" : "Net unrealized loss"}
+   745→              className="gold-glow-hover"
+   746→            />
+   747→            <MetricTile
+   748→              label="Overall ROI"
+   749→              value={fmtPct(summary.weightedRoi)}
+   750→              accent={summary.weightedRoi >= 0 ? "profit" : "loss"}
+   751→              icon={
+   752→                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gold/10">
+   753→                  <Target className="h-4 w-4 text-gold" />
+   754→                </span>
+   755→              }
+   756→              sub="Capital-weighted average"
+   757→              className="gold-glow-hover"
+   758→            />
+   759→          </div>
+   760→        </FadeIn>
+   761→      ) : null}
+   762→
+   763→      {/* ─── 3. Empty state ─── */}
+   764→      {investments.length === 0 ? (
+   765→        <FadeIn delay={0.1}>
+   766→          <GlassCard className="p-6">
+   767→            <EmptyState
+   768→              icon={<PiggyBank className="h-7 w-7" />}
+   769→              title="No Investments Yet"
+   770→              description="Your fund administrator will create investment positions for you. Once active, they'll appear here with live performance tracking."
+   771→            />
+   772→          </GlassCard>
+   773→        </FadeIn>
+   774→      ) : (
+   775→        /* ─── 4. Investment cards grid ─── */
+   776→        <FadeIn delay={0.1}>
+   777→          <div>
+   778→            <SectionTitle
+   779→              title="Positions"
+   780→              subtitle="Click any position to view detailed performance and history"
+   781→              className="mb-4"
+   782→            />
+   783→            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+   784→              {investments.map((inv, idx) => (
+   785→                <InvestmentCard
+   786→                  key={inv.id}
+   787→                  investment={inv}
+   788→                  index={idx}
+   789→                  onView={() => handleView(inv.id)}
+   790→                />
+   791→              ))}
+   792→            </div>
+   793→          </div>
+   794→        </FadeIn>
+   795→      )}
+   796→
+   797→      {/* ─── 5. Detail dialog ─── */}
+   798→      <InvestmentDetailDialog
+   799→        investment={detailData?.investment ?? null}
+   800→        open={selectedId !== null}
+   801→        onOpenChange={(o) => !o && handleClose()}
+   802→      />
+   803→
+   804→      {/* Hidden helper to surface detail-loading state without a noisy UI */}
+   805→      {detailLoading && selectedId && (
+   806→        <div className="sr-only" aria-live="polite">Loading investment details…</div>
+   807→      )}
+   808→    </div>
+   809→  );
+   810→}
+   811→

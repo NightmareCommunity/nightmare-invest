@@ -210,13 +210,13 @@ export function AnalyticsPage() {
     : null;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-5 sm:space-y-6 lg:space-y-8">
       {/* ── Header ─────────────────────────────────────── */}
       <FadeIn>
-        <div>
+        <div className="min-w-0">
           <span className="text-xs font-medium uppercase tracking-[0.18em] text-gold">Investor Portal</span>
-          <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">Risk Analytics</h1>
-          <p className="text-sm text-muted-foreground">
+          <h1 className="h2-responsive mt-1 font-bold tracking-tight">Risk Analytics</h1>
+          <p className="text-sm text-muted-foreground break-words-mobile">
             {data.fund.name} · Advanced performance & risk metrics
           </p>
         </div>
@@ -224,7 +224,7 @@ export function AnalyticsPage() {
 
       {/* ── 1. Enhanced Risk Ratio Tiles ───────────────── */}
       <FadeIn delay={0.05}>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
           <EnhancedRatioTile
             label="Sharpe Ratio"
             value={a.sharpe}
@@ -263,28 +263,28 @@ export function AnalyticsPage() {
 
       {/* ── 2. Drawdown Timeline (Enhanced with max DD marker) ── */}
       <FadeIn delay={0.1}>
-        <GlassCard className="p-6">
-          <div className="flex flex-wrap items-start justify-between gap-3">
+        <GlassCard className="p-3 sm:p-4 lg:p-6">
+          <div className="flex flex-col gap-2 sm:flex-wrap sm:items-start sm:justify-between sm:flex-row">
             <SectionTitle
               title="Drawdown Profile"
               subtitle="Underwater curve — peak-to-trough decline over time"
             />
-            <div className="flex flex-wrap gap-5 text-right">
+            <div className="flex flex-wrap gap-3 sm:gap-5 text-right">
               <div>
                 <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Max Drawdown</div>
-                <div className="font-metric text-lg font-bold text-loss">{fmtPct(a.maxDrawdown)}</div>
+                <div className="font-metric text-base sm:text-lg font-bold text-loss">{fmtPct(a.maxDrawdown)}</div>
               </div>
               <div>
                 <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Avg Drawdown</div>
-                <div className="font-metric text-lg font-bold text-warning">{fmtPct(avgDrawdown)}</div>
+                <div className="font-metric text-base sm:text-lg font-bold text-warning">{fmtPct(avgDrawdown)}</div>
               </div>
               <div>
                 <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Current Drawdown</div>
-                <div className="font-metric text-lg font-bold text-gold">{fmtPct(a.currentDrawdown)}</div>
+                <div className="font-metric text-base sm:text-lg font-bold text-gold">{fmtPct(a.currentDrawdown)}</div>
               </div>
             </div>
           </div>
-          <div className="mt-5 h-72">
+          <div className="chart-mobile mt-5">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={a.drawdownSeries} margin={{ top: 10, right: 10, left: 4, bottom: 2 }}>
                 <defs>
@@ -381,12 +381,12 @@ export function AnalyticsPage() {
 
       {/* ── 3. Monthly Returns Heatmap (Redesigned) ────── */}
       <FadeIn delay={0.15}>
-        <GlassCard className="p-6">
+        <GlassCard className="p-3 sm:p-4 lg:p-6">
           <SectionTitle
             title="Monthly Returns Heatmap"
             subtitle="Performance by calendar month — hover cells for details"
           />
-          <div className="mt-5">
+          <div className="mt-4 sm:mt-5 overflow-x-auto scroll-luxury">
             <MonthlyHeatmap monthly={a.monthlyReturns} />
           </div>
         </GlassCard>
@@ -395,24 +395,24 @@ export function AnalyticsPage() {
       {/* ── 4. VaR Distribution Histogram (NEW) ─────────── */}
       {returnDistribution.length > 5 && (
         <FadeIn delay={0.18}>
-          <GlassCard className="p-6">
-            <div className="flex flex-wrap items-start justify-between gap-3">
+          <GlassCard className="p-3 sm:p-4 lg:p-6">
+            <div className="flex flex-col gap-2 sm:flex-wrap sm:items-start sm:justify-between sm:flex-row">
               <SectionTitle
                 title="Return Distribution & VaR"
                 subtitle="Histogram of daily returns with 95% VaR threshold"
               />
-              <div className="flex flex-wrap gap-5 text-right">
+              <div className="flex flex-wrap gap-3 sm:gap-5 text-right">
                 <div>
                   <div className="text-[10px] uppercase tracking-wider text-muted-foreground">VaR (95%)</div>
-                  <div className="font-metric text-lg font-bold text-gold">{fmtPct(a.var95)}</div>
+                  <div className="font-metric text-base sm:text-lg font-bold text-gold">{fmtPct(a.var95)}</div>
                 </div>
                 <div>
                   <div className="text-[10px] uppercase tracking-wider text-muted-foreground">CVaR (95%)</div>
-                  <div className="font-metric text-lg font-bold text-loss">{fmtPct(a.cvar95)}</div>
+                  <div className="font-metric text-base sm:text-lg font-bold text-loss">{fmtPct(a.cvar95)}</div>
                 </div>
               </div>
             </div>
-            <div className="mt-5 h-72">
+            <div className="chart-mobile mt-5">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={returnDistribution} margin={{ top: 10, right: 10, left: 4, bottom: 2 }}>
                   <defs>
@@ -503,12 +503,12 @@ export function AnalyticsPage() {
 
       {/* ── 5. Stress Test Scenarios (NEW) ──────────────── */}
       <FadeIn delay={0.2}>
-        <GlassCard className="p-6">
+        <GlassCard className="p-3 sm:p-4 lg:p-6">
           <SectionTitle
             title="Stress Test Scenarios"
             subtitle="Projected portfolio impact under extreme market conditions"
           />
-          <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-4 sm:mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
             {STRESS_SCENARIOS.map((scenario, idx) => {
               const projectedLoss = a.volatility * (scenario.marketImpact / 30) * 0.8;
               const IconComp = scenario.icon;
@@ -581,12 +581,12 @@ export function AnalyticsPage() {
       </FadeIn>
 
       {/* ── 6 + 7 + 8: VaR / Daily Stats / Streaks ────── */}
-      <div className="grid gap-5 lg:grid-cols-3">
+      <div className="grid gap-4 lg:grid-cols-3">
         {/* Value at Risk */}
         <FadeIn delay={0.25}>
-          <GlassCard className="p-6">
+          <GlassCard className="p-3 sm:p-4 lg:p-6">
             <SectionTitle title="Value at Risk" subtitle="1-day, 95% confidence" />
-            <div className="mt-5 space-y-4">
+            <div className="mt-4 sm:mt-5 space-y-3 sm:space-y-4">
               <VarBarEnhanced label="VaR (95%)" value={a.var95} hint="Max expected daily loss" color="gold" />
               <VarBarEnhanced label="CVaR (95%)" value={a.cvar95} hint="Expected loss when VaR is breached" color="loss" />
               {/* Visual comparison */}
@@ -629,7 +629,7 @@ export function AnalyticsPage() {
 
         {/* Daily Statistics */}
         <FadeIn delay={0.3}>
-          <GlassCard className="p-6">
+          <GlassCard className="p-3 sm:p-4 lg:p-6">
             <SectionTitle title="Daily Statistics" subtitle="Best / worst / averages" />
             {/* Best/Worst Day highlight cards */}
             <div className="mt-4 grid grid-cols-2 gap-3">
@@ -664,9 +664,9 @@ export function AnalyticsPage() {
 
         {/* Streaks & Trends */}
         <FadeIn delay={0.35}>
-          <GlassCard className="p-6">
+          <GlassCard className="p-3 sm:p-4 lg:p-6">
             <SectionTitle title="Streaks & Trends" subtitle="Behavioral metrics" />
-            <div className="mt-5 space-y-3.5 text-sm">
+            <div className="mt-4 sm:mt-5 space-y-3 sm:space-y-3.5 text-sm">
               <StreakRowEnhanced label="Longest Win Streak" value={`${a.longestWinStreak} days`} accent="profit" count={a.longestWinStreak} />
               <StreakRowEnhanced label="Longest Loss Streak" value={`${a.longestLossStreak} days`} accent="loss" count={a.longestLossStreak} />
               <StreakRowEnhanced label="Rolling 30-day Sharpe" value={fmtNum(a.rollingSharpe30, 2)} accent="gold" />
@@ -713,9 +713,9 @@ export function AnalyticsPage() {
 
       {/* ── 9. Annual Returns Bar Chart (Enhanced) ─────── */}
       <FadeIn delay={0.4}>
-        <GlassCard className="p-6">
+        <GlassCard className="p-3 sm:p-4 lg:p-6">
           <SectionTitle title="Annual Returns" subtitle="Year-over-year performance" />
-          <div className="mt-5 h-64">
+          <div className="chart-mobile mt-4 sm:mt-5">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={a.yearlyReturns} margin={{ top: 20, right: 12, left: 8, bottom: 4 }}>
                 <defs>
@@ -768,20 +768,20 @@ export function AnalyticsPage() {
       {/* ── 10. Rolling Sharpe Ratio Chart (Enhanced with interactive tooltips) ── */}
       {rollingSharpeData.length > 5 && (
         <FadeIn delay={0.45}>
-          <GlassCard className="p-6">
-            <div className="flex flex-wrap items-start justify-between gap-3">
+          <GlassCard className="p-3 sm:p-4 lg:p-6">
+            <div className="flex flex-col gap-2 sm:flex-wrap sm:items-start sm:justify-between sm:flex-row">
               <SectionTitle
                 title="Rolling Sharpe Ratio (30-Day)"
                 subtitle="30-day annualised Sharpe — hover for date & value details"
               />
-              <div className="flex items-center gap-2 rounded-lg border border-gold/20 bg-gold/5 px-3 py-1.5">
+              <div className="flex items-center gap-2 rounded-lg border border-gold/20 bg-gold/5 px-3 py-1.5 self-start shrink-0">
                 <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Current</span>
                 <span className="font-metric text-sm font-bold text-gold">
                   {fmtNum(rollingSharpeData[rollingSharpeData.length - 1].sharpe, 2)}
                 </span>
               </div>
             </div>
-            <div className="mt-5 h-72">
+            <div className="chart-mobile mt-4 sm:mt-5">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={rollingSharpeData} margin={{ top: 10, right: 10, left: 4, bottom: 2 }}>
                   <defs>
@@ -864,12 +864,12 @@ export function AnalyticsPage() {
 
       {/* ── 11. Correlation & Beta Section ─────────── */}
       <FadeIn delay={0.5}>
-        <GlassCard className="p-6">
+        <GlassCard className="p-3 sm:p-4 lg:p-6">
           <SectionTitle
             title="Correlation & Market Beta"
             subtitle="Fund sensitivity to major crypto benchmarks"
           />
-          <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-4 sm:mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
             {/* BTC Correlation */}
             <CorrelationCard
               asset="Bitcoin (BTC)"

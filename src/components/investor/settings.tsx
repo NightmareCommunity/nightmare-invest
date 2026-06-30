@@ -286,14 +286,14 @@ export function SettingsPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-5 lg:space-y-6">
       {/* ---- Page Header ---- */}
       <FadeIn>
         <div>
-          <div className="flex items-end justify-between gap-4">
-            <div>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div className="min-w-0">
               <span className="text-xs font-medium uppercase tracking-[0.18em] text-gold">Investor Portal</span>
-              <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">Settings</h1>
+              <h1 className="h2-responsive mt-1 font-bold tracking-tight">Settings</h1>
               <p className="text-sm text-muted-foreground">Manage your account, security &amp; verification</p>
             </div>
             <Button
@@ -303,7 +303,7 @@ export function SettingsPage() {
                 const showFn = (window as Record<string, unknown>).__showOnboarding;
                 if (typeof showFn === "function") (showFn as () => void)();
               }}
-              className="border-gold/30 text-gold hover:bg-gold/10 gap-1.5"
+              className="tap-target-sm border-gold/30 text-gold hover:bg-gold/10 gap-1.5 shrink-0"
             >
               <Shield className="h-3.5 w-3.5" /> Setup Wizard
             </Button>
@@ -316,8 +316,8 @@ export function SettingsPage() {
       {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
 
       <FadeIn delay={0.03}>
-        <GlassCard gold className="p-6 hover-lift">
-          <div className="flex flex-col sm:flex-row gap-6">
+        <GlassCard gold className="p-4 sm:p-6 hover-lift">
+          <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
             {/* Avatar with animated gold ring */}
             <div className="flex flex-col items-center gap-3">
               <div className="relative">
@@ -414,7 +414,7 @@ export function SettingsPage() {
       {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
 
       <FadeIn delay={0.07}>
-        <GlassCard gold glow className="p-6">
+        <GlassCard gold glow className="p-4 sm:p-6">
           <SettingsSectionHeader
             num="01"
             title="Security Center"
@@ -422,7 +422,7 @@ export function SettingsPage() {
             icon={<Shield className="h-4 w-4" />}
           />
 
-          <div className="mt-5 grid gap-6 lg:grid-cols-3">
+          <div className="mt-5 grid gap-4 sm:gap-6 lg:grid-cols-3">
             {/* Security Score Gauge */}
             <div className="flex flex-col items-center justify-center text-center">
               <SecurityRing percent={securityScore} size={140} />
@@ -500,22 +500,22 @@ export function SettingsPage() {
         <FadeIn delay={0.09} className="lg:col-span-2 space-y-4">
 
           {/* 2FA Section */}
-          <GlassCard className="glass-card-hover p-6 border-gold/15" gold>
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className={`flex h-10 w-10 items-center justify-center rounded-lg border ${
+          <GlassCard className="glass-card-hover p-4 sm:p-6 border-gold/15" gold>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border ${
                   totpEnabled ? "border-profit/20 bg-profit/10" : "border-gold/20 bg-gold/5"
                 }`}>
                   <ShieldCheck className={`h-5 w-5 ${totpEnabled ? "text-profit" : "text-gold"}`} />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <h3 className="text-base font-semibold text-foreground">Two-Factor Authentication</h3>
                   <p className="text-xs text-muted-foreground">
                     {totpEnabled ? "Authenticator app is enabled" : "Not configured — highly recommended"}
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 shrink-0">
                 <Switch
                   checked={totpEnabled}
                   className="switch-gold-glow data-[state=checked]:bg-gold data-[state=checked]:shadow-[0_0_12px_rgba(212,175,55,0.4)]"
@@ -536,7 +536,7 @@ export function SettingsPage() {
           <TwoFactorSection enabled={totpEnabled} onChanged={refresh} />
 
           {/* ---- Password Section ---- */}
-          <GlassCard className="glass-card-hover p-6 border-gold/10">
+          <GlassCard className="glass-card-hover p-4 sm:p-6 border-gold/10">
             <SettingsSectionHeader
               num="02"
               title="Change Password"
@@ -695,7 +695,7 @@ export function SettingsPage() {
           {/*  SECTION C: NOTIFICATION PREFERENCES                             */}
           {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
 
-          <GlassCard className="glass-card-hover p-6 border-gold/15" gold>
+          <GlassCard className="glass-card-hover p-4 sm:p-6 border-gold/15" gold>
             <SettingsSectionHeader
               num="03"
               title="Notification Preferences"
@@ -771,7 +771,7 @@ export function SettingsPage() {
           {/*  SECTION D: ACTIVE SESSIONS                                       */}
           {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
 
-          <GlassCard className="glass-card-hover p-6 border-gold/10">
+          <GlassCard className="glass-card-hover p-4 sm:p-6 border-gold/10">
             <SettingsSectionHeader
               num="04"
               title="Active Sessions"
@@ -785,7 +785,7 @@ export function SettingsPage() {
                   <motion.div
                     key={session.id}
                     whileHover={{ x: 2 }}
-                    className={`flex items-center gap-4 rounded-xl border p-4 transition-all duration-300 ${
+                    className={`flex flex-wrap items-center gap-3 sm:gap-4 rounded-xl border p-3 sm:p-4 transition-all duration-300 ${
                       session.current
                         ? "border-profit/20 bg-profit/5 hover:bg-profit/[0.08]"
                         : "border-border/30 bg-white/[0.02] hover:bg-white/[0.04] hover:border-gold/20"
@@ -797,16 +797,16 @@ export function SettingsPage() {
                       <DeviceIcon className={`h-5 w-5 ${session.current ? "text-profit" : "text-muted-foreground"}`} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-foreground">{session.browser}</span>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-sm font-medium text-foreground truncate">{session.browser}</span>
                         {session.current && (
-                          <span className="flex items-center gap-1 rounded-full border border-profit/30 bg-profit/10 px-2 py-0.5 text-[10px] font-medium text-profit">
+                          <span className="flex items-center gap-1 rounded-full border border-profit/30 bg-profit/10 px-2 py-0.5 text-[10px] font-medium text-profit shrink-0">
                             <span className="h-1.5 w-1.5 rounded-full bg-profit animate-pulse" />
                             Active
                           </span>
                         )}
                       </div>
-                      <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+                      <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground break-words-mobile">
                         <span className="flex items-center gap-1"><Laptop className="h-3 w-3" /> {session.os}</span>
                         <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {session.ip}</span>
                         <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {fmtDate(session.lastActive)}</span>
@@ -816,7 +816,7 @@ export function SettingsPage() {
                       <Button
                         variant="outline"
                         size="sm"
-                        className="border-loss/30 text-loss hover:bg-loss/10 text-xs shrink-0"
+                        className="tap-target-sm border-loss/30 text-loss hover:bg-loss/10 text-xs shrink-0"
                         onClick={() => toast.success("Session revoked")}
                       >
                         Revoke
@@ -825,7 +825,7 @@ export function SettingsPage() {
                   </motion.div>
                 );
               })}
-              <Button variant="outline" onClick={logout} className="border-loss/30 text-loss hover:bg-loss/10 w-full">
+              <Button variant="outline" onClick={logout} className="tap-target border-loss/30 text-loss hover:bg-loss/10 w-full">
                 <LogOut className="mr-1.5 h-4 w-4" /> Sign out of all sessions
               </Button>
             </div>
@@ -862,7 +862,7 @@ export function SettingsPage() {
             {/*  SECTION E: ACCOUNT & LEGAL                                      */}
             {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
 
-            <GlassCard className="p-5 hover-lift">
+            <GlassCard className="p-4 sm:p-5 hover-lift">
               <div className="flex items-center gap-2 mb-4">
                 <span className="number-badge">05</span>
                 <h3 className="text-base font-semibold text-foreground">Account &amp; Legal</h3>
@@ -940,7 +940,7 @@ export function SettingsPage() {
       {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
 
       <FadeIn delay={0.15}>
-        <GlassCard className="p-6 border-gold/10">
+        <GlassCard className="p-4 sm:p-6 border-gold/10">
           <SettingsSectionHeader
             num="06"
             title="Activity Log"

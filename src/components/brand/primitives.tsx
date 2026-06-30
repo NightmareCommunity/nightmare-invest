@@ -13,10 +13,10 @@ export function SkeletonCard({ className }: { className?: string }) {
 
 export function SkeletonMetric({ className }: { className?: string }) {
   return (
-    <div className={cn("rounded-xl glass p-5 space-y-3", className)}>
-      <div className="h-3 w-24 rounded bg-muted/40 shimmer" />
-      <div className="h-8 w-32 rounded bg-muted/40 shimmer" />
-      <div className="h-3 w-20 rounded bg-muted/30 shimmer" />
+    <div className={cn("rounded-xl glass p-4 sm:p-5 space-y-3 min-w-0", className)}>
+      <div className="h-3 w-20 sm:w-24 rounded bg-muted/40 shimmer" />
+      <div className="h-7 sm:h-8 w-24 sm:w-32 rounded bg-muted/40 shimmer" />
+      <div className="h-3 w-16 sm:w-20 rounded bg-muted/30 shimmer" />
     </div>
   );
 }
@@ -58,13 +58,13 @@ export function EmptyState({
   className?: string;
 }) {
   return (
-    <FadeIn className={cn("flex flex-col items-center justify-center gap-4 py-16 text-center", className)}>
-      <div className="flex h-16 w-16 items-center justify-center rounded-full border border-gold/20 bg-gold/5">
+    <FadeIn className={cn("flex flex-col items-center justify-center gap-3 sm:gap-4 py-10 sm:py-16 text-center px-4", className)}>
+      <div className="flex h-12 w-12 sm:h-16 sm:w-16 items-center justify-center rounded-full border border-gold/20 bg-gold/5">
         <span className="text-gold/60">{icon}</span>
       </div>
-      <div className="space-y-1">
-        <h3 className="text-lg font-semibold text-foreground">{title}</h3>
-        <p className="max-w-sm text-sm text-muted-foreground">{description}</p>
+      <div className="space-y-1 min-w-0">
+        <h3 className="text-base sm:text-lg font-semibold text-foreground break-words-mobile">{title}</h3>
+        <p className="max-w-sm mx-auto text-sm text-muted-foreground break-words-mobile">{description}</p>
       </div>
       {action}
     </FadeIn>
@@ -78,6 +78,7 @@ export function GlassCard({
   glow = false,
   hover = false,
   glowOnHover = false,
+  compact = false,
   onClick,
 }: {
   className?: string;
@@ -86,14 +87,17 @@ export function GlassCard({
   glow?: boolean;
   hover?: boolean;
   glowOnHover?: boolean;
+  /** Use compact mobile-first padding (p-3 sm:p-4) instead of author-supplied. */
+  compact?: boolean;
   onClick?: () => void;
 }) {
   return (
     <div
       onClick={onClick}
       className={cn(
-        "relative rounded-xl overflow-hidden group",
+        "relative rounded-xl overflow-hidden group min-w-0",
         "shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]",
+        compact && "p-3 sm:p-4",
         gold ? "glass-gold" : "glass",
         glow && (gold ? "glow-gold-strong" : "glow-gold"),
         hover && "transition-all duration-300 hover:-translate-y-0.5 hover:glow-gold",
@@ -142,18 +146,18 @@ export function MetricTile({
   const accentColor =
     accent === "profit" ? "text-profit" : accent === "loss" ? "text-loss" : accent === "gold" ? "text-gold" : "text-foreground";
   return (
-    <GlassCard className={cn("metric-bottom-border p-5 transition-transform duration-200 hover:scale-[1.02]", animated && "scale-in", className)} hover glowOnHover>
-      <div className="relative">
-        <div className="flex items-start justify-between gap-2">
-          <span className="text-[10.5px] font-medium uppercase leading-tight tracking-[0.12em] text-foreground/60 [overflow-wrap:anywhere]">
+    <GlassCard className={cn("metric-bottom-border p-3 sm:p-4 lg:p-5 transition-transform duration-200 hover:scale-[1.02] min-w-0", animated && "scale-in", className)} hover glowOnHover>
+      <div className="relative min-w-0">
+        <div className="flex items-start justify-between gap-2 min-w-0">
+          <span className="text-[10px] sm:text-[10.5px] font-medium uppercase leading-tight tracking-[0.12em] text-foreground/60 [overflow-wrap:anywhere] min-w-0">
             {label}
           </span>
           {icon && <span className="shrink-0 text-gold/70">{icon}</span>}
         </div>
-        <div className={cn("mt-3 font-metric text-2xl font-semibold tracking-tight text-shadow-metric", accentColor)}>
+        <div className={cn("mt-2 sm:mt-3 font-metric text-xl sm:text-2xl lg:text-3xl font-semibold tracking-tight text-shadow-metric break-words-mobile", accentColor)}>
           {value}
         </div>
-        {sub && <div className="mt-1 text-xs text-foreground/50">{sub}</div>}
+        {sub && <div className="mt-1 text-[11px] sm:text-xs text-foreground/50 break-words-mobile">{sub}</div>}
         {sparkline && sparkline.length >= 2 && (
           <div className="pointer-events-none absolute bottom-2 right-3 opacity-80">
             <SparklineSVG data={sparkline} />
@@ -239,12 +243,12 @@ export function SectionTitle({
   className?: string;
 }) {
   return (
-    <div className={cn("flex items-end justify-between gap-4", className)}>
-      <div>
-        <h2 className="text-lg font-semibold tracking-tight text-foreground">{title}</h2>
-        {subtitle && <p className="mt-0.5 text-sm text-muted-foreground">{subtitle}</p>}
+    <div className={cn("flex items-end justify-between gap-3 sm:gap-4 min-w-0", className)}>
+      <div className="min-w-0">
+        <h2 className="text-base sm:text-lg lg:text-xl font-semibold tracking-tight text-foreground break-words-mobile">{title}</h2>
+        {subtitle && <p className="mt-0.5 text-xs sm:text-sm text-muted-foreground break-words-mobile">{subtitle}</p>}
       </div>
-      {action}
+      {action && <div className="shrink-0">{action}</div>}
     </div>
   );
 }
@@ -257,9 +261,9 @@ export function StatusPill({ status }: { status: string }) {
   };
   const s = map[status] ?? { label: status, cls: "text-muted-foreground border-border bg-muted", dot: "bg-muted-foreground" };
   return (
-    <span className={cn("inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-medium", s.cls)}>
-      <span className={cn("h-1.5 w-1.5 rounded-full", s.dot)} />
-      {s.label}
+    <span className={cn("inline-flex items-center gap-1.5 rounded-full border px-2 sm:px-2.5 py-0.5 text-[10px] sm:text-[11px] font-medium whitespace-nowrap", s.cls)}>
+      <span className={cn("h-1.5 w-1.5 rounded-full shrink-0", s.dot)} />
+      <span className="truncate max-w-[10rem] sm:max-w-none">{s.label}</span>
     </span>
   );
 }
@@ -269,7 +273,7 @@ export function TypePill({ type }: { type: string }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-medium",
+        "inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] sm:text-[11px] font-medium whitespace-nowrap",
         isDeposit
           ? "border-profit/30 bg-profit/10 text-profit"
           : "border-info/30 bg-info/10 text-info"
@@ -291,10 +295,11 @@ export function FadeIn({
   className?: string;
   direction?: "up" | "right" | "none";
 }) {
+  // Reduced motion distance on small screens for performance & subtlety.
   const initial = (() => {
-    if (direction === "right") return { opacity: 0, x: 16 };
+    if (direction === "right") return { opacity: 0, x: 12 };
     if (direction === "none") return { opacity: 0 };
-    return { opacity: 0, y: 12 };
+    return { opacity: 0, y: 8 };
   })();
   const animate = (() => {
     if (direction === "right") return { opacity: 1, x: 0 };

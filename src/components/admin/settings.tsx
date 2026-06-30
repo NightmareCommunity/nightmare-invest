@@ -71,12 +71,12 @@ export function AdminSettings() {
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         <FadeIn>
-          <div>
+          <div className="min-w-0">
             <span className="text-xs font-medium uppercase tracking-[0.18em] text-gold">Admin Console</span>
-            <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">Settings</h1>
-            <p className="text-sm text-muted-foreground">Platform configuration & security policy</p>
+            <h1 className="h2-responsive mt-1 font-bold tracking-tight">Settings</h1>
+            <p className="body-responsive text-muted-foreground">Platform configuration & security policy</p>
           </div>
         </FadeIn>
         <SkeletonCard />
@@ -87,16 +87,16 @@ export function AdminSettings() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header */}
       <FadeIn>
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-          <div>
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 sm:gap-4">
+          <div className="min-w-0">
             <span className="text-xs font-medium uppercase tracking-[0.18em] text-gold">Admin Console</span>
-            <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">Settings</h1>
-            <p className="text-sm text-muted-foreground">Platform configuration & security policy</p>
+            <h1 className="h2-responsive mt-1 font-bold tracking-tight">Settings</h1>
+            <p className="body-responsive text-muted-foreground">Platform configuration & security policy</p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {hasChanges && (
               <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}>
                 <Badge className="border-gold/30 bg-gold/10 text-gold shimmer-badge">
@@ -109,7 +109,7 @@ export function AdminSettings() {
               size="sm"
               onClick={handleReset}
               disabled={!hasChanges || saveMutation.isPending}
-              className="border-border/60"
+              className="border-border/60 tap-target-sm"
             >
               Reset
             </Button>
@@ -117,7 +117,7 @@ export function AdminSettings() {
               size="sm"
               onClick={handleSave}
               disabled={!hasChanges || saveMutation.isPending}
-              className="bg-gold-gradient text-black hover:opacity-90 gap-1.5"
+              className="bg-gold-gradient text-black hover:opacity-90 gap-1.5 tap-target-sm"
             >
               {saveMutation.isPending ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -132,7 +132,7 @@ export function AdminSettings() {
 
       {/* System Stats Row */}
       <FadeIn delay={0.03}>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+        <div className="grid grid-cols-2 gap-3 sm:gap-3 sm:grid-cols-3 lg:grid-cols-5">
           <MetricTile
             label="Admins"
             value={stats?.admins ?? "—"}
@@ -168,14 +168,14 @@ export function AdminSettings() {
 
       {/* General Settings */}
       <FadeIn delay={0.05}>
-        <GlassCard gold className="p-6">
+        <GlassCard gold className="p-3 sm:p-4 lg:p-6">
           <SettingsSectionHeader
             num="01"
             title="General Configuration"
             subtitle="Platform identity and operational settings"
             icon={<SettingsIcon className="h-4 w-4" />}
           />
-          <div className="mt-5 grid gap-5 sm:grid-cols-2">
+          <div className="mt-5 grid gap-4 sm:gap-5 grid-cols-1 sm:grid-cols-2">
             <Field label="Platform Name" icon={<Globe className="h-3.5 w-3.5" />}>
               <Input
                 value={String(form.platformName ?? "")}
@@ -222,14 +222,14 @@ export function AdminSettings() {
 
       {/* Security Policy */}
       <FadeIn delay={0.07}>
-        <GlassCard gold glow className="p-6">
+        <GlassCard gold glow className="p-3 sm:p-4 lg:p-6">
           <SettingsSectionHeader
             num="02"
             title="Security Policy"
             subtitle="Authentication, session, and access controls"
             icon={<Shield className="h-4 w-4" />}
           />
-          <div className="mt-5 grid gap-5 sm:grid-cols-2">
+          <div className="mt-5 grid gap-4 sm:gap-5 grid-cols-1 sm:grid-cols-2">
             <Field label="Minimum Password Length" icon={<KeyRound className="h-3.5 w-3.5" />}>
               <Input
                 type="number"
@@ -295,14 +295,14 @@ export function AdminSettings() {
 
       {/* Fee Configuration */}
       <FadeIn delay={0.09}>
-        <GlassCard className="p-6">
+        <GlassCard className="p-3 sm:p-4 lg:p-6">
           <SettingsSectionHeader
             num="03"
             title="Fee Structure"
             subtitle="Fund management and performance fees"
             icon={<DollarSign className="h-4 w-4" />}
           />
-          <div className="mt-5 grid gap-5 sm:grid-cols-2">
+          <div className="mt-5 grid gap-4 sm:gap-5 grid-cols-1 sm:grid-cols-2">
             <Field label="Management Fee (% annualized)" icon={<DollarSign className="h-3.5 w-3.5" />}>
               <div className="relative">
                 <Input
@@ -370,14 +370,14 @@ export function AdminSettings() {
 
       {/* Deposit Limits */}
       <FadeIn delay={0.11}>
-        <GlassCard className="p-6">
+        <GlassCard className="p-3 sm:p-4 lg:p-6">
           <SettingsSectionHeader
             num="04"
             title="Deposit Limits"
             subtitle="Minimum deposit thresholds for INR and crypto"
             icon={<DollarSign className="h-4 w-4" />}
           />
-          <div className="mt-5 grid gap-5 sm:grid-cols-2">
+          <div className="mt-5 grid gap-4 sm:gap-5 grid-cols-1 sm:grid-cols-2">
             <Field label="Minimum INR Deposit (UPI)" icon={<DollarSign className="h-3.5 w-3.5" />}>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">₹</span>
@@ -423,14 +423,14 @@ export function AdminSettings() {
 
       {/* Notification Settings */}
       <FadeIn delay={0.13}>
-        <GlassCard className="p-6">
+        <GlassCard className="p-3 sm:p-4 lg:p-6">
           <SettingsSectionHeader
             num="05"
             title="Notifications"
             subtitle="Admin alert routing and investor notifications"
             icon={<Bell className="h-4 w-4" />}
           />
-          <div className="mt-5 grid gap-5 sm:grid-cols-2">
+          <div className="mt-5 grid gap-4 sm:gap-5 grid-cols-1 sm:grid-cols-2">
             <Field label="Admin Alert Email" icon={<Mail className="h-3.5 w-3.5" />}>
               <Input
                 type="email"
@@ -468,7 +468,7 @@ export function AdminSettings() {
 
       {/* Danger Zone */}
       <FadeIn delay={0.15}>
-        <GlassCard className="border-loss/20 p-6">
+        <GlassCard className="border-loss/20 p-3 sm:p-4 lg:p-6">
           <SettingsSectionHeader
             num="06"
             title="Danger Zone"
@@ -501,18 +501,19 @@ export function AdminSettings() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 20 }}
-            className="fixed bottom-4 left-1/2 z-50 -translate-x-1/2"
+            className="fixed bottom-3 left-3 right-3 sm:bottom-4 sm:left-1/2 sm:right-auto z-50 sm:-translate-x-1/2 safe-area-bottom"
           >
-            <div className="flex items-center gap-3 rounded-full border border-gold/30 bg-popover/95 px-5 py-2.5 shadow-[0_0_24px_rgba(212,175,55,0.2)] backdrop-blur-md">
-              <span className="text-xs text-muted-foreground">You have unsaved changes</span>
-              <Button size="sm" variant="ghost" onClick={handleReset} className="h-7 text-xs">
+            <div className="flex items-center gap-2 sm:gap-3 rounded-2xl sm:rounded-full border border-gold/30 bg-popover/95 px-3 sm:px-5 py-2.5 shadow-[0_0_24px_rgba(212,175,55,0.2)] backdrop-blur-md">
+              <span className="hidden sm:inline text-xs text-muted-foreground">You have unsaved changes</span>
+              <span className="sm:hidden text-xs text-muted-foreground flex-1">Unsaved changes</span>
+              <Button size="sm" variant="ghost" onClick={handleReset} className="h-8 sm:h-7 text-xs tap-target-sm">
                 Discard
               </Button>
               <Button
                 size="sm"
                 onClick={handleSave}
                 disabled={saveMutation.isPending}
-                className="h-7 bg-gold-gradient text-black hover:opacity-90"
+                className="h-8 sm:h-7 bg-gold-gradient text-black hover:opacity-90 tap-target-sm"
               >
                 {saveMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
                 Save

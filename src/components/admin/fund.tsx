@@ -52,15 +52,15 @@ export function AdminFund() {
   };
 
   if (!data) return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <FadeIn>
-        <div>
+        <div className="min-w-0">
           <span className="text-xs font-medium uppercase tracking-[0.18em] text-gold">Admin Console</span>
-          <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">Fund Management</h1>
-          <p className="text-sm text-muted-foreground">Configure fund metadata and target allocation</p>
+          <h1 className="h2-responsive mt-1 font-bold tracking-tight">Fund Management</h1>
+          <p className="body-responsive text-muted-foreground">Configure fund metadata and target allocation</p>
         </div>
       </FadeIn>
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid gap-3 sm:gap-4 lg:grid-cols-3">
         <SkeletonCard className="lg:col-span-2 h-80 hover-lift" />
         <SkeletonCard className="h-80 hover-lift" />
       </div>
@@ -69,20 +69,20 @@ export function AdminFund() {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <FadeIn>
-        <div>
+        <div className="min-w-0">
           <span className="text-xs font-medium uppercase tracking-[0.18em] text-gold">Admin Console</span>
-          <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">Fund Management</h1>
-          <p className="text-sm text-muted-foreground">Configure fund metadata and target allocation</p>
+          <h1 className="h2-responsive mt-1 font-bold tracking-tight">Fund Management</h1>
+          <p className="body-responsive text-muted-foreground">Configure fund metadata and target allocation</p>
         </div>
       </FadeIn>
 
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid gap-3 sm:gap-4 lg:grid-cols-3">
         <FadeIn delay={0.05} className="lg:col-span-2">
-          <GlassCard className="p-6">
+          <GlassCard className="p-3 sm:p-4 lg:p-6">
             <SectionTitle title="Fund Configuration" subtitle="Display metadata for investors" />
-            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <div className="mt-4 grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2">
               <Field label="Fund Name" icon={<Layers className="h-4 w-4" />} value={data.fund.name} readOnly />
               <Field label="Slug" icon={<TrendingUp className="h-4 w-4" />} value={data.fund.slug} readOnly />
               <Field label="Minimum Investment" icon={<DollarSign className="h-4 w-4" />} value={fmtUSD(data.fund.minInvest)} readOnly />
@@ -102,7 +102,7 @@ export function AdminFund() {
         </FadeIn>
 
         <FadeIn delay={0.1}>
-          <GlassCard gold className="h-full p-6">
+          <GlassCard gold className="h-full p-3 sm:p-4 lg:p-6">
             <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Current Allocation</h3>
             <div className="mt-4 flex justify-center">
               <div className="relative h-40 w-40">
@@ -131,16 +131,16 @@ export function AdminFund() {
       </div>
 
       <FadeIn delay={0.15}>
-        <GlassCard className="p-6">
+        <GlassCard className="p-3 sm:p-4 lg:p-6">
           <SectionTitle
             title="Allocation Editor"
             subtitle="Set target weights for each asset class"
             action={
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={add} className="border-gold/30 hover:bg-gold/10">
+              <div className="flex flex-wrap gap-2">
+                <Button variant="outline" size="sm" onClick={add} className="border-gold/30 hover:bg-gold/10 tap-target-sm">
                   <Plus className="mr-1 h-4 w-4" /> Add Asset
                 </Button>
-                <Button size="sm" onClick={save} disabled={saving} className="save-btn-gold-sweep bg-gold-gradient text-black hover:opacity-90">
+                <Button size="sm" onClick={save} disabled={saving} className="save-btn-gold-sweep bg-gold-gradient text-black hover:opacity-90 tap-target-sm">
                   <Save className="mr-1 h-4 w-4" /> {saving ? "Saving…" : "Save Allocation"}
                 </Button>
               </div>
@@ -148,35 +148,35 @@ export function AdminFund() {
           />
           <div className="mt-4 space-y-2">
             {allocations.map((a, i) => (
-              <div key={i} className="allocation-card-glow flex flex-wrap items-center gap-3 rounded-lg border border-border/60 bg-black/20 p-3">
+              <div key={i} className="allocation-card-glow flex flex-wrap items-center gap-2 sm:gap-3 rounded-lg border border-border/60 bg-black/20 p-3">
                 <input
                   type="color"
                   value={a.color}
                   onChange={(e) => update(i, "color", e.target.value)}
-                  className="h-9 w-9 cursor-pointer rounded border border-border/60 bg-transparent"
+                  className="h-9 w-9 shrink-0 cursor-pointer rounded border border-border/60 bg-transparent"
                   aria-label="Asset color"
                 />
                 <Input
                   value={a.asset}
                   onChange={(e) => update(i, "asset", e.target.value)}
                   placeholder="Asset name (e.g. Bitcoin)"
-                  className="flex-1 border-border/60 bg-black/30"
+                  className="flex-1 min-w-0 tap-target-sm border-border/60 bg-black/30"
                 />
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 shrink-0">
                   <Input
                     type="number"
                     value={a.weight}
                     onChange={(e) => update(i, "weight", parseFloat(e.target.value) || 0)}
-                    className="w-24 border-border/60 bg-black/30 text-right font-metric"
+                    className="w-20 sm:w-24 tap-target-sm border-border/60 bg-black/30 text-right font-metric"
                   />
                   <span className="text-sm text-muted-foreground">%</span>
                 </div>
-                <div className="hidden flex-1 sm:block">
+                <div className="hidden flex-1 sm:block min-w-[80px]">
                   <div className="h-2 overflow-hidden rounded-full bg-black/40">
                     <div className="allocation-weight-transition h-full rounded-full" style={{ width: `${a.weight}%`, background: a.color }} />
                   </div>
                 </div>
-                <Button variant="ghost" size="sm" onClick={() => remove(i)} className="text-loss hover:bg-loss/10">
+                <Button variant="ghost" size="sm" onClick={() => remove(i)} className="text-loss hover:bg-loss/10 tap-target-sm shrink-0">
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
@@ -197,14 +197,14 @@ export function AdminFund() {
 
 function Field({ label, value, icon, readOnly, multirow }: { label: string; value: string; icon: React.ReactNode; readOnly?: boolean; multirow?: boolean }) {
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-1.5 min-w-0">
       <Label className="flex items-center gap-1.5 text-xs uppercase tracking-wider text-muted-foreground">{icon}{label}</Label>
       {multirow ? (
-        <div className="min-h-[40px] rounded-md border border-border/60 bg-black/20 px-3 py-2.5 text-sm font-medium text-foreground [overflow-wrap:anywhere]">
+        <div className="min-h-[44px] rounded-md border border-border/60 bg-black/20 px-3 py-2.5 text-sm font-medium text-foreground [overflow-wrap:anywhere] break-words-mobile">
           {value}
         </div>
       ) : (
-        <Input value={value} readOnly={readOnly} className="border-border/60 bg-black/20" />
+        <Input value={value} readOnly={readOnly} className="tap-target-sm border-border/60 bg-black/20" />
       )}
     </div>
   );

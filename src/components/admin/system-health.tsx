@@ -221,14 +221,14 @@ function QuickActionDialog({
 }) {
   return (
     <Dialog open={open} onOpenChange={(o) => !o && !loading && onClose()}>
-      <DialogContent className="border-gold/20 bg-card/95 backdrop-blur-xl sm:max-w-sm">
+      <DialogContent className="border-gold/20 bg-card/95 backdrop-blur-xl max-w-[95vw] sm:max-w-sm max-h-[90vh] overflow-y-auto scroll-luxury">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">{icon} {title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
-        <DialogFooter className="gap-2 sm:gap-2">
-          <Button variant="ghost" onClick={onClose} disabled={loading}>Cancel</Button>
-          <Button onClick={onConfirm} disabled={loading} className="bg-gold-gradient text-black hover:opacity-90">
+        <DialogFooter className="gap-2 sm:gap-2 flex-col sm:flex-row">
+          <Button variant="ghost" onClick={onClose} disabled={loading} className="btn-full-mobile tap-target-sm">Cancel</Button>
+          <Button onClick={onConfirm} disabled={loading} className="bg-gold-gradient text-black hover:opacity-90 btn-full-mobile tap-target-sm">
             {loading ? "Processing…" : confirmLabel}
           </Button>
         </DialogFooter>
@@ -293,9 +293,9 @@ export function SystemHealth() {
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         <SectionTitle title="System Health" subtitle="Infrastructure monitoring & diagnostics" />
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <SkeletonMetric key={i} />
           ))}
@@ -333,15 +333,15 @@ export function SystemHealth() {
   const dbSizeMB = (data.memoryUsage.rss / 1024 / 1024 * 0.15 + 30).toFixed(1);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header */}
       <FadeIn>
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+        <div className="flex flex-col gap-3 sm:gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div className="min-w-0">
+            <h1 className="h2-responsive font-semibold tracking-tight text-foreground">
               System <span className="bg-gradient-to-r from-gold to-amber-300 bg-clip-text text-transparent">Health</span>
             </h1>
-            <p className="mt-1 text-sm text-muted-foreground">Infrastructure monitoring &amp; diagnostics</p>
+            <p className="body-responsive mt-1 text-muted-foreground">Infrastructure monitoring &amp; diagnostics</p>
           </div>
           <div className="flex items-center gap-3">
             <div className={cn("flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium", overallColor)}>
@@ -353,10 +353,10 @@ export function SystemHealth() {
       </FadeIn>
 
       {/* ─── Service Status Cards ─── */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         {/* Database */}
         <FadeIn delay={0.05}>
-          <GlassCard className="p-5 hover-lift">
+          <GlassCard className="card-p sm:p-5 hover-lift">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-400/10">
@@ -393,7 +393,7 @@ export function SystemHealth() {
 
         {/* Price Stream Service */}
         <FadeIn delay={0.1}>
-          <GlassCard className="p-5 hover-lift">
+          <GlassCard className="card-p sm:p-5 hover-lift">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gold/10">
@@ -428,7 +428,7 @@ export function SystemHealth() {
 
         {/* API Server */}
         <FadeIn delay={0.15}>
-          <GlassCard className="p-5 hover-lift">
+          <GlassCard className="card-p sm:p-5 hover-lift">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gold/10">
@@ -474,7 +474,7 @@ export function SystemHealth() {
 
         {/* File Storage */}
         <FadeIn delay={0.2}>
-          <GlassCard className="p-5 hover-lift">
+          <GlassCard className="card-p sm:p-5 hover-lift">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gold/10">
@@ -509,7 +509,7 @@ export function SystemHealth() {
 
       {/* ─── System Info Bar ─── */}
       <FadeIn delay={0.25}>
-        <div className="flex flex-wrap gap-3">
+        <div className="scroll-row -mx-1 px-1 sm:mx-0 sm:px-0 sm:flex sm:flex-wrap sm:gap-3">
           <div className="flex items-center gap-2 rounded-lg border border-border/60 bg-black/30 px-3 py-1.5 text-xs">
             <Zap className="h-3 w-3 text-gold" />
             <span className="text-muted-foreground">Version</span>
@@ -540,19 +540,19 @@ export function SystemHealth() {
 
       {/* ─── Performance Metrics Chart ─── */}
       <FadeIn delay={0.3}>
-        <GlassCard className="p-6">
-          <div className="flex items-center justify-between mb-4">
+        <GlassCard className="p-3 sm:p-4 lg:p-6">
+          <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
             <div className="flex items-center gap-2">
               <Activity className="h-4 w-4 text-gold" />
               <h3 className="text-sm font-semibold text-foreground">Performance Metrics (24h)</h3>
             </div>
-            <div className="flex items-center gap-4 text-[10px] text-muted-foreground">
-              <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-gold" />Response Time</span>
-              <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-red-400" />Error Rate</span>
-              <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-emerald-400" />Requests</span>
+            <div className="flex items-center gap-3 sm:gap-4 text-[10px] text-muted-foreground scroll-row sm:flex sm:flex-wrap">
+              <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-gold shrink-0" />Response Time</span>
+              <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-red-400 shrink-0" />Error Rate</span>
+              <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-emerald-400 shrink-0" />Requests</span>
             </div>
           </div>
-          <div className="h-64">
+          <div className="chart-mobile">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={performanceData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
                 <defs>
@@ -580,18 +580,19 @@ export function SystemHealth() {
       </FadeIn>
 
       {/* ─── Error Log & Quick Actions ─── */}
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid gap-3 sm:gap-6 lg:grid-cols-3">
         {/* Error Log - takes 2/3 width */}
         <FadeIn delay={0.35} className="lg:col-span-2">
-          <GlassCard className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <AlertCircle className="h-4 w-4 text-gold" />
-                <h3 className="text-sm font-semibold text-foreground">Recent Error Log</h3>
+          <GlassCard className="p-3 sm:p-4 lg:p-6">
+            <div className="flex items-center justify-between mb-4 gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <AlertCircle className="h-4 w-4 text-gold shrink-0" />
+                <h3 className="text-sm font-semibold text-foreground truncate">Recent Error Log</h3>
               </div>
-              <span className="text-[10px] text-muted-foreground">{errorLog.length} entries</span>
+              <span className="text-[10px] text-muted-foreground shrink-0">{errorLog.length} entries</span>
             </div>
             <div className="max-h-80 overflow-y-auto scroll-luxury">
+              <div className="table-mobile-card overflow-x-auto scroll-x-allowed lg:overflow-visible">
               <table className="w-full text-xs">
                 <thead>
                   <tr className="border-b border-border/60 text-left text-[10px] uppercase tracking-wider text-muted-foreground">
@@ -611,16 +612,16 @@ export function SystemHealth() {
                         transition={{ delay: idx * 0.03, duration: 0.2 }}
                         className="border-b border-border/30 last:border-0"
                       >
-                        <td className="py-2.5 pr-3 font-mono text-muted-foreground whitespace-nowrap">
+                        <td data-label="Time" className="py-2.5 pr-3 font-mono text-muted-foreground whitespace-nowrap">
                           {timeAgo(entry.timestamp)}
                         </td>
-                        <td className="py-2.5 pr-3 font-medium text-foreground whitespace-nowrap">
+                        <td data-label="Service" className="py-2.5 pr-3 font-medium text-foreground whitespace-nowrap">
                           {entry.service}
                         </td>
-                        <td className="py-2.5 pr-3">
+                        <td data-label="Severity" className="py-2.5 pr-3">
                           <SeverityBadge severity={entry.severity} />
                         </td>
-                        <td className="py-2.5 text-muted-foreground">
+                        <td data-label="Message" className="py-2.5 text-muted-foreground break-words-mobile">
                           {entry.message}
                         </td>
                       </motion.tr>
@@ -628,13 +629,14 @@ export function SystemHealth() {
                   </AnimatePresence>
                 </tbody>
               </table>
+              </div>
             </div>
           </GlassCard>
         </FadeIn>
 
         {/* Quick Actions */}
         <FadeIn delay={0.4}>
-          <GlassCard className="p-6">
+          <GlassCard className="p-3 sm:p-4 lg:p-6">
             <div className="flex items-center gap-2 mb-4">
               <Wrench className="h-4 w-4 text-gold" />
               <h3 className="text-sm font-semibold text-foreground">Quick Actions</h3>
@@ -642,21 +644,21 @@ export function SystemHealth() {
             <div className="space-y-3">
               <Button
                 onClick={() => setActionDialog("cache")}
-                className="w-full justify-start gap-2 bg-gold-gradient text-black hover:opacity-90 press-scale"
+                className="w-full justify-start gap-2 bg-gold-gradient text-black hover:opacity-90 press-scale tap-target-sm"
               >
                 <Trash2 className="h-4 w-4" />
                 Clear Cache
               </Button>
               <Button
                 onClick={() => setActionDialog("restart")}
-                className="w-full justify-start gap-2 bg-gold-gradient text-black hover:opacity-90 press-scale"
+                className="w-full justify-start gap-2 bg-gold-gradient text-black hover:opacity-90 press-scale tap-target-sm"
               >
                 <RotateCw className="h-4 w-4" />
                 Restart Price Stream
               </Button>
               <Button
                 onClick={() => setActionDialog("cleanup")}
-                className="w-full justify-start gap-2 bg-gold-gradient text-black hover:opacity-90 press-scale"
+                className="w-full justify-start gap-2 bg-gold-gradient text-black hover:opacity-90 press-scale tap-target-sm"
               >
                 <Database className="h-4 w-4" />
                 Run Database Cleanup
@@ -687,7 +689,7 @@ export function SystemHealth() {
 
       {/* ─── Activity Timeline ─── */}
       <FadeIn delay={0.45}>
-        <GlassCard className="p-6">
+        <GlassCard className="p-3 sm:p-4 lg:p-6">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <Activity className="h-4 w-4 text-gold" />
@@ -720,18 +722,18 @@ export function SystemHealth() {
 
       {/* ─── Auto-refresh bar ─── */}
       <FadeIn delay={0.5}>
-        <div className="flex items-center justify-between rounded-lg border border-border/60 bg-black/30 px-4 py-2.5">
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <Clock className="h-3.5 w-3.5" />
+        <div className="flex items-center justify-between rounded-lg border border-border/60 bg-black/30 px-3 sm:px-4 py-2.5 gap-3 flex-wrap">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
+            <Clock className="h-3.5 w-3.5 shrink-0" />
             <span>Last checked: <span className="font-mono text-foreground">{secondsAgo}s</span> ago</span>
-            <span className="text-muted-foreground/50">·</span>
-            <span>Auto-refresh every 30s</span>
+            <span className="text-muted-foreground/50 hide-mobile">·</span>
+            <span className="hide-mobile">Auto-refresh every 30s</span>
           </div>
           <Button
             variant="outline"
             size="sm"
             onClick={handleRefresh}
-            className="h-7 gap-1.5 border-gold/20 text-xs text-gold hover:bg-gold/10"
+            className="h-8 sm:h-7 gap-1.5 border-gold/20 text-xs text-gold hover:bg-gold/10 tap-target-sm shrink-0"
           >
             <RefreshCw className="h-3 w-3" />
             Refresh Now

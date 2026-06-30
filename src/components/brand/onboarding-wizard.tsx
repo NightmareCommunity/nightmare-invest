@@ -120,40 +120,40 @@ export function OnboardingWizard({ onComplete, onClose }: OnboardingWizardProps)
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-2 sm:p-4 safe-area-top safe-area-bottom">
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        className="relative w-full max-w-2xl mx-4"
+        className="relative w-full max-w-[95vw] sm:max-w-2xl max-h-[94vh] flex flex-col"
       >
-        <GlassCard gold glow className="overflow-hidden">
+        <GlassCard gold glow className="overflow-hidden flex flex-col max-h-[94vh]">
           {/* Header with progress */}
-          <div className="border-b border-gold/20 bg-gradient-to-r from-gold/5 via-transparent to-gold/5 px-6 pt-6 pb-4">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h2 className="text-lg font-bold text-foreground">Investor Onboarding</h2>
+          <div className="border-b border-gold/20 bg-gradient-to-r from-gold/5 via-transparent to-gold/5 px-4 sm:px-6 pt-5 sm:pt-6 pb-4 shrink-0">
+            <div className="flex items-center justify-between mb-4 gap-2">
+              <div className="min-w-0">
+                <h2 className="text-base sm:text-lg font-bold text-foreground truncate">Investor Onboarding</h2>
                 <p className="text-xs text-muted-foreground">Complete setup to start investing</p>
               </div>
               {onClose && (
-                <Button variant="ghost" size="sm" onClick={onClose} className="text-muted-foreground hover:text-foreground">
+                <Button variant="ghost" size="sm" onClick={onClose} className="shrink-0 text-muted-foreground hover:text-foreground tap-target-sm">
                   <X className="h-4 w-4" />
                 </Button>
               )}
             </div>
 
-            {/* Progress stepper */}
-            <div className="flex items-center justify-between">
+            {/* Progress stepper — horizontal scroll on mobile */}
+            <div className="scroll-row items-center justify-between">
               {STEPS.map((s, idx) => {
                 const StepIcon = s.icon;
                 const isCompleted = step > s.id;
                 const isCurrent = step === s.id;
 
                 return (
-                  <div key={s.id} className="flex items-center">
+                  <div key={s.id} className="flex items-center shrink-0">
                     <div className="flex flex-col items-center">
                       <motion.div
-                        className={`flex h-10 w-10 items-center justify-center rounded-full border-2 transition-all ${
+                        className={`flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full border-2 transition-all ${
                           isCompleted
                             ? "border-gold bg-gold text-black"
                             : isCurrent
@@ -169,20 +169,20 @@ export function OnboardingWizard({ onComplete, onClose }: OnboardingWizardProps)
                             animate={{ scale: 1 }}
                             transition={{ type: "spring", stiffness: 300, damping: 20 }}
                           >
-                            <CheckCircle2 className="h-5 w-5" />
+                            <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5" />
                           </motion.div>
                         ) : (
                           <StepIcon className="h-4 w-4" />
                         )}
                       </motion.div>
                       <div className="mt-1.5 text-center">
-                        <div className={`text-[10px] font-semibold ${isCurrent ? "text-gold" : isCompleted ? "text-gold/70" : "text-muted-foreground"}`}>
+                        <div className={`text-[10px] font-semibold whitespace-nowrap ${isCurrent ? "text-gold" : isCompleted ? "text-gold/70" : "text-muted-foreground"}`}>
                           {s.label}
                         </div>
                       </div>
                     </div>
                     {idx < STEPS.length - 1 && (
-                      <div className="mx-2 mb-5 h-0.5 w-8 sm:w-16">
+                      <div className="mx-2 mb-5 h-0.5 w-6 sm:w-16">
                         <motion.div
                           className="h-full rounded-full"
                           style={{ backgroundColor: step > s.id ? "#D4AF37" : "rgba(255,255,255,0.1)" }}
@@ -199,7 +199,7 @@ export function OnboardingWizard({ onComplete, onClose }: OnboardingWizardProps)
           </div>
 
           {/* Step content with animated transitions */}
-          <div className="p-6 min-h-[400px]">
+          <div className="p-4 sm:p-6 overflow-y-auto scroll-luxury flex-1 min-w-0">
             <AnimatePresence mode="wait" custom={direction}>
               <motion.div
                 key={step}
@@ -235,12 +235,12 @@ export function OnboardingWizard({ onComplete, onClose }: OnboardingWizardProps)
             </AnimatePresence>
           </div>
 
-          {/* Footer with navigation */}
-          <div className="flex items-center justify-between border-t border-border/40 px-6 py-4">
+          {/* Footer with navigation — sticky on mobile */}
+          <div className="sticky-mobile-cta flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-2 border-t border-border/40 px-4 sm:px-6 py-3 sm:py-4 shrink-0 safe-area-bottom">
             <Button
               variant="outline"
               onClick={step === 1 ? (onClose ?? (() => {})) : goBack}
-              className="border-border/60"
+              className="border-border/60 h-12 tap-target btn-full-mobile"
             >
               {step === 1 ? (
                 <>
@@ -253,7 +253,7 @@ export function OnboardingWizard({ onComplete, onClose }: OnboardingWizardProps)
               )}
             </Button>
 
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center justify-center gap-1.5 py-1 sm:py-0">
               {STEPS.map((s) => (
                 <div
                   key={s.id}
@@ -271,7 +271,7 @@ export function OnboardingWizard({ onComplete, onClose }: OnboardingWizardProps)
                 else if (step === 3) handleDepositSubmit();
               }}
               disabled={step === 3 && depositSubmitting}
-              className="bg-gold-gradient text-black hover:opacity-90"
+              className="bg-gold-gradient text-black hover:opacity-90 h-12 tap-target btn-full-mobile"
             >
               {step === 3 && depositSubmitting ? (
                 <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
@@ -318,7 +318,7 @@ function Step1Profile({
             value={profile.phone}
             onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
             placeholder="+1 (555) 000-0000"
-            className={`border-border/60 bg-black/30 focus-visible:ring-gold/50 ${errors.phone ? "border-loss/50" : ""}`}
+            className={`border-border/60 bg-black/30 focus-visible:ring-gold/50 h-12 ${errors.phone ? "border-loss/50" : ""}`}
           />
           {errors.phone && (
             <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} className="text-[11px] text-loss flex items-center gap-1">
@@ -336,7 +336,7 @@ function Step1Profile({
             value={profile.country}
             onChange={(e) => setProfile({ ...profile, country: e.target.value })}
             placeholder="United States"
-            className={`border-border/60 bg-black/30 focus-visible:ring-gold/50 ${errors.country ? "border-loss/50" : ""}`}
+            className={`border-border/60 bg-black/30 focus-visible:ring-gold/50 h-12 ${errors.country ? "border-loss/50" : ""}`}
           />
           {errors.country && (
             <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} className="text-[11px] text-loss flex items-center gap-1">
@@ -350,7 +350,7 @@ function Step1Profile({
           <Label className="text-xs uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
             <Briefcase className="h-3.5 w-3.5" /> Investor Type
           </Label>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
             {[
               { value: "individual" as const, label: "Individual", desc: "Personal account" },
               { value: "institutional" as const, label: "Institutional", desc: "Fund or entity" },
@@ -359,7 +359,7 @@ function Step1Profile({
               <button
                 key={opt.value}
                 onClick={() => setProfile({ ...profile, investorType: opt.value })}
-                className={`rounded-lg border p-3 text-left transition-all ${
+                className={`rounded-lg border p-2.5 sm:p-3 text-left transition-all ${
                   profile.investorType === opt.value
                     ? "border-gold/50 bg-gold/10 shadow-[0_0_12px_rgba(212,175,55,0.15)]"
                     : "border-border/40 bg-black/20 hover:border-gold/30 hover:bg-gold/[0.03]"
@@ -441,7 +441,7 @@ function Step2Security({
                   </div>
                 </div>
                 <Button
-                  className="w-full bg-gold-gradient text-black"
+                  className="w-full bg-gold-gradient text-black h-12 tap-target"
                   onClick={() => setTotpStep("verify")}
                 >
                   I&apos;ve Scanned the Code
@@ -463,13 +463,13 @@ function Step2Security({
                 <div className="flex gap-2">
                   <Button
                     variant="outline"
-                    className="flex-1 border-border/60"
+                    className="flex-1 border-border/60 h-12 tap-target"
                     onClick={() => setTotpStep("setup")}
                   >
                     Back
                   </Button>
                   <Button
-                    className="flex-1 bg-gold-gradient text-black"
+                    className="flex-1 bg-gold-gradient text-black h-12 tap-target"
                     onClick={() => {
                       if (security.verifyCode.length === 6) {
                         setSecurity({ ...security, totpEnabled: true });
@@ -502,7 +502,7 @@ function Step2Security({
           onChange={(e) => setSecurity({ ...security, recoveryEmail: e.target.value })}
           placeholder="backup@example.com"
           type="email"
-          className="border-border/60 bg-black/30 focus-visible:ring-gold/50"
+          className="border-border/60 bg-black/30 focus-visible:ring-gold/50 h-12"
         />
         <div className="text-[10px] text-muted-foreground">Used for account recovery if you lose access to 2FA</div>
       </div>
@@ -550,12 +550,12 @@ function Step3Deposit({
         {/* Preset amounts */}
         <div className="space-y-1.5">
           <Label className="text-xs uppercase tracking-wider text-muted-foreground">Quick Select</Label>
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {presets.map((p) => (
               <button
                 key={p.value}
                 onClick={() => setAmount(p.value)}
-                className={`rounded-lg border p-2.5 text-center transition-all ${
+                className={`rounded-lg border p-2.5 text-center transition-all h-12 ${
                   amount === p.value
                     ? "border-gold/50 bg-gold/10 text-gold shadow-[0_0_12px_rgba(212,175,55,0.15)]"
                     : "border-border/40 bg-black/20 text-foreground hover:border-gold/30 hover:bg-gold/[0.03]"
@@ -578,7 +578,8 @@ function Step3Deposit({
               value={amount}
               onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ""))}
               placeholder="0.00"
-              className="border-border/60 bg-black/30 pl-8 text-2xl font-metric font-semibold h-14 focus-visible:ring-gold/50"
+              inputMode="decimal"
+              className="border-border/60 bg-black/30 pl-8 text-xl sm:text-2xl font-metric font-semibold h-14 focus-visible:ring-gold/50"
             />
           </div>
           <div className="text-[10px] text-muted-foreground">Minimum deposit: $1,000</div>

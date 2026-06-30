@@ -2,9 +2,10 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Bell, CheckCircle, XCircle, TrendingUp, Info } from "lucide-react";
+import { Bell, CheckCircle, XCircle, TrendingUp, Info, CheckCheck } from "lucide-react";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api-client";
 import { timeAgo } from "@/lib/format";
 
@@ -90,7 +91,7 @@ export function NotificationCenter() {
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button
-          className="relative rounded-md p-2 text-muted-foreground hover:bg-gold/10 hover:text-gold transition-colors"
+          className="relative rounded-md p-2 text-muted-foreground hover:bg-gold/10 hover:text-gold transition-colors tap-target-sm"
           aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ""}`}
         >
           <Bell className="h-4 w-4" />
@@ -104,37 +105,41 @@ export function NotificationCenter() {
 
       <PopoverContent
         align="end"
-        className="w-80 border-border/60 bg-[#0d0d0e]/95 p-0 backdrop-blur-xl sm:w-96"
+        className="w-[95vw] max-w-[380px] border-border/60 bg-[#0d0d0e]/95 p-0 backdrop-blur-xl sm:w-96"
         sideOffset={8}
       >
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-border/60 px-4 py-3">
-          <div className="flex items-center gap-2">
-            <h3 className="text-sm font-semibold text-foreground">Notifications</h3>
+        <div className="flex items-center justify-between gap-2 border-b border-border/60 px-4 py-3">
+          <div className="flex items-center gap-2 min-w-0">
+            <h3 className="text-sm font-semibold text-foreground truncate">Notifications</h3>
             {unreadCount > 0 && (
-              <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-gold/15 px-1.5 text-[10px] font-bold text-gold">
+              <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-gold/15 px-1.5 text-[10px] font-bold text-gold">
                 {unreadCount}
               </span>
             )}
           </div>
           {unreadCount > 0 && (
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={markAllRead}
-              className="text-[11px] font-medium text-gold/70 transition-colors hover:text-gold"
+              className="h-8 shrink-0 px-2 text-[11px] font-medium text-gold/70 transition-colors hover:text-gold tap-target-sm"
             >
-              Mark all as read
-            </button>
+              <CheckCheck className="mr-1 h-3.5 w-3.5" />
+              Mark all
+            </Button>
           )}
         </div>
 
         {/* Notification list */}
         {notifications.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-10">
-            <Bell className="mb-2 h-8 w-8 text-muted-foreground/30" />
+          <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
+            <Bell className="mb-2 h-7 w-7 text-muted-foreground/30" />
             <p className="text-sm text-muted-foreground">No new notifications</p>
+            <p className="mt-1 text-[11px] text-muted-foreground/60">You&apos;re all caught up</p>
           </div>
         ) : (
-          <ScrollArea className="max-h-96">
+          <ScrollArea className="max-h-[70vh] sm:max-h-96">
             <div className="divide-y divide-border/40">
               {notifications.map((notification) => {
                 const config = TYPE_CONFIG[notification.type];
@@ -155,7 +160,7 @@ export function NotificationCenter() {
 
                     {/* Content */}
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
                         <p className="truncate text-sm font-medium text-foreground">
                           {notification.title}
                         </p>
@@ -163,7 +168,7 @@ export function NotificationCenter() {
                           <span className="h-2 w-2 shrink-0 rounded-full bg-gold shadow-[0_0_6px_rgba(212,175,55,0.5)]" />
                         )}
                       </div>
-                      <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+                      <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground line-clamp-2 break-words-mobile">
                         {notification.description}
                       </p>
                       <p className="mt-1 text-[10px] text-muted-foreground/60">
@@ -179,7 +184,7 @@ export function NotificationCenter() {
 
         {/* Footer */}
         {notifications.length > 0 && (
-          <div className="border-t border-border/40 px-4 py-2">
+          <div className="border-t border-border/40 px-4 py-2 safe-area-bottom">
             <p className="text-center text-[10px] text-muted-foreground/50">
               Auto-refreshes every 30s
             </p>

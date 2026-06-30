@@ -154,29 +154,29 @@ export function AdminTransactions() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <FadeIn>
-        <div>
+        <div className="min-w-0">
           <span className="text-xs font-medium uppercase tracking-[0.18em] text-gold">Admin Console</span>
-          <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">Transaction Review</h1>
-          <p className="text-sm text-muted-foreground">Approve or reject deposit and withdrawal requests</p>
+          <h1 className="h2-responsive mt-1 font-bold tracking-tight">Transaction Review</h1>
+          <p className="body-responsive text-muted-foreground">Approve or reject deposit and withdrawal requests</p>
         </div>
       </FadeIn>
 
       <FadeIn delay={0.05}>
         <Tabs value={tab} onValueChange={(v) => { setTab(v); setSelectedIds(new Set()); }}>
-          <TabsList className="bg-black/30 border border-border/60">
-            <TabsTrigger value="PENDING" className="data-[state=active]:bg-gold-gradient data-[state=active]:text-black">
+          <TabsList className="bg-black/30 border border-border/60 w-full sm:w-auto justify-start overflow-x-auto scroll-x-allowed">
+            <TabsTrigger value="PENDING" className="data-[state=active]:bg-gold-gradient data-[state=active]:text-black tap-target-sm">
               <Clock className="mr-1.5 h-3.5 w-3.5" /> Pending {counts.PENDING > 0 && <span className="ml-1.5 rounded-full bg-loss px-1.5 text-[10px] text-white">{counts.PENDING}</span>}
             </TabsTrigger>
-            <TabsTrigger value="APPROVED" className="data-[state=active]:bg-gold-gradient data-[state=active]:text-black">Approved</TabsTrigger>
-            <TabsTrigger value="REJECTED" className="data-[state=active]:bg-gold-gradient data-[state=active]:text-black">Rejected</TabsTrigger>
+            <TabsTrigger value="APPROVED" className="data-[state=active]:bg-gold-gradient data-[state=active]:text-black tap-target-sm">Approved</TabsTrigger>
+            <TabsTrigger value="REJECTED" className="data-[state=active]:bg-gold-gradient data-[state=active]:text-black tap-target-sm">Rejected</TabsTrigger>
           </TabsList>
         </Tabs>
       </FadeIn>
 
       <FadeIn delay={0.1}>
-        <GlassCard className="p-5">
+        <GlassCard className="p-3 sm:p-4 lg:p-5">
           {txns.length === 0 ? (
             <EmptyState
               icon={<Inbox className="h-10 w-10" />}
@@ -202,60 +202,61 @@ export function AdminTransactions() {
               {txns.map((t: any) => (
                 <div
                   key={t.id}
-                  className={`flex flex-wrap items-center gap-4 rounded-lg border p-4 transition-all duration-200 ${
+                  className={`flex flex-col gap-3 rounded-lg border p-3 sm:p-4 transition-all duration-200 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4 ${
                     selectedIds.has(t.id)
                       ? "border-gold/50 bg-gold/[0.06]"
                       : "border-border/60 bg-black/20 hover:border-gold/30"
                   }`}
                 >
-                  {tab === "PENDING" && (
-                    <Checkbox
-                      checked={selectedIds.has(t.id)}
-                      onCheckedChange={() => toggleSelect(t.id)}
-                      className="border-gold/40 data-[state=checked]:bg-gold data-[state=checked]:border-gold data-[state=checked]:text-black"
-                    />
-                  )}
-                  <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-lg ${t.type === "DEPOSIT" ? "bg-profit/10 text-profit" : "bg-info/10 text-info"}`}>
-                    {t.type === "DEPOSIT" ? <ArrowDownToLine className="h-5 w-5" /> : <ArrowUpFromLine className="h-5 w-5" />}
-                  </div>
-                  <div className="min-w-[160px] flex-1">
-                    <div className="flex items-center gap-2">
-                      <TypePill type={t.type} />
-                      <StatusPill status={t.status} />
+                  <div className="flex items-start gap-3 sm:items-center sm:gap-4">
+                    {tab === "PENDING" && (
+                      <Checkbox
+                        checked={selectedIds.has(t.id)}
+                        onCheckedChange={() => toggleSelect(t.id)}
+                        className="border-gold/40 data-[state=checked]:bg-gold data-[state=checked]:border-gold data-[state=checked]:text-black mt-1 sm:mt-0"
+                      />
+                    )}
+                    <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-lg ${t.type === "DEPOSIT" ? "bg-profit/10 text-profit" : "bg-info/10 text-info"}`}>
+                      {t.type === "DEPOSIT" ? <ArrowDownToLine className="h-5 w-5" /> : <ArrowUpFromLine className="h-5 w-5" />}
                     </div>
-                    <div className="mt-1 font-metric text-lg font-bold text-foreground">{fmtUSD(t.amount)}</div>
-                    {(t.method ?? "UPI").toUpperCase() === "UPI" ? (
-                      <span className="mt-0.5 inline-block rounded-sm bg-gold/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-gold/80">INR</span>
-                    ) : (
-                      t.cryptoAmount && (
-                        <div className="mt-0.5 text-[11px] text-muted-foreground">
-                          {formatCryptoAmount(t.method, t.cryptoAmount)}
-                        </div>
-                      )
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <TypePill type={t.type} />
+                        <StatusPill status={t.status} />
+                        <MethodBadge method={t.method} cryptoAmount={t.cryptoAmount} />
+                      </div>
+                      <div className="mt-1 font-metric text-lg font-bold text-foreground">{fmtUSD(t.amount)}</div>
+                      {(t.method ?? "UPI").toUpperCase() === "UPI" ? (
+                        <span className="mt-0.5 inline-block rounded-sm bg-gold/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-gold/80">INR</span>
+                      ) : (
+                        t.cryptoAmount && (
+                          <div className="mt-0.5 text-[11px] text-muted-foreground">
+                            {formatCryptoAmount(t.method, t.cryptoAmount)}
+                          </div>
+                        )
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4 sm:ml-auto">
+                    <div className="min-w-0 sm:min-w-[180px]">
+                      <div className="text-xs text-muted-foreground">Investor</div>
+                      <div className="text-sm font-medium text-foreground truncate">{t.user?.name}</div>
+                      <div className="text-xs text-muted-foreground break-words-mobile">{t.user?.email}</div>
+                    </div>
+                    <div className="min-w-[100px] sm:min-w-[120px]">
+                      <div className="text-xs text-muted-foreground">Requested</div>
+                      <div className="text-sm text-foreground">{fmtDate(t.createdAt, true)}</div>
+                    </div>
+                    {t.notes && (
+                      <div className="min-w-0 max-w-xs hide-mobile">
+                        <div className="text-xs text-muted-foreground">Notes</div>
+                        <div className="truncate text-sm text-foreground" title={t.notes}>{t.notes}</div>
+                      </div>
                     )}
                   </div>
-                  <div className="min-w-[90px]">
-                    <div className="text-xs text-muted-foreground">Method</div>
-                    <div className="mt-1"><MethodBadge method={t.method} cryptoAmount={t.cryptoAmount} /></div>
-                  </div>
-                  <div className="min-w-[180px]">
-                    <div className="text-xs text-muted-foreground">Investor</div>
-                    <div className="text-sm font-medium text-foreground">{t.user?.name}</div>
-                    <div className="text-xs text-muted-foreground">{t.user?.email}</div>
-                  </div>
-                  <div className="min-w-[120px]">
-                    <div className="text-xs text-muted-foreground">Requested</div>
-                    <div className="text-sm text-foreground">{fmtDate(t.createdAt, true)}</div>
-                  </div>
-                  {t.notes && (
-                    <div className="min-w-[140px] max-w-xs">
-                      <div className="text-xs text-muted-foreground">Notes</div>
-                      <div className="truncate text-sm text-foreground" title={t.notes}>{t.notes}</div>
-                    </div>
-                  )}
                   {t.status === "PENDING" && (
-                    <div className="flex gap-2">
-                      <Button size="sm" onClick={() => { setReviewing(t); setNotes(t.notes ?? ""); }} className="bg-gold-gradient text-black hover:opacity-90">
+                    <div className="flex gap-2 sm:items-center">
+                      <Button size="sm" onClick={() => { setReviewing(t); setNotes(t.notes ?? ""); }} className="tap-target-sm bg-gold-gradient text-black hover:opacity-90 btn-full-mobile">
                         Review
                       </Button>
                     </div>
@@ -278,41 +279,43 @@ export function AdminTransactions() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 40 }}
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2"
+            className="fixed bottom-3 left-3 right-3 sm:bottom-6 sm:left-1/2 sm:right-auto z-50 sm:-translate-x-1/2 safe-area-bottom"
           >
-            <div className="flex items-center gap-3 rounded-2xl border border-gold/30 bg-card/95 px-5 py-3 shadow-[0_0_40px_rgba(212,175,55,0.15)] backdrop-blur-xl">
+            <div className="flex flex-col gap-3 rounded-2xl border border-gold/30 bg-card/95 px-4 py-3 shadow-[0_0_40px_rgba(212,175,55,0.15)] backdrop-blur-xl sm:flex-row sm:items-center sm:gap-3 sm:px-5">
               <div className="flex items-center gap-2">
-                <ShieldAlert className="h-4 w-4 text-gold" />
+                <ShieldAlert className="h-4 w-4 text-gold shrink-0" />
                 <span className="text-sm font-medium text-foreground">
                   {selectedIds.size} transaction{selectedIds.size !== 1 ? "s" : ""} selected
                 </span>
               </div>
-              <div className="h-6 w-px bg-border/60" />
-              <Button
-                size="sm"
-                onClick={() => setBulkAction("approve")}
-                disabled={bulkActing}
-                className="bg-gold-gradient text-black hover:opacity-90 press-scale"
-              >
-                <Check className="mr-1.5 h-3.5 w-3.5" /> Bulk Approve
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setBulkAction("reject")}
-                disabled={bulkActing}
-                className="border-loss/40 text-loss hover:bg-loss/10 press-scale"
-              >
-                <X className="mr-1.5 h-3.5 w-3.5" /> Bulk Reject
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={clearSelection}
-                className="text-muted-foreground hover:text-foreground"
-              >
-                Clear
-              </Button>
+              <div className="hidden h-6 w-px bg-border/60 sm:block" />
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  size="sm"
+                  onClick={() => setBulkAction("approve")}
+                  disabled={bulkActing}
+                  className="bg-gold-gradient text-black hover:opacity-90 press-scale tap-target-sm flex-1 sm:flex-none"
+                >
+                  <Check className="mr-1.5 h-3.5 w-3.5" /> Approve
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setBulkAction("reject")}
+                  disabled={bulkActing}
+                  className="border-loss/40 text-loss hover:bg-loss/10 press-scale tap-target-sm flex-1 sm:flex-none"
+                >
+                  <X className="mr-1.5 h-3.5 w-3.5" /> Reject
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={clearSelection}
+                  className="text-muted-foreground hover:text-foreground tap-target-sm"
+                >
+                  Clear
+                </Button>
+              </div>
             </div>
           </motion.div>
         )}
@@ -320,7 +323,7 @@ export function AdminTransactions() {
 
       {/* Bulk Action Confirmation Dialog */}
       <Dialog open={bulkAction !== null} onOpenChange={(o) => { if (!o && !bulkActing) { setBulkAction(null); setBulkNotes(""); } }}>
-        <DialogContent className="border-gold/20 bg-card/95 backdrop-blur-xl sm:max-w-md">
+        <DialogContent className="border-gold/20 bg-card/95 backdrop-blur-xl max-w-[95vw] sm:max-w-md max-h-[90vh] overflow-y-auto scroll-luxury">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               {bulkAction === "approve" ? (
@@ -343,7 +346,7 @@ export function AdminTransactions() {
                   <div className="text-sm font-medium text-foreground">
                     {bulkAction === "approve" ? "Approving" : "Rejecting"} {bulkProgress.current}/{bulkProgress.total}...
                   </div>
-                  <div className="mt-2 h-2 w-48 overflow-hidden rounded-full bg-muted/30">
+                  <div className="mt-2 h-2 w-48 max-w-full overflow-hidden rounded-full bg-muted/30">
                     <motion.div
                       className="h-full rounded-full bg-gold-gradient"
                       initial={{ width: 0 }}
@@ -361,12 +364,12 @@ export function AdminTransactions() {
                     const t = txns.find((tx: any) => tx.id === id);
                     if (!t) return null;
                     return (
-                      <div key={id} className="flex items-center justify-between text-xs">
-                        <div className="flex items-center gap-2">
+                      <div key={id} className="flex items-center justify-between gap-2 text-xs">
+                        <div className="flex items-center gap-2 min-w-0">
                           <TypePill type={t.type} />
-                          <span className="text-muted-foreground">{t.user?.name}</span>
+                          <span className="text-muted-foreground truncate">{t.user?.name}</span>
                         </div>
-                        <span className="font-metric font-semibold">{fmtUSD(t.amount)}</span>
+                        <span className="font-metric font-semibold shrink-0">{fmtUSD(t.amount)}</span>
                       </div>
                     );
                   })}
@@ -386,13 +389,13 @@ export function AdminTransactions() {
               </>
             )}
           </div>
-          <DialogFooter className="gap-2 sm:gap-2">
+          <DialogFooter className="gap-2 sm:gap-2 flex-col sm:flex-row">
             {!bulkActing && (
               <>
-                <Button variant="ghost" onClick={() => { setBulkAction(null); setBulkNotes(""); }}>Cancel</Button>
+                <Button variant="ghost" onClick={() => { setBulkAction(null); setBulkNotes(""); }} className="btn-full-mobile">Cancel</Button>
                 <Button
                   onClick={executeBulkAction}
-                  className={bulkAction === "approve" ? "bg-gold-gradient text-black hover:opacity-90" : "border-loss/40 text-loss hover:bg-loss/10"}
+                  className={bulkAction === "approve" ? "bg-gold-gradient text-black hover:opacity-90 btn-full-mobile" : "border-loss/40 text-loss hover:bg-loss/10 btn-full-mobile"}
                   variant={bulkAction === "reject" ? "outline" : "default"}
                 >
                   {bulkAction === "approve" ? (
@@ -409,7 +412,7 @@ export function AdminTransactions() {
 
       {/* Review modal */}
       <Dialog open={reviewing !== null} onOpenChange={(o) => !o && setReviewing(null)}>
-        <DialogContent className="border-gold/20 bg-card/95 backdrop-blur-xl sm:max-w-lg">
+        <DialogContent className="border-gold/20 bg-card/95 backdrop-blur-xl max-w-[95vw] sm:max-w-lg max-h-[90vh] overflow-y-auto scroll-luxury">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               {reviewing?.type === "DEPOSIT" ? <ArrowDownToLine className="h-5 w-5 text-profit" /> : <ArrowUpFromLine className="h-5 w-5 text-info" />}
@@ -421,10 +424,10 @@ export function AdminTransactions() {
           </DialogHeader>
           {reviewing && (
             <div className="space-y-4 py-2">
-              <div className="grid grid-cols-2 gap-3 rounded-lg border border-border/60 bg-black/20 p-4">
+              <div className="grid grid-cols-2 gap-3 rounded-lg border border-border/60 bg-black/20 p-3 sm:p-4">
                 <div>
                   <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Amount</div>
-                  <div className="font-metric text-xl font-bold text-gold">{fmtUSD(reviewing.amount)}</div>
+                  <div className="font-metric text-lg sm:text-xl font-bold text-gold break-words-mobile">{fmtUSD(reviewing.amount)}</div>
                 </div>
                 <div>
                   <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Type</div>
@@ -435,7 +438,7 @@ export function AdminTransactions() {
                   <div className="mt-1 flex flex-wrap items-center gap-2">
                     <MethodBadge method={reviewing.method} cryptoAmount={reviewing.cryptoAmount} />
                     {reviewing.cryptoAmount && (
-                      <span className="text-[11px] text-muted-foreground">
+                      <span className="text-[11px] text-muted-foreground break-words-mobile">
                         {formatCryptoAmount(reviewing.method, reviewing.cryptoAmount)}
                       </span>
                     )}
@@ -446,8 +449,8 @@ export function AdminTransactions() {
                 </div>
                 <div>
                   <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Investor</div>
-                  <div className="text-sm font-medium text-foreground">{reviewing.user?.name}</div>
-                  <div className="text-xs text-muted-foreground">{reviewing.user?.email}</div>
+                  <div className="text-sm font-medium text-foreground truncate">{reviewing.user?.name}</div>
+                  <div className="text-xs text-muted-foreground break-words-mobile">{reviewing.user?.email}</div>
                 </div>
                 <div>
                   <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Requested</div>
@@ -455,7 +458,7 @@ export function AdminTransactions() {
                 </div>
                 <div className="col-span-2">
                   <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Fund</div>
-                  <div className="text-sm text-foreground">{reviewing.fund?.name}</div>
+                  <div className="text-sm text-foreground truncate">{reviewing.fund?.name}</div>
                 </div>
               </div>
               {reviewing.type === "DEPOSIT" && (
@@ -474,12 +477,12 @@ export function AdminTransactions() {
               </div>
             </div>
           )}
-          <DialogFooter className="gap-2 sm:gap-2">
-            <Button variant="outline" onClick={() => setReviewing(null)}>Cancel</Button>
-            <Button variant="outline" onClick={() => act("reject")} disabled={acting} className="border-loss/40 text-loss hover:bg-loss/10">
+          <DialogFooter className="gap-2 sm:gap-2 flex-col sm:flex-row">
+            <Button variant="outline" onClick={() => setReviewing(null)} className="btn-full-mobile">Cancel</Button>
+            <Button variant="outline" onClick={() => act("reject")} disabled={acting} className="border-loss/40 text-loss hover:bg-loss/10 btn-full-mobile">
               <X className="mr-1 h-4 w-4" /> Reject
             </Button>
-            <Button onClick={() => act("approve")} disabled={acting} className="bg-gold-gradient text-black hover:opacity-90">
+            <Button onClick={() => act("approve")} disabled={acting} className="bg-gold-gradient text-black hover:opacity-90 btn-full-mobile">
               <Check className="mr-1 h-4 w-4" /> {acting ? "Processing…" : "Approve"}
             </Button>
           </DialogFooter>

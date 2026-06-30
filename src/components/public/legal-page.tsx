@@ -79,36 +79,36 @@ export function LegalPage({ route }: { route: Extract<Route, { name: "legal" }> 
 
   return (
     <div className="min-h-screen flex flex-col">
-      <header className="sticky top-0 z-50 border-b border-border/60 glass-strong">
-        <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-4 sm:px-6">
-          <button onClick={() => setRoute({ name: "landing" })} className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
+      <header className="sticky top-0 z-50 border-b border-border/60 glass-strong safe-area-top">
+        <div className="mx-auto flex h-14 sm:h-16 max-w-5xl items-center justify-between px-4 sm:px-6">
+          <button onClick={() => setRoute({ name: "landing" })} className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground tap-target-sm">
             <ArrowLeft className="h-4 w-4" /> Home
           </button>
           <Logo showText={false} />
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-12 sm:px-6">
-        <div className="flex items-center gap-4">
-          <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gold/10 text-gold">
-            <Icon className="h-6 w-6" />
+      <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-8 sm:px-6 sm:py-12">
+        <div className="flex items-center gap-3 sm:gap-4">
+          <div className="flex h-10 w-10 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-lg bg-gold/10 text-gold">
+            <Icon className="h-5 w-5 sm:h-6 sm:w-6" />
           </div>
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">{doc.title}</h1>
-            <p className="text-sm text-muted-foreground">Last updated: {doc.updated}</p>
+          <div className="min-w-0">
+            <h1 className="h2-responsive font-bold tracking-tight break-words-mobile">{doc.title}</h1>
+            <p className="text-xs sm:text-sm text-muted-foreground">Last updated: {doc.updated}</p>
           </div>
         </div>
 
-        <div className="mt-10 grid gap-8 lg:grid-cols-[220px_1fr]">
+        <div className="mt-8 sm:mt-10 grid gap-6 sm:gap-8 lg:grid-cols-[220px_1fr]">
           <aside className="lg:sticky lg:top-24 lg:self-start">
-            <GlassCard className="p-4">
+            <GlassCard compact className="p-3 sm:p-4">
               <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Contents</div>
-              <nav className="mt-3 space-y-1">
+              <nav className="mt-3 space-y-1 max-h-48 lg:max-h-none overflow-y-auto scroll-luxury">
                 {doc.sections.map((s, i) => (
                   <a
                     key={i}
                     href={`#sec-${i}`}
-                    className="block rounded-md px-2 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-gold/10 hover:text-foreground"
+                    className="block rounded-md px-2 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-gold/10 hover:text-foreground break-words-mobile"
                   >
                     {s.h}
                   </a>
@@ -117,15 +117,15 @@ export function LegalPage({ route }: { route: Extract<Route, { name: "legal" }> 
             </GlassCard>
           </aside>
 
-          <div className="space-y-8">
+          <div className="space-y-6 sm:space-y-8 min-w-0">
             {doc.sections.map((s, i) => (
-              <section key={i} id={`sec-${i}`} className="scroll-mt-24">
-                <h2 className="text-lg font-semibold text-foreground">{s.h}</h2>
-                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{s.p}</p>
+              <section key={i} id={`sec-${i}`} className="scroll-mt-20 sm:scroll-mt-24">
+                <h2 className="h3-responsive font-semibold text-foreground break-words-mobile">{s.h}</h2>
+                <p className="mt-2 body-responsive leading-relaxed text-muted-foreground break-words-mobile">{s.p}</p>
               </section>
             ))}
             <div className="border-t border-border/60 pt-6">
-              <button onClick={() => setRoute({ name: "landing" })} className="text-sm text-gold hover:underline">
+              <button onClick={() => setRoute({ name: "landing" })} className="text-sm text-gold hover:underline tap-target-sm">
                 ← Return to Nightmare Invest
               </button>
             </div>
@@ -133,8 +133,8 @@ export function LegalPage({ route }: { route: Extract<Route, { name: "legal" }> 
         </div>
       </main>
 
-      <footer className="border-t border-border/60 bg-black/40">
-        <div className="mx-auto max-w-5xl px-4 py-6 text-xs text-muted-foreground sm:px-6">
+      <footer className="border-t border-border/60 bg-black/40 mt-auto">
+        <div className="mx-auto max-w-5xl px-4 py-6 text-xs text-muted-foreground sm:px-6 safe-area-bottom">
           © {new Date().getFullYear()} Nightmare Invest · This document does not constitute legal or investment advice.
         </div>
       </footer>

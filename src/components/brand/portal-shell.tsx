@@ -66,6 +66,16 @@ export function PortalShell({ children, admin = false }: { children: ReactNode; 
   const [mobileOpen, setMobileOpen] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
 
+  // Lock body scroll + sync route changes to close drawer on mobile
+  useEffect(() => {
+    if (mobileOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => { document.body.style.overflow = ""; };
+  }, [mobileOpen]);
+
   // Real-time WebSocket notifications (toasts + badge refresh). Active
   // whenever the shell is mounted (i.e. user is logged in).
   useRealtimeNotifications();
@@ -117,16 +127,16 @@ export function PortalShell({ children, admin = false }: { children: ReactNode; 
         )}
       </AnimatePresence>
       {/* Top bar */}
-      <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-border/60 glass-strong topbar-glow-line px-4 sm:px-6">
-        <div className="flex items-center gap-3">
+      <header className="safe-area-top sticky top-0 z-40 flex h-14 items-center justify-between border-b border-border/60 glass-strong topbar-glow-line px-3 sm:px-6">
+        <div className="flex items-center gap-2 sm:gap-3">
           <button
             onClick={() => setMobileOpen(true)}
-            className="rounded-md p-1.5 text-muted-foreground hover:bg-gold/10 hover:text-gold lg:hidden"
+            className="tap-target rounded-md p-2 text-muted-foreground hover:bg-gold/10 hover:text-gold lg:hidden"
             aria-label="Open menu"
           >
             <Menu className="h-5 w-5" />
           </button>
-          <button onClick={() => go(admin ? { name: "admin-dashboard" } : { name: "dashboard" })}>
+          <button onClick={() => go(admin ? { name: "admin-dashboard" } : { name: "dashboard" })} className="shrink-0">
             <Logo />
           </button>
           {admin && (
@@ -135,7 +145,7 @@ export function PortalShell({ children, admin = false }: { children: ReactNode; 
             </span>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2">
           <NotificationCenter />
           <div className="hidden items-center gap-2 rounded-lg border border-border/60 bg-black/30 px-3 py-1.5 sm:flex">
             <div className="relative">
@@ -153,7 +163,13 @@ export function PortalShell({ children, admin = false }: { children: ReactNode; 
               <div className="text-[10px] text-muted-foreground">{user.role}</div>
             </div>
           </div>
-          <Button variant="ghost" size="sm" onClick={logout} className="text-muted-foreground hover:text-loss">
+          {/* Mobile compact avatar */}
+          <div className="relative sm:hidden">
+            <div className={cn("flex h-8 w-8 items-center justify-center rounded-full bg-gold-gradient text-xs font-bold text-black", user.role === "ADMIN" && "ring-2 ring-gold/50")}>
+              {user.name.charAt(0).toUpperCase()}
+            </div>
+          </div>
+          <Button variant="ghost" size="sm" onClick={logout} className="tap-target-sm text-muted-foreground hover:text-loss" aria-label="Logout">
             <LogOut className="h-4 w-4" />
           </Button>
         </div>
@@ -182,13 +198,25 @@ export function PortalShell({ children, admin = false }: { children: ReactNode; 
                 animate={{ x: 0 }}
                 exit={{ x: -300 }}
                 transition={{ type: "spring", damping: 30, stiffness: 300 }}
-                className="fixed inset-y-0 left-0 z-50 w-72 border-r border-gold/20 bg-sidebar glass-strong lg:hidden"
+                className="fixed inset-y-0 left-0 z-50 w-[82vw] max-w-[320px] border-r border-gold/20 bg-sidebar glass-strong lg:hidden"
               >
                 <div className="flex h-14 items-center justify-between border-b border-border/60 px-4">
                   <Logo />
-                  <button onClick={() => setMobileOpen(false)} className="rounded-md p-1.5 text-muted-foreground hover:text-foreground">
+                  <button onClick={() => setMobileOpen(false)} className="tap-target-sm rounded-md p-1.5 text-muted-foreground hover:text-foreground" aria-label="Close menu">
                     <X className="h-5 w-5" />
                   </button>
+                </div>
+                {/* Mobile profile header */}
+                <div className="border-b border-border/40 px-4 py-3">
+                  <div className="flex items-center gap-3">
+                    <div className={cn("flex h-10 w-10 items-center justify-center rounded-full bg-gold-gradient text-sm font-bold text-black", user.role === "ADMIN" && "ring-2 ring-gold/50")}>
+                      {user.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-sm font-semibold text-foreground">{user.name}</div>
+                      <div className="text-[11px] text-muted-foreground">{user.email}</div>
+                    </div>
+                  </div>
                 </div>
                 <SidebarContent nav={nav} current={current} go={go} admin={admin} setRoute={setRoute} mobile />
               </motion.aside>
@@ -199,10 +227,10 @@ export function PortalShell({ children, admin = false }: { children: ReactNode; 
         {/* Main */}
         <main className="relative flex flex-1 flex-col overflow-x-hidden bg-gradient-animated">
           {/* NIGHTMARE INVEST watermark */}
-          <div className="pointer-events-none absolute bottom-4 right-6 z-0 select-none text-[11px] font-semibold uppercase tracking-[0.3em] text-foreground/[0.02]">
+          <div className="pointer-events-none absolute bottom-4 right-6 z-0 hidden select-none text-[11px] font-semibold uppercase tracking-[0.3em] text-foreground/[0.02] sm:block">
             NIGHTMARE INVEST
           </div>
-          <div className="relative z-10 flex-1 mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 w-full">
+          <div className="relative z-10 mx-auto w-full max-w-7xl flex-1 px-3 py-4 sm:px-6 sm:py-6 lg:px-8">
             <ErrorBoundary>
               <AnimatePresence mode="wait">
                 <motion.div
@@ -217,10 +245,10 @@ export function PortalShell({ children, admin = false }: { children: ReactNode; 
               </AnimatePresence>
             </ErrorBoundary>
           </div>
-          <footer className="mt-auto border-t border-border/60 bg-black/30 px-4 py-4 sm:px-6">
-            <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-2 text-[11px] text-muted-foreground sm:flex-row">
+          <footer className="safe-area-bottom mt-auto border-t border-border/60 bg-black/30 px-3 py-3 sm:px-6 sm:py-4">
+            <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-1.5 text-[10px] text-muted-foreground sm:flex-row sm:gap-2 sm:text-[11px]">
               <span>© {new Date().getFullYear()} Nightmare Invest · Confidential</span>
-              <span>NAV as of {fmtDate(new Date())} · For accredited investors only</span>
+              <span className="text-center sm:text-right">NAV as of {fmtDate(new Date())} · For accredited investors only</span>
             </div>
           </footer>
         </main>
@@ -259,13 +287,14 @@ function SidebarContent({
                   <button
                     onClick={() => go(item.route)}
                     className={cn(
-                      "nav-item-hover group flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all",
+                      "nav-item-hover group flex w-full items-center gap-3 rounded-lg px-3 text-sm font-medium transition-all",
+                      mobile ? "min-h-[44px] py-2.5" : "py-2",
                       active
                         ? "nav-active-indicator-gold bg-gold/10 text-gold"
                         : "text-muted-foreground hover:bg-gold/10 hover:text-foreground"
                     )}
                   >
-                    <item.icon className={cn("h-4 w-4", active ? "text-gold" : "text-muted-foreground group-hover:text-gold")} />
+                    <item.icon className={cn("h-4 w-4 shrink-0", active ? "text-gold" : "text-muted-foreground group-hover:text-gold")} />
                     <span className="flex-1 text-left">{item.label}</span>
                   </button>
                 </TooltipTrigger>

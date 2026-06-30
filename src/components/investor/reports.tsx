@@ -232,7 +232,7 @@ export function ReportsPage() {
 
   if (isLoading || !report) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-5 lg:space-y-6">
         <FadeIn>
           <div>
             <span className="text-xs font-medium uppercase tracking-[0.18em] text-gold">Investor Portal</span>
@@ -241,12 +241,12 @@ export function ReportsPage() {
           </div>
         </FadeIn>
         <FadeIn delay={0.05}>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
             {[0, 1, 2, 3].map((i) => <SkeletonCard key={i} className="h-32 hover-lift" />)}
           </div>
         </FadeIn>
         <FadeIn delay={0.1}>
-          <GlassCard className="p-5">
+          <GlassCard className="p-3 sm:p-5">
             <SkeletonMetric className="h-6 w-40 rounded mb-4" />
             <SkeletonTable rows={4} cols={4} />
           </GlassCard>
@@ -334,12 +334,12 @@ export function ReportsPage() {
   const ytdPerformance = report?.metrics?.annualReturn ?? 0;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-5 lg:space-y-6">
       {/* ---- Page Header ---- */}
       <FadeIn>
         <div>
           <span className="text-xs font-medium uppercase tracking-[0.18em] text-gold">Investor Portal</span>
-          <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">Reports &amp; Statements</h1>
+          <h1 className="h2-responsive mt-1 font-bold tracking-tight">Reports &amp; Statements</h1>
           <p className="text-sm text-muted-foreground">Download portfolio statements and transaction records</p>
         </div>
       </FadeIn>
@@ -349,7 +349,7 @@ export function ReportsPage() {
       {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
 
       <FadeIn delay={0.03}>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
           <MetricTile
             label="YTD Performance"
             value={fmtPct(ytdPerformance)}
@@ -388,18 +388,18 @@ export function ReportsPage() {
       {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
 
       <FadeIn delay={0.06}>
-        <GlassCard gold glow className="p-6">
-          <div className="flex items-center gap-2 mb-5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-gold/30 bg-gold/10">
+        <GlassCard gold glow className="p-3 sm:p-4 lg:p-6">
+          <div className="flex items-center gap-2 mb-4 sm:mb-5">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-gold/30 bg-gold/10 shrink-0">
               <Zap className="h-4 w-4 text-gold" />
             </div>
-            <div>
+            <div className="min-w-0">
               <h3 className="text-base font-semibold text-foreground">Report Builder</h3>
               <p className="text-[11px] text-muted-foreground">Generate custom reports on demand</p>
             </div>
           </div>
 
-          <div className="grid gap-5 lg:grid-cols-3">
+          <div className="grid gap-4 lg:grid-cols-3 lg:gap-5">
             {/* Left: Report type selector */}
             <div className="lg:col-span-2 space-y-4">
               {/* Type buttons */}
@@ -407,7 +407,7 @@ export function ReportsPage() {
                 <Label className="text-[10.5px] font-medium uppercase tracking-[0.12em] text-foreground/50 mb-2 block">
                   Report Type
                 </Label>
-                <div className="grid gap-2 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   {REPORT_TYPES.map((rt) => {
                     const RtIcon = rt.icon;
                     return (
@@ -451,24 +451,25 @@ export function ReportsPage() {
                 <Label className="text-[10.5px] font-medium uppercase tracking-[0.12em] text-foreground/50 mb-2 block">
                   Date Range
                 </Label>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
                   <div className="relative flex-1">
                     <Calendar className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
                     <input
                       type="date"
                       value={dateFrom}
                       onChange={(e) => setDateFrom(e.target.value)}
-                      className="w-full rounded-lg border border-border/60 bg-black/30 pl-9 pr-3 py-2 text-sm text-foreground focus:border-gold/40 focus:outline-none focus:ring-1 focus:ring-gold/20"
+                      className="tap-target w-full rounded-lg border border-border/60 bg-black/30 pl-9 pr-3 py-2 text-sm text-foreground focus:border-gold/40 focus:outline-none focus:ring-1 focus:ring-gold/20"
                     />
                   </div>
-                  <span className="text-muted-foreground text-xs">to</span>
+                  <span className="text-muted-foreground text-xs text-center shrink-0 sm:hidden">to</span>
+                  <span className="text-muted-foreground text-xs hidden sm:block shrink-0">to</span>
                   <div className="relative flex-1">
                     <Calendar className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
                     <input
                       type="date"
                       value={dateTo}
                       onChange={(e) => setDateTo(e.target.value)}
-                      className="w-full rounded-lg border border-border/60 bg-black/30 pl-9 pr-3 py-2 text-sm text-foreground focus:border-gold/40 focus:outline-none focus:ring-1 focus:ring-gold/20"
+                      className="tap-target w-full rounded-lg border border-border/60 bg-black/30 pl-9 pr-3 py-2 text-sm text-foreground focus:border-gold/40 focus:outline-none focus:ring-1 focus:ring-gold/20"
                     />
                   </div>
                 </div>
@@ -478,19 +479,19 @@ export function ReportsPage() {
             {/* Right: Preview + Generate */}
             <div className="flex flex-col gap-4">
               {/* Preview card */}
-              <GlassCard className="p-4 flex-1">
+              <GlassCard className="p-3 sm:p-4 flex-1">
                 <div className="text-[10px] font-medium uppercase tracking-[0.12em] text-foreground/40 mb-3">Preview</div>
                 <div className="space-y-2.5">
-                  <div className="flex items-center justify-between text-xs">
+                  <div className="flex items-center justify-between gap-2 text-xs">
                     <span className="text-muted-foreground">Type</span>
-                    <span className="text-gold font-medium">{REPORT_TYPES.find(r => r.value === selectedReportType)?.label}</span>
+                    <span className="text-gold font-medium text-right">{REPORT_TYPES.find(r => r.value === selectedReportType)?.label}</span>
                   </div>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">Period</span>
-                    <span className="text-foreground/80 font-medium">{dateFrom} → {dateTo}</span>
+                  <div className="flex items-center justify-between gap-2 text-xs">
+                    <span className="text-muted-foreground shrink-0">Period</span>
+                    <span className="text-foreground/80 font-medium text-right break-words-mobile">{dateFrom} → {dateTo}</span>
                   </div>
                   <Separator className="bg-border/40" />
-                  <div className="text-[11px] text-muted-foreground leading-relaxed">
+                  <div className="text-[11px] text-muted-foreground leading-relaxed break-words-mobile">
                     {selectedReportType === "monthly" && "Includes: NAV summary, holdings breakdown, monthly performance, and transaction ledger."}
                     {selectedReportType === "quarterly" && "Includes: Attribution analysis, risk metrics, sector allocation, and benchmark comparison."}
                     {selectedReportType === "tax" && "Includes: Realized gains/losses, tax lot detail, cost basis analysis, and estimated liability."}
@@ -503,7 +504,7 @@ export function ReportsPage() {
               <Button
                 onClick={handleGenerateReport}
                 disabled={generating}
-                className="bg-gold-gradient text-black hover:opacity-90 press-scale gap-2 h-11 text-sm font-semibold"
+                className="tap-target btn-full-mobile bg-gold-gradient text-black hover:opacity-90 press-scale gap-2 h-11 text-sm font-semibold"
               >
                 {generating ? (
                   <>
@@ -532,8 +533,8 @@ export function ReportsPage() {
       {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
 
       <FadeIn delay={0.09}>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <GlassCard hover glowOnHover className="p-5">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
+          <GlassCard hover glowOnHover className="p-4 sm:p-5">
             <div className="flex items-start justify-between">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gold/10 text-gold">
                 <FileSpreadsheet className="h-5 w-5" />
@@ -546,13 +547,13 @@ export function ReportsPage() {
               variant="outline"
               onClick={() => downloadStatement("csv-ledger")}
               disabled={downloading}
-              className="mt-4 border-gold/30 text-gold hover:bg-gold/10 gap-1.5"
+              className="tap-target-sm mt-4 btn-full-mobile border-gold/30 text-gold hover:bg-gold/10 gap-1.5"
             >
               <Download className="h-3.5 w-3.5" /> Export CSV
             </Button>
           </GlassCard>
 
-          <GlassCard hover glowOnHover className="p-5">
+          <GlassCard hover glowOnHover className="p-4 sm:p-5">
             <div className="flex items-start justify-between">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gold/10 text-gold">
                 <ArrowUpDown className="h-5 w-5" />
@@ -565,13 +566,13 @@ export function ReportsPage() {
               variant="outline"
               onClick={() => downloadStatement("csv-transactions")}
               disabled={downloading}
-              className="mt-4 border-gold/30 text-gold hover:bg-gold/10 gap-1.5"
+              className="tap-target-sm mt-4 btn-full-mobile border-gold/30 text-gold hover:bg-gold/10 gap-1.5"
             >
               <Download className="h-3.5 w-3.5" /> Export CSV
             </Button>
           </GlassCard>
 
-          <GlassCard hover glowOnHover className="p-5">
+          <GlassCard hover glowOnHover className="p-4 sm:p-5">
             <div className="flex items-start justify-between">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gold/10 text-gold">
                 <FileText className="h-5 w-5" />
@@ -584,7 +585,7 @@ export function ReportsPage() {
               variant="outline"
               onClick={exportTaxReport}
               disabled={downloading || !taxData}
-              className="mt-4 border-gold/30 text-gold hover:bg-gold/10 gap-1.5"
+              className="tap-target-sm mt-4 btn-full-mobile border-gold/30 text-gold hover:bg-gold/10 gap-1.5"
             >
               <Download className="h-3.5 w-3.5" /> Export CSV
             </Button>
@@ -597,9 +598,9 @@ export function ReportsPage() {
       {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
 
       <FadeIn delay={0.12}>
-        <GlassCard className="p-5">
+        <GlassCard className="p-3 sm:p-4 lg:p-5">
           <SectionTitle title="Statement Summary" subtitle={`As of ${fmtDateTime(report.generatedAt)}`} />
-          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-4 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
             <Stat label="Portfolio Value" value={fmtUSD(report.summary.currentValue)} accent="gold" />
             <Stat label="Invested Capital" value={fmtUSD(report.summary.investedCapital)} />
             <Stat label="Unrealized P&L" value={fmtUSD(report.summary.unrealizedPnl)} accent={report.summary.unrealizedPnl >= 0 ? "profit" : "loss"} />
@@ -613,7 +614,7 @@ export function ReportsPage() {
       </FadeIn>
 
       <FadeIn delay={0.15}>
-        <GlassCard className="p-5">
+        <GlassCard className="p-3 sm:p-4 lg:p-5">
           <SectionTitle title="Fund Information" />
           <dl className="mt-4 grid gap-3 sm:grid-cols-2">
             <Info label="Fund Name" value={report.fund.name} />
@@ -629,7 +630,7 @@ export function ReportsPage() {
       {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
 
       <FadeIn delay={0.18}>
-        <GlassCard className="p-5">
+        <GlassCard className="p-3 sm:p-4 lg:p-5">
           <SectionTitle
             title="Report History"
             subtitle="Previously generated reports and statements"
@@ -716,7 +717,7 @@ export function ReportsPage() {
       {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
 
       <FadeIn delay={0.21}>
-        <GlassCard className="p-5" glow>
+        <GlassCard className="p-3 sm:p-4 lg:p-5" glow>
           <SectionTitle
             title="Tax Reporting"
             subtitle="Capital gains analysis and tax lot tracking"
@@ -724,10 +725,11 @@ export function ReportsPage() {
               <button
                 onClick={exportTaxReport}
                 disabled={downloading || !taxData}
-                className="inline-flex items-center gap-2 rounded-lg bg-gold-gradient px-4 py-2 text-sm font-semibold text-primary-foreground shadow-lg shadow-gold/20 transition-all duration-200 hover:shadow-gold/30 hover:brightness-110 active:scale-[0.97] disabled:opacity-50"
+                className="tap-target inline-flex items-center gap-2 rounded-lg bg-gold-gradient px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-primary-foreground shadow-lg shadow-gold/20 transition-all duration-200 hover:shadow-gold/30 hover:brightness-110 active:scale-[0.97] disabled:opacity-50"
               >
                 <Download className="h-4 w-4" />
-                Export Tax Report
+                <span className="hide-mobile">Export Tax Report</span>
+                <span className="show-mobile">Export</span>
               </button>
             }
           />
@@ -735,7 +737,7 @@ export function ReportsPage() {
           {taxData ? (
             <>
               {/* Tax Summary Cards */}
-              <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="mt-4 sm:mt-5 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
                 <motion.div
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -816,7 +818,7 @@ export function ReportsPage() {
               </div>
 
               {/* Cost Basis Method Selector */}
-              <div className="mt-5 flex items-center gap-3">
+              <div className="mt-5 flex flex-wrap items-center gap-3">
                 <span className="text-[10.5px] font-medium uppercase tracking-[0.12em] text-foreground/50">
                   Cost Basis Method:
                 </span>
@@ -825,7 +827,7 @@ export function ReportsPage() {
                     <button
                       key={method}
                       onClick={() => setCostBasisMethod(method)}
-                      className={`rounded-md px-3 py-1 text-xs font-medium transition-all duration-200 ${
+                      className={`tap-target-sm rounded-md px-3 py-1 text-xs font-medium transition-all duration-200 ${
                         costBasisMethod === method
                           ? "bg-gold/20 text-gold shadow-sm"
                           : "text-muted-foreground hover:text-foreground/80"
@@ -842,7 +844,7 @@ export function ReportsPage() {
                 <h4 className="text-xs font-medium uppercase tracking-[0.12em] text-foreground/50">
                   Monthly Realized Gains/Losses
                 </h4>
-                <div className="mt-3 h-64">
+                <div className="chart-mobile mt-3">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={gainsChartData} margin={{ top: 6, right: 6, left: 6, bottom: 0 }} barSize={28}>
                       <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />

@@ -1638,3 +1638,249 @@
   transform: scale(1.05);
   z-index: 1;
 }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   ROUND 13 — MOBILE WEB OPTIMIZATION
+   Mobile-first responsive system: <768px mobile, 768–1024px tablet, >1024px desktop
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/* ── Global overflow prevention: no horizontal scroll anywhere ── */
+html, body {
+  overflow-x: hidden;
+  max-width: 100vw;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+* {
+  max-width: 100%;
+}
+/* Allow inner scroll containers to still scroll horizontally when intended */
+.scroll-x-allowed,
+.scroll-x-allowed * {
+  max-width: none;
+}
+
+/* ── Responsive typography scale (fluid clamp) ── */
+/* Desktop H1 → 48px, Mobile H1 → 28px */
+.h1-responsive {
+  font-size: clamp(1.75rem, 5vw + 0.5rem, 3rem);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+/* Desktop H2 → 36px, Mobile H2 → 22px */
+.h2-responsive {
+  font-size: clamp(1.375rem, 3.5vw + 0.4rem, 2.25rem);
+  line-height: 1.15;
+  letter-spacing: -0.015em;
+}
+/* Desktop H3 → 28px, Mobile H3 → 20px */
+.h3-responsive {
+  font-size: clamp(1.25rem, 2.5vw + 0.4rem, 1.75rem);
+  line-height: 1.2;
+}
+/* Body: 16px desktop, 14–16px mobile */
+.body-responsive {
+  font-size: clamp(0.875rem, 0.4vw + 0.8rem, 1rem);
+  line-height: 1.55;
+}
+
+/* ── Touch target minimum: 44×44px on mobile ── */
+@media (max-width: 1023px) {
+  .tap-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  .tap-target-sm {
+    min-height: 40px;
+    min-width: 40px;
+  }
+}
+
+/* ── Compact spacing on mobile (reduces margins/padding/gaps) ── */
+@media (max-width: 767px) {
+  .section-py { padding-top: 1rem; padding-bottom: 1rem; }
+  .section-px { padding-left: 0.75rem; padding-right: 0.75rem; }
+  .card-p { padding: 0.875rem; }
+  .gap-stack { gap: 0.75rem; }
+  .reduce-motion-mobile {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ── Sticky mobile action bar (e.g. deposit CTA) ── */
+.sticky-mobile-cta {
+  position: sticky;
+  bottom: 0;
+  z-index: 30;
+  padding: 0.75rem 1rem;
+  background: linear-gradient(to top, rgba(10,10,11,0.98) 60%, rgba(10,10,11,0.7) 100%);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-top: 1px solid rgba(212,175,55,0.18);
+}
+@media (min-width: 1024px) {
+  .sticky-mobile-cta {
+    position: static;
+    padding: 0;
+    background: transparent;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    border-top: none;
+  }
+}
+
+/* ── Mobile scrollbar styling (thin, gold-tinted) ── */
+@media (max-width: 1023px) {
+  .scroll-luxury::-webkit-scrollbar { width: 5px; height: 5px; }
+  .scroll-luxury::-webkit-scrollbar-thumb {
+    background: rgba(212,175,55,0.25);
+    border-radius: 999px;
+  }
+  .scroll-luxury::-webkit-scrollbar-track { background: transparent; }
+}
+
+/* ── Horizontal scroll row for filter chips/tabs ── */
+.scroll-row {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding-bottom: 0.25rem;
+}
+.scroll-row::-webkit-scrollbar { display: none; }
+.scroll-row > * {
+  scroll-snap-align: start;
+  flex-shrink: 0;
+}
+
+/* ── Responsive chart wrapper: 250–300px on mobile ── */
+.chart-mobile {
+  width: 100%;
+  height: 260px;
+}
+@media (min-width: 768px) {
+  .chart-mobile { height: 320px; }
+}
+@media (min-width: 1024px) {
+  .chart-mobile { height: 360px; }
+}
+
+/* ── Mobile table → card transformation ──
+   Usage: wrap a <table> with .table-mobile-card. On mobile each <tr> becomes
+   a card, <th>/<td> become label/value pairs via data-label attribute. */
+@media (max-width: 767px) {
+  .table-mobile-card thead { display: none; }
+  .table-mobile-card table,
+  .table-mobile-card tbody,
+  .table-mobile-card tr,
+  .table-mobile-card td {
+    display: block;
+    width: 100%;
+  }
+  .table-mobile-card tr {
+    margin-bottom: 0.75rem;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 0.75rem;
+    background: rgba(20,20,22,0.6);
+    padding: 0.5rem 0.875rem;
+  }
+  .table-mobile-card td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    text-align: right;
+    min-height: 36px;
+  }
+  .table-mobile-card td:last-child { border-bottom: none; }
+  .table-mobile-card td::before {
+    content: attr(data-label);
+    text-align: left;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--muted-foreground);
+    padding-right: 0.75rem;
+    flex-shrink: 0;
+  }
+  .table-mobile-card td .cell-full {
+    width: 100%;
+    text-align: left;
+  }
+  /* Allow action cells to span full width stacked */
+  .table-mobile-card td.cell-actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.4rem;
+  }
+  .table-mobile-card td.cell-actions::before { display: none; }
+}
+
+/* ── Mobile drawer body scroll lock helper ── */
+.body-drawer-open {
+  overflow: hidden;
+  position: fixed;
+  width: 100%;
+}
+
+/* ── Safe-area insets for iOS (footer, sticky bars) ── */
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.safe-area-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+/* ── Reduced motion: respect user preference globally ── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ── Mobile-only: reduce heavy shadows & glass blur for perf ── */
+@media (max-width: 767px) {
+  .glass-strong {
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+  .reduce-shadow-mobile {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3) !important;
+  }
+}
+
+/* ── Hide-on-mobile / show-on-mobile helpers ── */
+.hide-mobile { display: revert; }
+.show-mobile { display: none; }
+@media (max-width: 767px) {
+  .hide-mobile { display: none !important; }
+  .show-mobile { display: revert !important; }
+}
+@media (max-width: 1023px) {
+  .hide-tablet { display: none !important; }
+}
+@media (min-width: 768px) {
+  .show-mobile-only { display: none !important; }
+}
+
+/* ── Full-width mobile buttons ── */
+@media (max-width: 767px) {
+  .btn-full-mobile { width: 100%; }
+}
+
+/* ── Prevent text overflow on long wallet addresses / numbers ── */
+.break-words-mobile {
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}

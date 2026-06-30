@@ -77,19 +77,19 @@ export function AdminDashboard() {
   /* ── Loading skeleton ──────────────────────────────────────────────────── */
   if (!data) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         <SkeletonMetric className="h-8 w-48 rounded" />
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
           {[0, 1, 2, 3].map((i) => (
             <SkeletonMetric key={i} className="h-32" />
           ))}
         </div>
-        <div className="grid gap-4 lg:grid-cols-3">
+        <div className="grid gap-3 sm:gap-4 lg:grid-cols-3">
           <SkeletonCard className="h-80 lg:col-span-2 chart-hover-glow" />
           <SkeletonCard className="h-80 hover-lift" />
         </div>
         <SkeletonCard className="h-60 hover-lift" />
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="grid gap-3 sm:gap-4 lg:grid-cols-2">
           <SkeletonCard className="h-60 hover-lift" />
           <SkeletonCard className="h-60 hover-lift" />
         </div>
@@ -164,16 +164,16 @@ export function AdminDashboard() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* ═══════════════════ HEADER ═══════════════════ */}
       <FadeIn>
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
+        <div className="flex flex-wrap items-end justify-between gap-3 sm:gap-4">
+          <div className="min-w-0">
             <span className="text-xs font-medium uppercase tracking-[0.18em] text-gold">Admin Console</span>
-            <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">Operations Dashboard</h1>
-            <p className="text-sm text-muted-foreground">{data.fund?.name ?? "—"} · Real-time fund oversight</p>
+            <h1 className="h2-responsive mt-1 font-bold tracking-tight">Operations Dashboard</h1>
+            <p className="body-responsive text-muted-foreground">{data.fund?.name ?? "—"} · Real-time fund oversight</p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
               <span className="relative flex h-2 w-2">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-profit opacity-40" />
@@ -183,7 +183,7 @@ export function AdminDashboard() {
             </div>
             <button
               onClick={handleRefresh}
-              className="flex items-center gap-1 rounded-md border border-gold/20 bg-gold/5 px-2.5 py-1 text-[11px] font-medium text-gold transition-all hover:bg-gold/10 hover:border-gold/30"
+              className="flex items-center gap-1 rounded-md border border-gold/20 bg-gold/5 px-2.5 py-1.5 text-[11px] font-medium text-gold transition-all hover:bg-gold/10 hover:border-gold/30 tap-target-sm"
             >
               <RefreshCw className={`h-3 w-3 transition-transform ${isRefreshing ? "animate-spin" : ""}`} />
               Refresh
@@ -194,7 +194,7 @@ export function AdminDashboard() {
 
       {/* ═══════════════════ 1. SUMMARY METRIC CARDS ═══════════════════ */}
       <FadeIn delay={0.05}>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
           <EnhancedMetric
             label="Total AUM"
             value={data.totalAum}
@@ -257,15 +257,15 @@ export function AdminDashboard() {
       <div className="gold-divider opacity-40" />
 
       {/* ═══════════════════ 2. AUM & NAV TREND + 3. CAPITAL FLOWS ═══════════════════ */}
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid gap-3 sm:gap-4 lg:grid-cols-3">
         {/* AUM & NAV Trend Chart */}
         <FadeIn delay={0.1} className="lg:col-span-2">
-          <GlassCard className="p-5 glow-gold gold-corner-accent">
+          <GlassCard className="p-3 sm:p-4 lg:p-5 glow-gold gold-corner-accent">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
+              <div className="min-w-0">
                 <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">AUM & NAV Trend</h3>
-                <div className="mt-1 flex items-baseline gap-3">
-                  <span className="font-metric text-2xl font-bold text-foreground">{fmtUSD(data.totalAum, { compact: true })}</span>
+                <div className="mt-1 flex items-baseline gap-3 flex-wrap">
+                  <span className="font-metric text-xl sm:text-2xl font-bold text-foreground">{fmtUSD(data.totalAum, { compact: true })}</span>
                   {m && (
                     <span className={`text-sm font-semibold ${m.monthlyReturn >= 0 ? "text-profit" : "text-loss"}`}>
                       {fmtPct(m.monthlyReturn)} / mo
@@ -274,23 +274,23 @@ export function AdminDashboard() {
                 </div>
               </div>
               {m && (
-                <div className="flex gap-4 text-right">
+                <div className="flex gap-3 sm:gap-4 text-right flex-wrap">
                   <div>
                     <div className="text-[10px] uppercase tracking-wider text-muted-foreground">NAV</div>
                     <div className="font-metric text-sm font-semibold text-gold-bright">{fmtNum(m.nav, 4)}</div>
                   </div>
-                  <div>
+                  <div className="hide-mobile">
                     <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Sharpe</div>
                     <div className="font-metric text-sm font-semibold text-foreground">{fmtNum(m.sharpe, 2)}</div>
                   </div>
-                  <div>
+                  <div className="hide-mobile">
                     <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Max DD</div>
                     <div className="font-metric text-sm font-semibold text-loss">{fmtPct(m.maxDrawdown)}</div>
                   </div>
                 </div>
               )}
             </div>
-            <div className="mt-4 h-72">
+            <div className="mt-4 chart-mobile">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={navTrend} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                   <defs>
@@ -376,9 +376,9 @@ export function AdminDashboard() {
 
         {/* Capital Flows Chart */}
         <FadeIn delay={0.15}>
-          <GlassCard gold className="h-full p-5">
+          <GlassCard gold className="h-full p-3 sm:p-4 lg:p-5">
             <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Capital Flows</h3>
-            <div className="mt-3 h-48">
+            <div className="mt-3 chart-mobile h-40 sm:h-48">
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart data={flowDataWithNet} margin={{ top: 8, right: 4, left: 4, bottom: 0 }}>
                   <defs>
@@ -413,13 +413,13 @@ export function AdminDashboard() {
               <FlowRow icon={<ArrowUpFromLine className="h-4 w-4" />} label="Withdrawal Volume" value={data.withdrawalVolume} color="text-loss" />
               <div className="border-t border-border/60 pt-3">
                 <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Net Capital</div>
-                <div className="mt-1 font-metric text-2xl font-bold text-gold">
+                <div className="mt-1 font-metric text-xl sm:text-2xl font-bold text-gold">
                   {fmtUSD(data.depositVolume - data.withdrawalVolume, { compact: true })}
                 </div>
               </div>
               <button
                 onClick={() => setRoute({ name: "admin-transactions" })}
-                className="group w-full rounded-lg bg-gold-gradient px-4 py-2.5 text-xs font-bold text-black shadow-[0_0_18px_rgba(212,175,55,0.25)] transition-all hover:shadow-[0_0_28px_rgba(212,175,55,0.4)] hover:brightness-105"
+                className="tap-target group w-full rounded-lg bg-gold-gradient px-4 py-2.5 text-xs font-bold text-black shadow-[0_0_18px_rgba(212,175,55,0.25)] transition-all hover:shadow-[0_0_28px_rgba(212,175,55,0.4)] hover:brightness-105"
               >
                 Review pending transactions
                 <ChevronRight className="ml-1 inline h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
@@ -432,16 +432,16 @@ export function AdminDashboard() {
       {/* ═══════════════════ 5. PENDING TRANSACTIONS ALERT ═══════════════════ */}
       {pendingCount > 0 && (
         <FadeIn delay={0.18}>
-          <GlassCard gold glow className="gold-corner-accent border-glow-pulse p-5">
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-warning/15">
+          <GlassCard gold glow className="gold-corner-accent border-glow-pulse p-3 sm:p-4 lg:p-5">
+            <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4">
+              <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+                <div className="flex h-10 w-10 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-xl bg-warning/15">
                   <span className="relative flex h-3.5 w-3.5">
                     <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-warning opacity-70" />
                     <span className="relative inline-flex h-3.5 w-3.5 rounded-full bg-warning shadow-[0_0_10px_rgba(245,166,35,0.7)]" />
                   </span>
                 </div>
-                <div>
+                <div className="min-w-0">
                   <h3 className="text-sm font-semibold uppercase tracking-wider text-foreground">Pending Transactions Require Action</h3>
                   <p className="mt-0.5 text-sm text-foreground/70">
                     <span className="font-metric font-semibold text-warning">{data.pendingDeposits}</span> deposits and{" "}
@@ -449,17 +449,17 @@ export function AdminDashboard() {
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
                 <button
                   onClick={() => setRoute({ name: "admin-transactions" })}
-                  className="pulse-gold rounded-lg bg-gold-gradient px-4 py-2 text-xs font-bold text-black shadow-[0_0_16px_rgba(212,175,55,0.28)] transition-all hover:shadow-[0_0_24px_rgba(212,175,55,0.4)] hover:brightness-105"
+                  className="pulse-gold tap-target flex-1 sm:flex-none rounded-lg bg-gold-gradient px-4 py-2 text-xs font-bold text-black shadow-[0_0_16px_rgba(212,175,55,0.28)] transition-all hover:shadow-[0_0_24px_rgba(212,175,55,0.4)] hover:brightness-105"
                 >
                   <Eye className="mr-1.5 inline h-3.5 w-3.5" />
                   Review Now
                 </button>
                 <button
                   onClick={() => setRoute({ name: "admin-transactions" })}
-                  className="rounded-lg border border-profit/30 bg-profit/15 px-4 py-2 text-xs font-semibold text-profit transition-all hover:bg-profit/25 hover:border-profit/50"
+                  className="hide-mobile rounded-lg border border-profit/30 bg-profit/15 px-4 py-2 text-xs font-semibold text-profit transition-all hover:bg-profit/25 hover:border-profit/50"
                 >
                   <CheckCircle2 className="mr-1.5 inline h-3.5 w-3.5" />
                   Quick Approve
@@ -474,7 +474,7 @@ export function AdminDashboard() {
       {m && (
         <FadeIn delay={0.2}>
           <SectionTitle title="Fund Performance Metrics" subtitle="Institutional analytics" />
-          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-4 grid gap-3 sm:gap-4 grid-cols-2 sm:grid-cols-2 lg:grid-cols-4">
             <EnhancedMetricTile
               label="Daily Return"
               value={fmtPct(m.dailyReturn)}
@@ -542,17 +542,17 @@ export function AdminDashboard() {
 
       {/* ═══════════════════ 6. RECENT ADMIN ACTIVITY + 7. INVESTOR BREAKDOWN ═══════════════════ */}
       <div className="gold-divider opacity-30" />
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-3 sm:gap-4 lg:grid-cols-2">
         {/* Recent Admin Activity */}
         <FadeIn delay={0.25}>
-          <GlassCard className="p-5">
-            <div className="flex items-center justify-between">
+          <GlassCard className="p-3 sm:p-4 lg:p-5">
+            <div className="flex items-center justify-between gap-2">
               <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Recent Admin Activity</h3>
               <button
                 onClick={() => setRoute({ name: "admin-audit" })}
-                className="text-xs font-medium text-gold transition-colors hover:text-gold-bright"
+                className="text-xs font-medium text-gold transition-colors hover:text-gold-bright tap-target-sm whitespace-nowrap"
               >
-                View all audit logs →
+                View all →
               </button>
             </div>
             <div className="mt-4 space-y-0">
@@ -610,12 +610,12 @@ export function AdminDashboard() {
 
         {/* Investor Breakdown */}
         <FadeIn delay={0.3}>
-          <GlassCard className="p-5">
-            <div className="flex items-center justify-between">
+          <GlassCard className="p-3 sm:p-4 lg:p-5">
+            <div className="flex items-center justify-between gap-2">
               <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Investor Breakdown</h3>
               <button
                 onClick={() => setRoute({ name: "admin-investors" })}
-                className="text-xs font-medium text-gold transition-colors hover:text-gold-bright"
+                className="text-xs font-medium text-gold transition-colors hover:text-gold-bright tap-target-sm whitespace-nowrap"
               >
                 View all →
               </button>
@@ -728,12 +728,12 @@ export function AdminDashboard() {
       {/* ═══════════════════ 8. SYSTEM HEALTH ═══════════════════ */}
       <div className="gold-divider opacity-30" />
       <FadeIn delay={0.35}>
-        <GlassCard className="p-5">
-          <div className="flex items-center justify-between">
+        <GlassCard className="p-3 sm:p-4 lg:p-5">
+          <div className="flex items-center justify-between gap-2">
             <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">System Health</h3>
             <span className="text-[11px] text-muted-foreground">Last checked: {timeAgo(new Date().toISOString())}</span>
           </div>
-          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-4 grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
             <HealthIndicator
               icon={<Database className="h-4 w-4" />}
               label="Database"
@@ -766,15 +766,15 @@ export function AdminDashboard() {
       <div className="gold-divider opacity-30" />
       <FadeIn delay={0.38}>
         <SectionTitle title="Key Insights" subtitle="Investor behavior & risk analytics" />
-        <div className="mt-4 grid gap-4 sm:grid-cols-3">
-          <GlassCard className="p-5 gold-corner-accent" hover glowOnHover>
+        <div className="mt-4 grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-3">
+          <GlassCard className="card-p sm:p-5 gold-corner-accent" hover glowOnHover>
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gold/15">
                 <Clock className="h-5 w-5 text-gold" />
               </div>
-              <div>
-                <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Average Investor Lifespan</div>
-                <div className="mt-1 font-metric text-xl font-bold text-foreground">
+              <div className="min-w-0">
+                <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Avg Investor Lifespan</div>
+                <div className="mt-1 font-metric text-lg sm:text-xl font-bold text-foreground">
                   {(() => {
                     // Calculate from user data or use estimate
                     if (Array.isArray(allUsers) && allUsers.length > 0) {
@@ -796,14 +796,14 @@ export function AdminDashboard() {
             </div>
           </GlassCard>
 
-          <GlassCard className="p-5 gold-corner-accent" hover glowOnHover>
+          <GlassCard className="card-p sm:p-5 gold-corner-accent" hover glowOnHover>
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-profit/15">
                 <Users className="h-5 w-5 text-profit" />
               </div>
-              <div>
+              <div className="min-w-0">
                 <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Top Investor Value</div>
-                <div className="mt-1 font-metric text-xl font-bold text-profit">
+                <div className="mt-1 font-metric text-lg sm:text-xl font-bold text-profit">
                   {topInvestors.length > 0
                     ? fmtUSD(topInvestors[0].aum ?? topInvestors[0].totalAum ?? 0, { compact: true })
                     : "$12.5M"
@@ -816,14 +816,14 @@ export function AdminDashboard() {
             </div>
           </GlassCard>
 
-          <GlassCard className="p-5 gold-corner-accent" hover glowOnHover>
+          <GlassCard className="card-p sm:p-5 gold-corner-accent" hover glowOnHover>
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-loss/15">
                 <AlertTriangle className="h-5 w-5 text-loss" />
               </div>
-              <div>
+              <div className="min-w-0">
                 <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Redemption Risk</div>
-                <div className="mt-1 font-metric text-xl font-bold text-loss">
+                <div className="mt-1 font-metric text-lg sm:text-xl font-bold text-loss">
                   {(() => {
                     // Estimate: percentage of investors with large withdrawal history
                     if (Array.isArray(allUsers) && allUsers.length > 0) {
@@ -848,18 +848,18 @@ export function AdminDashboard() {
 
       {/* ═══════════════════ 10. AUM FORECAST CHART ═══════════════════ */}
       <FadeIn delay={0.4}>
-        <GlassCard className="p-5 glow-gold gold-corner-accent">
+        <GlassCard className="p-3 sm:p-4 lg:p-5 glow-gold gold-corner-accent">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
+            <div className="min-w-0">
               <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">AUM Forecast</h3>
-              <div className="mt-1 flex items-baseline gap-3">
-                <span className="font-metric text-2xl font-bold text-foreground">{fmtUSD(data.totalAum, { compact: true })}</span>
+              <div className="mt-1 flex items-baseline gap-3 flex-wrap">
+                <span className="font-metric text-xl sm:text-2xl font-bold text-foreground">{fmtUSD(data.totalAum, { compact: true })}</span>
                 <span className="text-sm text-muted-foreground">current → projected</span>
               </div>
             </div>
             <AumForecastToggle />
           </div>
-          <div className="mt-4 h-72">
+          <div className="mt-4 chart-mobile">
             <AumForecastChart navTrend={navTrend} totalAum={data.totalAum} />
           </div>
         </GlassCard>
@@ -867,10 +867,10 @@ export function AdminDashboard() {
 
       {/* ═══════════════════ 11. INVESTOR COHORT ANALYSIS ═══════════════════ */}
       <FadeIn delay={0.42}>
-        <GlassCard className="p-5">
-          <div className="flex items-center justify-between">
+        <GlassCard className="p-3 sm:p-4 lg:p-5">
+          <div className="flex items-center justify-between gap-2">
             <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Investor Cohort Analysis</h3>
-            <span className="text-[11px] text-muted-foreground">Monthly retention by cohort</span>
+            <span className="text-[11px] text-muted-foreground hide-mobile">Monthly retention by cohort</span>
           </div>
           <CohortAnalysisTable allUsers={allUsers} />
         </GlassCard>
@@ -878,10 +878,10 @@ export function AdminDashboard() {
 
       {/* ═══════════════════ 12. CAPITAL FLOW PREDICTIONS ═══════════════════ */}
       <FadeIn delay={0.44}>
-        <GlassCard gold className="p-5">
-          <div className="flex items-center justify-between">
+        <GlassCard gold className="p-3 sm:p-4 lg:p-5">
+          <div className="flex items-center justify-between gap-2">
             <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Capital Flow Predictions</h3>
-            <span className="text-[11px] text-muted-foreground">Next 30-day forecast</span>
+            <span className="text-[11px] text-muted-foreground hide-mobile">Next 30-day forecast</span>
           </div>
           <CapitalFlowPredictions depositVolume={data.depositVolume} withdrawalVolume={data.withdrawalVolume} />
         </GlassCard>
@@ -1322,8 +1322,8 @@ function CohortAnalysisTable({ allUsers }: { allUsers: any[] }) {
   }, [allUsers]);
 
   return (
-    <div className="mt-4 overflow-x-auto">
-      <table className="w-full text-xs">
+    <div className="mt-4 overflow-x-auto scroll-x-allowed">
+      <table className="w-full text-xs min-w-[480px]">
         <thead>
           <tr className="border-b border-border/40">
             <th className="py-2 pr-4 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Month</th>
@@ -1444,7 +1444,7 @@ function CapitalFlowPredictions({ depositVolume, withdrawalVolume }: { depositVo
   return (
     <div className="mt-4 space-y-4">
       {/* Summary row */}
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 sm:gap-3 grid-cols-1 sm:grid-cols-3">
         <div className="rounded-lg bg-profit/[0.06] p-3 text-center">
           <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Predicted Deposits</div>
           <div className="mt-1 font-metric text-lg font-bold text-profit">{fmtUSD(totalPredictedDeposits, { compact: true })}</div>
@@ -1460,7 +1460,7 @@ function CapitalFlowPredictions({ depositVolume, withdrawalVolume }: { depositVo
       </div>
 
       {/* Mini bar chart */}
-      <div className="h-48">
+      <div className="chart-mobile h-40 sm:h-48">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={weeklyData} margin={{ top: 8, right: 4, left: 4, bottom: 0 }}>
             <defs>

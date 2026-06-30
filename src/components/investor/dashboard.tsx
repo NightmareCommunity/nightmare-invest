@@ -109,7 +109,7 @@ export function InvestorDashboard() {
   const m = portfolio.metrics;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-5 lg:space-y-6">
       {/* ════════════════════════════════════════════════════════════════
           1. FUND OVERVIEW BANNER — Full-width gold-accented hero card
           ════════════════════════════════════════════════════════════════ */}
@@ -132,7 +132,7 @@ export function InvestorDashboard() {
           <svg className="pointer-events-none absolute bottom-3 right-3 h-3 w-3 text-gold/50" viewBox="0 0 12 12" fill="none">
             <path d="M7 11H11V7" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
           </svg>
-          <div className="relative z-10 p-5 sm:p-6">
+          <div className="relative z-10 p-3 sm:p-5 lg:p-6">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               {/* Left: Fund info + NAV */}
               <div className="flex-1">
@@ -164,11 +164,11 @@ export function InvestorDashboard() {
                     Institutional Fund
                   </span>
                 </div>
-                <h1 className="mt-2 text-xl font-bold tracking-tight text-foreground sm:text-2xl">
+                <h1 className="h2-responsive mt-2 font-bold tracking-tight text-foreground">
                   Nightmare Alpha Crypto Fund
                 </h1>
-                <div className="mt-3 flex flex-wrap items-baseline gap-3">
-                  <span className="font-metric text-3xl font-bold text-gold-gradient sm:text-4xl">
+                <div className="mt-3 flex flex-wrap items-baseline gap-2 sm:gap-3">
+                  <span className="font-metric text-2xl font-bold text-gold-gradient sm:text-3xl lg:text-4xl">
                     <AnimatedCounter value={s.currentValue} />
                   </span>
                   <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 font-metric text-sm font-semibold ${
@@ -180,7 +180,7 @@ export function InvestorDashboard() {
                     {fmtPct(m.dailyReturn)} today
                   </span>
                 </div>
-                <p className="mt-1.5 text-xs text-muted-foreground">
+                <p className="mt-1.5 text-xs text-muted-foreground break-words-mobile">
                   NAV {fmtUSD(m.nav, { decimals: 4 })} · Updated {timeAgo(portfolio.holding?.updatedAt)} · AUM {fmtUSD(m.aum, { compact: true })}
                 </p>
               </div>
@@ -188,7 +188,7 @@ export function InvestorDashboard() {
               <div className="flex flex-wrap gap-2 sm:gap-3">
                 <Button
                   size="sm"
-                  className="h-9 bg-gold-gradient text-black font-semibold shadow-[0_0_18px_rgba(212,175,55,0.22)] transition-all hover:shadow-[0_0_26px_rgba(212,175,55,0.32)] hover:opacity-90"
+                  className="tap-target h-9 bg-gold-gradient text-black font-semibold shadow-[0_0_18px_rgba(212,175,55,0.22)] transition-all hover:shadow-[0_0_26px_rgba(212,175,55,0.32)] hover:opacity-90"
                   onClick={() => setRoute({ name: "transactions" })}
                 >
                   <Plus className="mr-1.5 h-3.5 w-3.5" /> Deposit
@@ -196,7 +196,7 @@ export function InvestorDashboard() {
                 <Button
                   size="sm"
                   variant="outline"
-                  className="h-9 border-gold/45 bg-gold/[0.04] text-gold font-semibold transition-all hover:border-gold/70 hover:bg-gold/[0.08] hover:shadow-[0_0_14px_rgba(212,175,55,0.18)]"
+                  className="tap-target h-9 border-gold/45 bg-gold/[0.04] text-gold font-semibold transition-all hover:border-gold/70 hover:bg-gold/[0.08] hover:shadow-[0_0_14px_rgba(212,175,55,0.18)]"
                   onClick={() => setRoute({ name: "transactions" })}
                 >
                   <Minus className="mr-1.5 h-3.5 w-3.5" /> Withdraw
@@ -204,7 +204,7 @@ export function InvestorDashboard() {
                 <Button
                   size="sm"
                   variant="outline"
-                  className="h-9 border-border/60 text-muted-foreground hover:text-foreground hover:bg-white/5"
+                  className="tap-target hide-mobile h-9 border-border/60 text-muted-foreground hover:text-foreground hover:bg-white/5"
                   onClick={() => setRoute({ name: "analytics" })}
                 >
                   <Eye className="mr-1.5 h-3.5 w-3.5" /> Analytics
@@ -221,7 +221,7 @@ export function InvestorDashboard() {
           2. ENHANCED SUMMARY TILES — 4 metric tiles with visual upgrades
           ════════════════════════════════════════════════════════════════ */}
       <FadeIn delay={0.05}>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
           <AnimatedMetric
             label="Portfolio Value"
             value={s.currentValue}
@@ -294,12 +294,12 @@ export function InvestorDashboard() {
           ════════════════════════════════════════════════════════════════ */}
       <div className="grid gap-4 lg:grid-cols-3">
         <FadeIn delay={0.1} className="lg:col-span-2">
-          <GlassCard className="p-5">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
+          <GlassCard className="p-3 sm:p-4 lg:p-5">
+            <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-3">
+              <div className="min-w-0">
                 <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Performance</h3>
-                <div className="mt-1 flex items-baseline gap-3">
-                  <span className="font-metric text-2xl font-bold text-foreground">{fmtUSD(s.currentValue)}</span>
+                <div className="mt-1 flex items-baseline gap-2 sm:gap-3">
+                  <span className="font-metric text-xl sm:text-2xl font-bold text-foreground">{fmtUSD(s.currentValue)}</span>
                   <span className={`font-metric text-sm font-semibold ${m.monthlyReturn >= 0 ? "text-profit" : "text-loss"}`}>
                     {fmtPct(m.monthlyReturn)} / mo
                   </span>
@@ -309,7 +309,7 @@ export function InvestorDashboard() {
                 {/* Benchmark toggle */}
                 <button
                   onClick={() => setShowBtcBench(!showBtcBench)}
-                  className={`flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[11px] font-medium transition-colors ${
+                  className={`tap-target-sm flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[11px] font-medium transition-colors ${
                     showBtcBench
                       ? "border-gold/40 bg-gold/10 text-gold"
                       : "border-border/60 text-muted-foreground hover:text-foreground"
@@ -317,12 +317,12 @@ export function InvestorDashboard() {
                 >
                   <Bitcoin className="h-3 w-3" /> vs BTC
                 </button>
-                <div className="flex rounded-lg border border-border/60 bg-black/30 p-0.5">
+                <div className="scroll-row rounded-lg border border-border/60 bg-black/30 p-0.5">
                   {RANGES.map((r) => (
                     <button
                       key={r.key}
                       onClick={() => setRange(r.key)}
-                      className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${
+                      className={`tap-target-sm rounded-md px-3 py-1 text-xs font-medium transition-colors ${
                         range === r.key ? "bg-gold-gradient text-black" : "text-muted-foreground hover:text-foreground"
                       }`}
                     >
@@ -333,7 +333,7 @@ export function InvestorDashboard() {
               </div>
             </div>
             {/* Chart Legend */}
-            <div className="mt-3 flex items-center gap-4 text-[11px]">
+            <div className="mt-3 flex flex-wrap items-center gap-2 sm:gap-4 text-[11px]">
               <span className="flex items-center gap-1.5">
                 <span className="inline-block h-0.5 w-4 rounded-full bg-gold" /> NAV
               </span>
@@ -346,9 +346,9 @@ export function InvestorDashboard() {
                 {range === "ALL" ? "All time" : `Last ${range}`}
               </span>
             </div>
-            <div className="relative mt-4 h-72">
-              <ResponsiveContainer width="100%" height="85%">
-                <ComposedChart data={chartDataFinal} margin={{ top: 6, right: 6, left: 6, bottom: 0 }}>
+            <div className="chart-mobile relative mt-4">
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={chartDataFinal} margin={{ top: 6, right: 6, left: 0, bottom: 0 }}>
                   <defs>
                     <linearGradient id="navAreaEnhanced" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" stopColor="#FFD700" stopOpacity={0.45} />
@@ -378,16 +378,16 @@ export function InvestorDashboard() {
                   <XAxis
                     dataKey="date"
                     tickFormatter={(d) => new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                    tick={{ fill: "#7A7A7A", fontSize: 11 }}
+                    tick={{ fill: "#7A7A7A", fontSize: 10 }}
                     stroke="rgba(255,255,255,0.08)"
                     minTickGap={40}
                   />
                   <YAxis
                     yAxisId="nav"
                     tickFormatter={(v) => `$${fmtNum(v, 0)}`}
-                    tick={{ fill: "#7A7A7A", fontSize: 11 }}
+                    tick={{ fill: "#7A7A7A", fontSize: 10 }}
                     stroke="rgba(255,255,255,0.08)"
-                    width={56}
+                    width={48}
                     domain={["auto", "auto"]}
                   />
                   {showBtcBench && (
@@ -397,7 +397,7 @@ export function InvestorDashboard() {
                       tickFormatter={(v) => `$${fmtNum(v / 1000, 0)}k`}
                       tick={{ fill: "#f7931a", fontSize: 10 }}
                       stroke="rgba(247,147,26,0.2)"
-                      width={48}
+                      width={40}
                       domain={["auto", "auto"]}
                     />
                   )}
@@ -434,7 +434,7 @@ export function InvestorDashboard() {
                 </ComposedChart>
               </ResponsiveContainer>
               {/* Volume bar chart overlay at bottom */}
-              <div className="absolute bottom-0 left-14 right-2 h-[15%]">
+              <div className="hide-mobile absolute bottom-0 left-14 right-2 h-[15%]">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={chartDataFinal.map((d, i) => ({
                     ...d,
@@ -445,7 +445,7 @@ export function InvestorDashboard() {
                 </ResponsiveContainer>
               </div>
               {/* Animated scanning line overlay */}
-              <div className="pointer-events-none absolute inset-y-3 left-14 right-2">
+              <div className="hide-mobile pointer-events-none absolute inset-y-3 left-14 right-2">
                 <motion.div
                   className="absolute top-0 bottom-0 w-px"
                   style={{
@@ -465,13 +465,13 @@ export function InvestorDashboard() {
             5. ENHANCED HOLDINGS DONUT — Labels, center value, hover expand, legend
             ════════════════════════════════════════════════════════════════ */}
         <FadeIn delay={0.15}>
-          <GlassCard gold className="h-full p-5">
+          <GlassCard gold className="h-full p-3 sm:p-4 lg:p-5">
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Holdings</h3>
               <PieChart className="h-4 w-4 text-gold" />
             </div>
             <div className="mt-4 flex flex-col items-center">
-              <div className="relative h-48 w-48 sm:h-52 sm:w-52">
+              <div className="relative h-44 w-44 sm:h-48 sm:w-48 lg:h-52 lg:w-52">
                 <ResponsiveContainer width="100%" height="100%">
                   <RPie>
                     <Pie
@@ -536,7 +536,7 @@ export function InvestorDashboard() {
                 </div>
               </div>
               {/* Legend below chart */}
-              <div className="mt-5 w-full space-y-2">
+              <div className="mt-4 w-full space-y-1.5 sm:space-y-2">
                 {portfolio.allocations.map((a, i) => {
                   const usdValue = (a.weight / 100) * s.currentValue;
                   const equalWeight = 100 / portfolio.allocations.length;
@@ -643,7 +643,7 @@ export function InvestorDashboard() {
           ════════════════════════════════════════════════════════════════ */}
       <FadeIn delay={0.2}>
         <SectionTitle title="Fund Analytics" subtitle="Institutional-grade performance metrics" />
-        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
           <MetricTile label="Daily Return" value={fmtPct(m.dailyReturn)} accent={m.dailyReturn >= 0 ? "profit" : "loss"} icon={<ArrowUpRight className="h-4 w-4" />} className="gold-glow-hover" />
           <MetricTile label="Weekly Return" value={fmtPct(m.weeklyReturn)} accent={m.weeklyReturn >= 0 ? "profit" : "loss"} icon={<ArrowUpRight className="h-4 w-4" />} className="gold-glow-hover" />
           <MetricTile label="Monthly Return" value={fmtPct(m.monthlyReturn)} accent={m.monthlyReturn >= 0 ? "profit" : "loss"} icon={<ArrowUpRight className="h-4 w-4" />} className="gold-glow-hover" />
@@ -691,7 +691,7 @@ export function InvestorDashboard() {
           ════════════════════════════════════════════════════════════════ */}
       <div className="grid gap-4 lg:grid-cols-3">
         <FadeIn delay={0.25} className="lg:col-span-2">
-          <GlassCard className="p-5">
+          <GlassCard className="p-3 sm:p-4 lg:p-5">
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Market Intelligence</h3>
               <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-semibold ${
@@ -703,7 +703,7 @@ export function InvestorDashboard() {
                 {isLive ? "LIVE" : "DELAYED"}
               </span>
             </div>
-            <div className="mt-4 grid gap-3 sm:grid-cols-3">
+            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
               {livePrices.map((p, idx) => {
                 const sparkData = generateMiniChartData(p.change24h, 7);
                 const volume = p.priceUsd * (p.symbol === "BTC" ? 28000000 : p.symbol === "ETH" ? 15000000 : 3500000);
@@ -765,7 +765,7 @@ export function InvestorDashboard() {
             ENHANCED MARKET SENTIMENT — Semi-circular SVG gauge with color zones
             ════════════════════════════════════════════════════════════════ */}
         <FadeIn delay={0.3}>
-          <GlassCard gold className="h-full p-5">
+          <GlassCard gold className="h-full p-3 sm:p-4 lg:p-5">
             <div className="flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-gold" />
               <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Market Sentiment</h3>
@@ -782,12 +782,12 @@ export function InvestorDashboard() {
                 <SentimentGaugeV2 value={liveSentiment?.fearGreed ?? 50} />
               </div>
               {/* Color zone legend */}
-              <div className="mt-3 flex justify-between text-[9px] text-muted-foreground/60 px-2">
-                <span>Extreme Fear</span>
-                <span>Fear</span>
-                <span>Neutral</span>
-                <span>Greed</span>
-                <span>Ext. Greed</span>
+              <div className="mt-3 flex justify-between gap-1 text-[9px] text-muted-foreground/60 px-1 sm:px-2">
+                <span className="text-center">Extreme<br/>Fear</span>
+                <span className="text-center">Fear</span>
+                <span className="text-center">Neutral</span>
+                <span className="text-center">Greed</span>
+                <span className="text-center">Ext.<br/>Greed</span>
               </div>
               <div className="mt-4 flex items-center justify-between border-t border-border/60 pt-4 text-sm">
                 <span className="text-muted-foreground">BTC Dominance</span>
@@ -806,17 +806,17 @@ export function InvestorDashboard() {
           8. RECENT ACTIVITY FEED — Timeline-style
           ════════════════════════════════════════════════════════════════ */}
       <FadeIn delay={0.35}>
-        <GlassCard className="p-5">
-          <div className="flex items-end justify-between gap-4">
-            <div>
-              <h2 className="text-lg font-semibold tracking-tight text-foreground">Recent Activity</h2>
+        <GlassCard className="p-3 sm:p-4 lg:p-5">
+          <div className="flex items-end justify-between gap-3">
+            <div className="min-w-0">
+              <h2 className="h3-responsive font-semibold tracking-tight text-foreground">Recent Activity</h2>
               <p className="mt-0.5 text-sm text-muted-foreground">Your latest deposit &amp; withdrawal requests</p>
             </div>
-            <Button variant="outline" size="sm" onClick={() => setRoute({ name: "transactions" })} className="border-gold/30 hover:bg-gold/10">
+            <Button variant="outline" size="sm" onClick={() => setRoute({ name: "transactions" })} className="tap-target-sm border-gold/30 hover:bg-gold/10 shrink-0">
               View all <ChevronRight className="ml-1 h-3.5 w-3.5" />
             </Button>
           </div>
-          <div className="mt-5">
+          <div className="mt-4 sm:mt-5">
             {(txnData?.transactions ?? []).length === 0 ? (
               <div className="flex flex-col items-center gap-3 py-8 text-center">
                 <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/5">
@@ -825,7 +825,7 @@ export function InvestorDashboard() {
                 <p className="text-sm text-muted-foreground">No transactions yet. Submit your first deposit request.</p>
                 <Button
                   size="sm"
-                  className="mt-1 bg-gold-gradient text-black font-semibold hover:opacity-90"
+                  className="tap-target mt-1 bg-gold-gradient text-black font-semibold hover:opacity-90"
                   onClick={() => setRoute({ name: "transactions" })}
                 >
                   <Plus className="mr-1.5 h-3.5 w-3.5" /> Make a Deposit
@@ -884,7 +884,7 @@ export function InvestorDashboard() {
           ════════════════════════════════════════════════════════════════ */}
       <FadeIn delay={0.4}>
         <SectionTitle title="Quick Actions" subtitle="Common operations at your fingertips" />
-        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
           <QuickActionCard
             icon={<Plus className="h-5 w-5" />}
             title="Deposit Funds"
@@ -968,7 +968,7 @@ function QuickActionCard({
   icon: React.ReactNode; title: string; description: string; onClick: () => void; accent?: "gold";
 }) {
   return (
-    <GlassCard hover className="group relative cursor-pointer overflow-hidden p-5 transition-all duration-300 hover:shadow-[inset_3px_0_0_rgba(212,175,55,0.6)]" onClick={onClick}>
+    <GlassCard hover className="group relative cursor-pointer overflow-hidden p-3 sm:p-4 lg:p-5 transition-all duration-300 hover:shadow-[inset_3px_0_0_rgba(212,175,55,0.6)]" onClick={onClick}>
       <div className={`mb-3 flex h-10 w-10 items-center justify-center rounded-lg ${
         accent === "gold" ? "bg-gold/10 text-gold group-hover:bg-gold-gradient group-hover:text-black" : "bg-white/5 text-muted-foreground group-hover:bg-gold/10 group-hover:text-gold"
       } transition-all duration-300`}>
@@ -1211,13 +1211,13 @@ function AnimatedMetric({
 
 function DashboardSkeleton() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-5 lg:space-y-6">
       <SkeletonMetric className="h-10 w-48 rounded" />
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
         {[0, 1, 2, 3].map((i) => <SkeletonMetric key={i} className="h-28" />)}
       </div>
       <SkeletonCard className="h-80 chart-hover-glow" />
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
         {[0, 1, 2, 3].map((i) => <SkeletonMetric key={i} className="h-20" />)}
       </div>
     </div>

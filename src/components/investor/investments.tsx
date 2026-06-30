@@ -32,6 +32,7 @@ import {
   Hourglass,
   XCircle,
   CircleSlash,
+  ChevronDown,
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -164,7 +165,7 @@ function durationLabel(days: number): string {
 
 function InvestmentsSkeleton() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-5 lg:space-y-6">
       <FadeIn>
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
@@ -175,12 +176,12 @@ function InvestmentsSkeleton() {
         </div>
       </FadeIn>
       <FadeIn delay={0.05}>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
           {[0, 1, 2, 3].map((i) => <SkeletonMetric key={i} className="h-28" />)}
         </div>
       </FadeIn>
       <FadeIn delay={0.1}>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
           {[0, 1, 2, 3, 4, 5].map((i) => <SkeletonCard key={i} className="h-64" />)}
         </div>
       </FadeIn>
@@ -239,7 +240,7 @@ function InvestmentDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="border-gold/20 bg-card/95 backdrop-blur-xl sm:max-w-3xl">
+      <DialogContent className="max-w-[95vw] border-gold/20 bg-card/95 backdrop-blur-xl sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between gap-3 pr-6">
             <span className="flex items-center gap-2">
@@ -253,20 +254,20 @@ function InvestmentDetailDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="max-h-[70vh] space-y-5 overflow-y-auto scroll-luxury pr-1">
+        <div className="max-h-[80vh] space-y-4 sm:space-y-5 overflow-y-auto scroll-luxury pr-1">
           {/* ─── Hero P&L ─── */}
-          <div className="grid gap-4 sm:grid-cols-3">
-            <div className="rounded-xl border border-border/40 bg-black/30 p-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div className="rounded-xl border border-border/40 bg-black/30 p-3 sm:p-4">
               <div className="text-[10.5px] font-medium uppercase tracking-[0.12em] text-muted-foreground">Invested</div>
-              <div className="mt-1 font-metric text-xl font-bold">{fmtUSD(investment.investedAmount)}</div>
+              <div className="mt-1 font-metric text-lg sm:text-xl font-bold">{fmtUSD(investment.investedAmount)}</div>
             </div>
-            <div className="rounded-xl border border-gold/30 bg-gold/5 p-4">
+            <div className="rounded-xl border border-gold/30 bg-gold/5 p-3 sm:p-4">
               <div className="text-[10.5px] font-medium uppercase tracking-[0.12em] text-gold/80">Current Value</div>
-              <div className="mt-1 font-metric text-xl font-bold text-gold">{fmtUSD(investment.currentValue)}</div>
+              <div className="mt-1 font-metric text-lg sm:text-xl font-bold text-gold">{fmtUSD(investment.currentValue)}</div>
             </div>
-            <div className={`rounded-xl border p-4 ${profit >= 0 ? "border-profit/30 bg-profit/5" : "border-loss/30 bg-loss/5"}`}>
+            <div className={`rounded-xl border p-3 sm:p-4 ${profit >= 0 ? "border-profit/30 bg-profit/5" : "border-loss/30 bg-loss/5"}`}>
               <div className="text-[10.5px] font-medium uppercase tracking-[0.12em] text-muted-foreground">Profit / Loss</div>
-              <div className={`mt-1 font-metric text-xl font-bold ${profit >= 0 ? "text-profit" : "text-loss"}`}>
+              <div className={`mt-1 font-metric text-lg sm:text-xl font-bold ${profit >= 0 ? "text-profit" : "text-loss"}`}>
                 {profit >= 0 ? "+" : ""}{fmtUSD(profit)}
               </div>
               <div className={`mt-0.5 text-xs ${roi >= 0 ? "text-profit/80" : "text-loss/80"}`}>{fmtPct(roi)} ROI</div>
@@ -316,12 +317,12 @@ function InvestmentDetailDialog({
           )}
 
           {/* ─── Value chart ─── */}
-          <div className="rounded-xl border border-border/40 bg-black/20 p-4">
+          <div className="rounded-xl border border-border/40 bg-black/20 p-3 sm:p-4">
             <div className="mb-3 flex items-center gap-2">
               <LineChartIcon className="h-4 w-4 text-gold" />
               <h3 className="text-sm font-semibold">Value Over Time</h3>
             </div>
-            <div className="h-56">
+            <div className="chart-mobile h-48 sm:h-56">
               {valueChartData.length > 1 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={valueChartData} margin={{ top: 6, right: 6, left: 6, bottom: 0 }}>
@@ -384,12 +385,12 @@ function InvestmentDetailDialog({
           </div>
 
           {/* ─── ROI chart ─── */}
-          <div className="rounded-xl border border-border/40 bg-black/20 p-4">
+          <div className="rounded-xl border border-border/40 bg-black/20 p-3 sm:p-4">
             <div className="mb-3 flex items-center gap-2">
               <TrendingUp className="h-4 w-4 text-gold" />
               <h3 className="text-sm font-semibold">ROI Growth</h3>
             </div>
-            <div className="h-48">
+            <div className="chart-mobile h-40 sm:h-48">
               {valueChartData.length > 1 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={valueChartData} margin={{ top: 6, right: 6, left: 6, bottom: 0 }}>
@@ -436,7 +437,7 @@ function InvestmentDetailDialog({
           </div>
 
           {/* ─── History table ─── */}
-          <div className="rounded-xl border border-border/40 bg-black/20 p-4">
+          <div className="rounded-xl border border-border/40 bg-black/20 p-3 sm:p-4">
             <div className="mb-3 flex items-center gap-2">
               <Activity className="h-4 w-4 text-gold" />
               <h3 className="text-sm font-semibold">Update History</h3>
@@ -444,7 +445,7 @@ function InvestmentDetailDialog({
             {history.length === 0 ? (
               <p className="py-6 text-center text-sm text-muted-foreground">No updates recorded yet</p>
             ) : (
-              <div className="max-h-64 overflow-y-auto scroll-luxury">
+              <div className="max-h-64 overflow-y-auto scroll-luxury table-mobile-card">
                 <table className="w-full text-sm">
                   <thead className="sticky top-0 bg-card/95 backdrop-blur">
                     <tr className="border-b border-border/60 text-left text-[11px] uppercase tracking-wider text-muted-foreground">
@@ -456,13 +457,13 @@ function InvestmentDetailDialog({
                   <tbody>
                     {history.map((h) => (
                       <tr key={h.id} className="border-b border-border/40 last:border-0">
-                        <td className="py-2.5 pr-4 text-muted-foreground">{fmtDate(h.createdAt, true)}</td>
-                        <td className="py-2.5 pr-4 font-metric">
+                        <td data-label="Date" className="py-2.5 pr-4 text-muted-foreground">{fmtDate(h.createdAt, true)}</td>
+                        <td data-label="Value" className="py-2.5 pr-4 font-metric">
                           <span className="text-muted-foreground">{fmtUSD(h.previousValue, { decimals: 2 })}</span>
                           <ArrowRight className="mx-1 inline h-3 w-3 text-gold/60" />
                           <span className="font-semibold text-gold">{fmtUSD(h.newValue, { decimals: 2 })}</span>
                         </td>
-                        <td className="py-2.5 pr-4 font-metric">
+                        <td data-label="ROI" className="py-2.5 pr-4 font-metric">
                           <span className="text-muted-foreground">{fmtPct(h.previousRoi)}</span>
                           <ArrowRight className="mx-1 inline h-3 w-3 text-gold/60" />
                           <span className={`font-semibold ${h.newRoi >= 0 ? "text-profit" : "text-loss"}`}>{fmtPct(h.newRoi)}</span>
@@ -517,6 +518,7 @@ function InvestmentCard({
   const roi = investment.roiPercent;
   const isProfit = profit >= 0;
   const progress = progressPct(investment.startDate, investment.endDate);
+  const [expanded, setExpanded] = useState(false);
 
   return (
     <motion.div
@@ -524,7 +526,7 @@ function InvestmentCard({
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.06, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
     >
-      <GlassCard className="h-full p-5 hover-lift gold-glow-hover">
+      <GlassCard className="h-full p-3 sm:p-4 lg:p-5 hover-lift gold-glow-hover">
         {/* Header: name + status */}
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
@@ -540,28 +542,28 @@ function InvestmentCard({
         <div className="mt-4 grid grid-cols-2 gap-3">
           <div>
             <div className="text-[10.5px] font-medium uppercase tracking-[0.12em] text-muted-foreground">Invested</div>
-            <div className="mt-0.5 font-metric text-lg font-bold">{fmtUSD(investment.investedAmount)}</div>
+            <div className="mt-0.5 font-metric text-base sm:text-lg font-bold">{fmtUSD(investment.investedAmount)}</div>
           </div>
           <div>
             <div className="text-[10.5px] font-medium uppercase tracking-[0.12em] text-gold/80">Current Value</div>
-            <div className="mt-0.5 font-metric text-lg font-bold text-gold">{fmtUSD(investment.currentValue)}</div>
+            <div className="mt-0.5 font-metric text-base sm:text-lg font-bold text-gold">{fmtUSD(investment.currentValue)}</div>
           </div>
         </div>
 
         {/* P&L + ROI pill */}
         <div className="mt-3 flex items-center justify-between gap-2 rounded-lg border border-border/40 bg-black/20 px-3 py-2">
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 min-w-0">
             {isProfit ? (
-              <TrendingUp className="h-3.5 w-3.5 text-profit" />
+              <TrendingUp className="h-3.5 w-3.5 text-profit shrink-0" />
             ) : (
-              <TrendingDown className="h-3.5 w-3.5 text-loss" />
+              <TrendingDown className="h-3.5 w-3.5 text-loss shrink-0" />
             )}
-            <span className={`font-metric text-sm font-semibold ${isProfit ? "text-profit" : "text-loss"}`}>
+            <span className={`font-metric text-sm font-semibold truncate ${isProfit ? "text-profit" : "text-loss"}`}>
               {isProfit ? "+" : ""}{fmtUSD(profit)}
             </span>
           </div>
           <span
-            className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold ${
+            className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold shrink-0 ${
               roi >= 0
                 ? "border-profit/30 bg-profit/10 text-profit"
                 : "border-loss/30 bg-loss/10 text-loss"
@@ -591,9 +593,44 @@ function InvestmentCard({
           <div className="mt-3 h-[18px]" />
         )}
 
+        {/* Tap-to-expand details (mobile only) */}
+        <button
+          type="button"
+          onClick={() => setExpanded((e) => !e)}
+          className="show-mobile mt-2 flex w-full items-center justify-between rounded-md border border-border/40 bg-black/20 px-3 py-2 text-[11px] font-medium text-foreground/80 tap-target"
+          aria-expanded={expanded}
+        >
+          <span>{expanded ? "Hide details" : "More details"}</span>
+          <ChevronDown className={`h-3.5 w-3.5 text-gold/70 transition-transform ${expanded ? "rotate-180" : ""}`} />
+        </button>
+        {expanded && (
+          <div className="show-mobile mt-2 space-y-1.5 rounded-md border border-border/40 bg-black/20 p-3 text-[11px] text-muted-foreground">
+            <div className="flex items-center justify-between">
+              <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /> Start</span>
+              <span className="text-foreground/80">{fmtDate(investment.startDate)}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {investment.endDate ? "End" : "Status"}</span>
+              <span className="text-foreground/80 truncate ml-2">
+                {investment.endDate ? fmtDate(investment.endDate) : "Active"}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="flex items-center gap-1"><Activity className="h-3 w-3" /> Duration</span>
+              <span className="text-foreground/80">{durationLabel(investment.durationDays)}</span>
+            </div>
+            {investment.notes && (
+              <div className="border-t border-border/40 pt-1.5">
+                <div className="mb-0.5 text-[10px] uppercase tracking-wider text-muted-foreground/70">Notes</div>
+                <p className="text-foreground/80 break-words-mobile">{investment.notes}</p>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Footer: dates + button */}
         <div className="mt-4 flex items-center justify-between gap-2 border-t border-border/40 pt-3">
-          <div className="min-w-0 flex-1 text-[11px] text-muted-foreground">
+          <div className="hide-mobile min-w-0 flex-1 text-[11px] text-muted-foreground">
             <div className="flex items-center gap-1">
               <Calendar className="h-3 w-3 shrink-0" />
               <span className="truncate">{fmtDate(investment.startDate)}</span>
@@ -616,7 +653,7 @@ function InvestmentCard({
             size="sm"
             variant="outline"
             onClick={onView}
-            className="border-gold/30 hover:bg-gold/10 hover:text-gold press-scale"
+            className="tap-target border-gold/30 hover:bg-gold/10 hover:text-gold press-scale"
           >
             View Details
             <ArrowRight className="ml-1 h-3.5 w-3.5" />
@@ -683,17 +720,17 @@ export function InvestorInvestments() {
   if (isLoading) return <InvestmentsSkeleton />;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-5 lg:space-y-6">
       {/* ─── 1. Header ─── */}
       <FadeIn>
         <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
+          <div className="min-w-0">
             <span className="text-xs font-medium uppercase tracking-[0.18em] text-gold">Investor Portal</span>
-            <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">My Investments</h1>
+            <h1 className="h2-responsive mt-1 font-bold tracking-tight">My Investments</h1>
             <p className="text-sm text-muted-foreground">Your active positions and performance</p>
           </div>
           {investments.length > 0 && (
-            <div className="flex items-center gap-2 rounded-lg border border-gold/20 bg-gold/5 px-3 py-1.5">
+            <div className="flex items-center gap-2 rounded-lg border border-gold/20 bg-gold/5 px-3 py-1.5 shrink-0">
               <Coins className="h-4 w-4 text-gold" />
               <span className="text-sm font-medium">
                 <span className="font-metric text-gold">{summary.activeCount}</span>
@@ -707,7 +744,7 @@ export function InvestorInvestments() {
       {/* ─── 2. Summary Metrics ─── */}
       {investments.length > 0 ? (
         <FadeIn delay={0.05}>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
             <MetricTile
               label="Total Invested"
               value={fmtUSD(summary.totalInvested)}
@@ -763,7 +800,7 @@ export function InvestorInvestments() {
       {/* ─── 3. Empty state ─── */}
       {investments.length === 0 ? (
         <FadeIn delay={0.1}>
-          <GlassCard className="p-6">
+          <GlassCard className="p-4 sm:p-6">
             <EmptyState
               icon={<PiggyBank className="h-7 w-7" />}
               title="No Investments Yet"
@@ -780,7 +817,7 @@ export function InvestorInvestments() {
               subtitle="Click any position to view detailed performance and history"
               className="mb-4"
             />
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
               {investments.map((inv, idx) => (
                 <InvestmentCard
                   key={inv.id}
