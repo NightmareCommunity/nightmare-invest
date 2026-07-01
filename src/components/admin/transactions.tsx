@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { fmtUSD, fmtDate } from "@/lib/format";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, X, ArrowDownToLine, ArrowUpFromLine, Clock, Inbox, ShieldAlert, Loader2 } from "lucide-react";
+import { Check, X, ArrowDownToLine, ArrowUpFromLine, Clock, Inbox, ShieldAlert, Loader2, Hash, Copy } from "lucide-react";
 import { toast } from "sonner";
 
 /* ──────────────────────────────────────────────────────────────────────────────
@@ -234,6 +234,12 @@ export function AdminTransactions() {
                             {formatCryptoAmount(t.method, t.cryptoAmount)}
                           </div>
                         )
+                      )}
+                      {t.proofRef && (
+                        <div className="mt-1 inline-flex items-center gap-1 rounded-md border border-gold/20 bg-gold/5 px-1.5 py-0.5 text-[10px] font-medium text-gold/90 max-w-full">
+                          <Hash className="h-2.5 w-2.5 shrink-0" />
+                          <span className="font-mono truncate max-w-[140px]">{t.proofRef}</span>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -461,6 +467,35 @@ export function AdminTransactions() {
                   <div className="text-sm text-foreground truncate">{reviewing.fund?.name}</div>
                 </div>
               </div>
+              {reviewing.type === "DEPOSIT" && reviewing.proofRef && (
+                <div className="rounded-lg border border-gold/30 bg-gold/[0.06] p-3">
+                  <div className="flex items-center gap-2">
+                    <Hash className="h-3.5 w-3.5 shrink-0 text-gold" />
+                    <div className="text-[11px] font-semibold uppercase tracking-wider text-gold">
+                      {(reviewing.method ?? "UPI").toUpperCase() === "UPI" ? "UPI Reference (UTR)" : `${(reviewing.method ?? "Crypto").toUpperCase()} Transaction Hash`}
+                    </div>
+                  </div>
+                  <div className="mt-2 flex items-center gap-2">
+                    <code className="block flex-1 min-w-0 overflow-x-auto scroll-row rounded-md border border-border/60 bg-black/40 px-2.5 py-1.5 font-mono text-[11px] text-foreground break-all">
+                      {reviewing.proofRef}
+                    </code>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="shrink-0 border-gold/30 hover:bg-gold/10 btn-full-mobile"
+                      onClick={() => {
+                        navigator.clipboard?.writeText(reviewing.proofRef);
+                        toast.success("Proof reference copied");
+                      }}
+                    >
+                      <Copy className="mr-1 h-3.5 w-3.5" /> Copy
+                    </Button>
+                  </div>
+                  <div className="mt-2 text-[11px] text-muted-foreground break-words-mobile">
+                    Verify this reference on the payment app / blockchain explorer before approving.
+                  </div>
+                </div>
+              )}
               {reviewing.type === "DEPOSIT" && (
                 <div className="rounded-lg border border-profit/20 bg-profit/5 p-3 text-xs text-foreground/90">
                   <strong className="text-profit">Approving</strong> will mint {fmtNum(reviewing.amount, 2)} units at current NAV and post a ledger entry.

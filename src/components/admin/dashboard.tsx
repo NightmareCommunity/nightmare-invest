@@ -9,7 +9,7 @@ import { useApp } from "@/lib/store";
 import {
   Users, DollarSign, ArrowDownToLine, ArrowUpFromLine, TrendingUp, TrendingDown, Activity,
   Wallet, Database, ShieldCheck, Clock, Server, Cpu, CheckCircle2,
-  AlertTriangle, ChevronRight, CircleDot, Zap, Eye, RefreshCw,
+  AlertTriangle, ChevronRight, CircleDot, Zap, Eye, RefreshCw, PiggyBank,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -115,24 +115,28 @@ export function AdminDashboard() {
   // Investor breakdown stats
   const totalInvestors = Array.isArray(allUsers) ? allUsers.length : (data.activeInvestors ?? 0);
   const activeCount = Array.isArray(allUsers) ? allUsers.filter((u: any) => u.isActive !== false).length : (data.activeInvestors ?? 0);
-  const pendingKyc = Array.isArray(allUsers) ? allUsers.filter((u: any) => u.kycStatus === "PENDING").length : 0;
 
-  // Pie chart data for investor tiers
+  // Pie chart data for investor tiers — KYC module disabled, so tiers reflect
+  // total/active/dormant split instead of KYC verification state.
   const tierData = (() => {
     if (!Array.isArray(allUsers) || allUsers.length === 0) {
       return [
-        { name: "Accredited", value: Math.round(totalInvestors * 0.35), color: "#D4AF37" },
-        { name: "Standard", value: Math.round(totalInvestors * 0.5), color: "#00c896" },
-        { name: "Pending KYC", value: Math.max(pendingKyc, 1), color: "#f5a623" },
+        { name: "Active", value: Math.max(data.activeInvestors ?? 0, 1), color: "#D4AF37" },
+        { name: "Registered", value: Math.max((data.totalUsers ?? 0) - (data.activeInvestors ?? 0), 1), color: "#00c896" },
+        { name: "New (24h)", value: 1, color: "#f5a623" },
       ];
     }
-    const accredited = allUsers.filter((u: any) => u.kycTier === "ACCREDITED").length;
-    const standard = allUsers.filter((u: any) => u.kycTier === "STANDARD" && u.kycStatus === "APPROVED").length;
-    const pending = allUsers.filter((u: any) => u.kycStatus === "PENDING" || u.kycStatus === "NONE").length;
+    const active = allUsers.filter((u: any) => u.isActive !== false).length;
+    const dormant = allUsers.filter((u: any) => u.isActive === false).length;
+    const recent = allUsers.filter((u: any) => {
+      if (!u.createdAt) return false;
+      const created = new Date(u.createdAt).getTime();
+      return Date.now() - created < 24 * 3600 * 1000;
+    }).length;
     return [
-      { name: "Accredited", value: accredited || 1, color: "#D4AF37" },
-      { name: "Standard", value: standard || 1, color: "#00c896" },
-      { name: "Pending KYC", value: pending || 1, color: "#f5a623" },
+      { name: "Active", value: active || 1, color: "#D4AF37" },
+      { name: "Dormant", value: dormant || 1, color: "#00c896" },
+      { name: "New (24h)", value: recent || 1, color: "#f5a623" },
     ];
   })();
 
@@ -194,7 +198,7 @@ export function AdminDashboard() {
 
       {/* ═══════════════════ 1. SUMMARY METRIC CARDS ═══════════════════ */}
       <FadeIn delay={0.05}>
-        <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
           <EnhancedMetric
             label="Total AUM"
             value={data.totalAum}
@@ -211,7 +215,7 @@ export function AdminDashboard() {
             animated
           />
           <EnhancedMetric
-            label="Active Investors"
+            label="Total Investors"
             value={data.activeInvestors}
             prefix=""
             icon={<Users className="h-5 w-5" />}
@@ -221,6 +225,31 @@ export function AdminDashboard() {
             sub={`${data.totalUsers} total accounts`}
             delta={totalInvestors > 0 ? ((data.activeInvestors / totalInvestors) * 100 - 80) : undefined}
             deltaLabel="activation rate"
+            cornerAccent
+            animated
+          />
+          <EnhancedMetric
+            label="Fund NAV"
+            value={data.currentNav ?? 100}
+            prefix="$"
+            decimals={2}
+            icon={<TrendingUp className="h-5 w-5" />}
+            accent="gold"
+            iconBg="bg-gold/15"
+            iconColor="text-gold"
+            sub={m ? `${fmtPct(m.dailyReturn)} today` : "Inception baseline"}
+            cornerAccent
+            animated
+          />
+          <EnhancedMetric
+            label="Active Investments"
+            value={data.activeInvestments ?? 0}
+            prefix=""
+            icon={<PiggyBank className="h-5 w-5" />}
+            accent="profit"
+            iconBg="bg-profit/15"
+            iconColor="text-profit"
+            sub="Open positions"
             cornerAccent
             animated
           />
@@ -630,9 +659,9 @@ export function AdminDashboard() {
                 <div className="font-metric text-lg font-bold text-profit">{activeCount}</div>
                 <div className="mt-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">Active</div>
               </div>
-              <div className="rounded-lg bg-warning/[0.06] p-3 text-center transition-colors hover:bg-warning/[0.1]">
-                <div className="font-metric text-lg font-bold text-warning">{pendingKyc}</div>
-                <div className="mt-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">Pending KYC</div>
+              <div className="rounded-lg bg-gold/[0.06] p-3 text-center transition-colors hover:bg-gold/[0.1]">
+                <div className="font-metric text-lg font-bold text-gold">{data.activeInvestments ?? 0}</div>
+                <div className="mt-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">Active Investments</div>
               </div>
             </div>
             {/* Pie chart + top investors */}
@@ -921,6 +950,7 @@ function EnhancedMetric({
   pulse,
   cornerAccent,
   animated = false,
+  decimals,
 }: {
   label: string;
   value: number;
@@ -937,9 +967,15 @@ function EnhancedMetric({
   pulse?: boolean;
   cornerAccent?: boolean;
   animated?: boolean;
+  decimals?: number;
 }) {
   const countVal = useCountUp(value, 1000);
-  const display = prefix === "$" ? fmtUSD(countVal, { compact: countVal > 1e6 }) : `${prefix}${fmtNum(countVal, 0)}`;
+  const display =
+    typeof decimals === "number"
+      ? `${prefix}${countVal.toLocaleString("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`
+      : prefix === "$"
+        ? fmtUSD(countVal, { compact: countVal > 1e6 })
+        : `${prefix}${fmtNum(countVal, 0)}`;
 
   const accentClass =
     accent === "profit" ? "text-profit" :

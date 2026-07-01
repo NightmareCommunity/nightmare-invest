@@ -1,0 +1,1186 @@
+     1→"use client";
+     2→import { useState, useMemo, useEffect } from "react";
+     3→import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+     4→import { api } from "@/lib/api-client";
+     5→import {
+     6→  GlassCard, SectionTitle, FadeIn, SkeletonMetric, SkeletonTable, EmptyState,
+     7→} from "@/components/brand/primitives";
+     8→import { Button } from "@/components/ui/button";
+     9→import { Input } from "@/components/ui/input";
+    10→import { Label } from "@/components/ui/label";
+    11→import { Textarea } from "@/components/ui/textarea";
+    12→import {
+    13→  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+    14→} from "@/components/ui/dialog";
+    15→import {
+    16→  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+    17→} from "@/components/ui/select";
+    18→import {
+    19→  Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
+    20→} from "@/components/ui/tooltip";
+    21→import { fmtUSD, fmtPct, fmtNum, fmtDate } from "@/lib/format";
+    22→import { motion, AnimatePresence } from "framer-motion";
+    23→import {
+    24→  ResponsiveContainer, LineChart, Line, XAxis, YAxis,
+    25→  Tooltip as RTooltip, CartesianGrid,
+    26→} from "recharts";
+    27→import {
+    28→  PiggyBank, Plus, Search, Pencil, Lock, X, Eye, TrendingUp, TrendingDown,
+    29→  Wallet, Target, BarChart3, Calendar, User, Loader2, ArrowRight,
+    30→} from "lucide-react";
+    31→import { toast } from "sonner";
+    32→
+    33→/* ──────────────────────────────────────────────────────────────────────────────
+    34→   ADMIN INVESTMENTS — Investment position management
+    35→   ────────────────────────────────────────────────────────────────────────────── */
+    36→
+    37→interface InvestmentHistoryEntry {
+    38→  id: string;
+    39→  previousValue: number;
+    40→  newValue: number;
+    41→  previousRoi: number;
+    42→  newRoi: number;
+    43→  updatedBy: string | null;
+    44→  createdAt: string;
+    45→}
+    46→
+    47→interface Investment {
+    48→  id: string;
+    49→  userId: string;
+    50→  fundId: string;
+    51→  investmentName: string;
+    52→  investedAmount: number;
+    53→  currentValue: number;
+    54→  profitLoss: number;
+    55→  roiPercent: number;
+    56→  startDate: string;
+    57→  endDate: string | null;
+    58→  durationDays: number;
+    59→  status: string;
+    60→  notes: string | null;
+    61→  createdBy: string | null;
+    62→  createdAt: string;
+    63→  updatedAt: string;
+    64→  user?: { name: string; email: string };
+    65→  fund?: { name: string };
+    66→  history?: InvestmentHistoryEntry[];
+    67→}
+    68→
+    69→interface UserOption {
+    70→  id: string;
+    71→  name: string;
+    72→  email: string;
+    73→}
+    74→
+    75→interface FundOption {
+    76→  id: string;
+    77→  name: string;
+    78→}
+    79→
+    80→const STATUS_TABS = ["ALL", "ACTIVE", "PENDING", "CLOSED", "CANCELLED", "COMPLETED"] as const;
+    81→type StatusTab = (typeof STATUS_TABS)[number];
+    82→
+    83→function InvestmentStatusBadge({ status }: { status: string }) {
+    84→  const map: Record<string, { label: string; cls: string; dot: string }> = {
+    85→    PENDING:    { label: "Pending",    cls: "text-warning border-warning/30 bg-warning/10", dot: "bg-warning" },
+    86→    ACTIVE:     { label: "Active",     cls: "text-profit border-profit/30 bg-profit/10",    dot: "bg-profit" },
+    87→    COMPLETED:  { label: "Completed",  cls: "text-gold border-gold/30 bg-gold/10",          dot: "bg-gold" },
+    88→    CLOSED:     { label: "Closed",     cls: "text-info border-info/30 bg-info/10",          dot: "bg-info" },
+    89→    CANCELLED:  { label: "Cancelled",  cls: "text-loss border-loss/30 bg-loss/10",          dot: "bg-loss" },
+    90→  };
+    91→  const s = map[status] ?? { label: status, cls: "text-muted-foreground border-border bg-muted", dot: "bg-muted-foreground" };
+    92→  return (
+    93→    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-medium ${s.cls}`}>
+    94→      <span className={`h-1.5 w-1.5 rounded-full ${s.dot}`} />
+    95→      {s.label}
+    96→    </span>
+    97→  );
+    98→}
+    99→
+   100→function todayISO() {
+   101→  return new Date().toISOString().slice(0, 10);
+   102→}
+   103→
+   104→function daysBetween(start: string, end: string): number | null {
+   105→  if (!start || !end) return null;
+   106→  const a = new Date(start).getTime();
+   107→  const b = new Date(end).getTime();
+   108→  if (isNaN(a) || isNaN(b)) return null;
+   109→  return Math.max(0, Math.round((b - a) / (1000 * 60 * 60 * 24)));
+   110→}
+   111→
+   112→interface FormState {
+   113→  userId: string;
+   114→  fundId: string;
+   115→  investmentName: string;
+   116→  investedAmount: string;
+   117→  currentValue: string;
+   118→  startDate: string;
+   119→  endDate: string;
+   120→  durationDays: string;
+   121→  notes: string;
+   122→}
+   123→
+   124→function emptyForm(fundId: string): FormState {
+   125→  return {
+   126→    userId: "",
+   127→    fundId,
+   128→    investmentName: "",
+   129→    investedAmount: "",
+   130→    currentValue: "",
+   131→    startDate: todayISO(),
+   132→    endDate: "",
+   133→    durationDays: "",
+   134→    notes: "",
+   135→  };
+   136→}
+   137→
+   138→export function AdminInvestments() {
+   139→  const qc = useQueryClient();
+   140→  const [q, setQ] = useState("");
+   141→  const [status, setStatus] = useState<StatusTab>("ALL");
+   142→  const [createOpen, setCreateOpen] = useState(false);
+   143→  const [editing, setEditing] = useState<Investment | null>(null);
+   144→  const [viewing, setViewing] = useState<Investment | null>(null);
+   145→  const [closing, setClosing] = useState<Investment | null>(null);
+   146→  const [cancelling, setCancelling] = useState<Investment | null>(null);
+   147→
+   148→  const queryKey = useMemo(() => ["admin-investments", q, status] as const, [q, status]);
+   149→
+   150→  const { data, isLoading } = useQuery<{ investments: Investment[] }>({
+   151→    queryKey,
+   152→    queryFn: () => {
+   153→      const params = new URLSearchParams();
+   154→      if (q) params.set("q", q);
+   155→      if (status !== "ALL") params.set("status", status);
+   156→      const qs = params.toString();
+   157→      return api.get(`/api/admin/investments${qs ? `?${qs}` : ""}`);
+   158→    },
+   159→    refetchInterval: 30000,
+   160→  });
+   161→
+   162→  const { data: usersData } = useQuery<{ users: UserOption[] }>({
+   163→    queryKey: ["admin-users-list"],
+   164→    queryFn: () => api.get("/api/admin/users"),
+   165→    staleTime: 60000,
+   166→  });
+   167→
+   168→  const { data: portfolioData } = useQuery<{ fund: FundOption }>({
+   169→    queryKey: ["portfolio-fund"],
+   170→    queryFn: () => api.get("/api/portfolio"),
+   171→    staleTime: 120000,
+   172→  });
+   173→
+   174→  const investments = data?.investments ?? [];
+   175→  const users = usersData?.users ?? [];
+   176→  const fund = portfolioData?.fund;
+   177→
+   178→  // ── Metric calculations (active only) ────────────────────────────────
+   179→  const active = investments.filter((i) => i.status === "ACTIVE");
+   180→  const totalCapital = active.reduce((s, i) => s + (i.investedAmount || 0), 0);
+   181→  const totalPL = active.reduce((s, i) => s + (i.profitLoss || 0), 0);
+   182→  const totalWeight = active.reduce((s, i) => s + (i.investedAmount || 0), 0) || 1;
+   183→  const avgRoi = active.reduce((s, i) => s + (i.roiPercent || 0) * (i.investedAmount || 0), 0) / totalWeight;
+   184→
+   185→  // ── Create form state ────────────────────────────────────────────────
+   186→  const [createForm, setCreateForm] = useState<FormState>(emptyForm(""));
+   187→  const [creating, setCreating] = useState(false);
+   188→
+   189→  // Once fund loads, set fundId on create form (only if user hasn't started editing)
+   190→  useEffect(() => {
+   191→    if (fund?.id && !createForm.fundId) {
+   192→      setCreateForm((f) => ({ ...f, fundId: fund.id }));
+   193→    }
+   194→  }, [fund?.id, createForm.fundId]);
+   195→
+   196→  // Auto-calc duration days from start/end
+   197→  useEffect(() => {
+   198→    if (createForm.startDate && createForm.endDate) {
+   199→      const d = daysBetween(createForm.startDate, createForm.endDate);
+   200→      if (d !== null) setCreateForm((f) => ({ ...f, durationDays: String(d) }));
+   201→    }
+   202→  }, [createForm.startDate, createForm.endDate]);
+   203→
+   204→  // ── Edit form state ──────────────────────────────────────────────────
+   205→  const [editForm, setEditForm] = useState<FormState>(emptyForm(""));
+   206→  const [saving, setSaving] = useState(false);
+   207→
+   208→  useEffect(() => {
+   209→    if (editing) {
+   210→      setEditForm({
+   211→        userId: editing.userId,
+   212→        fundId: editing.fundId,
+   213→        investmentName: editing.investmentName,
+   214→        investedAmount: String(editing.investedAmount ?? ""),
+   215→        currentValue: String(editing.currentValue ?? ""),
+   216→        startDate: editing.startDate ? editing.startDate.slice(0, 10) : "",
+   217→        endDate: editing.endDate ? editing.endDate.slice(0, 10) : "",
+   218→        durationDays: editing.durationDays ? String(editing.durationDays) : "",
+   219→        notes: editing.notes ?? "",
+   220→      });
+   221→    }
+   222→  }, [editing]);
+   223→
+   224→  useEffect(() => {
+   225→    if (editForm.startDate && editForm.endDate) {
+   226→      const d = daysBetween(editForm.startDate, editForm.endDate);
+   227→      if (d !== null) setEditForm((f) => ({ ...f, durationDays: String(d) }));
+   228→    }
+   229→  }, [editForm.startDate, editForm.endDate]);
+   230→
+   231→  // Live P&L / ROI preview for edit dialog
+   232→  const editInvested = parseFloat(editForm.investedAmount) || 0;
+   233→  const editCurrent = parseFloat(editForm.currentValue) || 0;
+   234→  const editPL = editCurrent - editInvested;
+   235→  const editRoi = editInvested > 0 ? (editPL / editInvested) * 100 : 0;
+   236→
+   237→  // ── Close dialog state ───────────────────────────────────────────────
+   238→  const [closeFinalValue, setCloseFinalValue] = useState("");
+   239→  const [closeNotes, setCloseNotes] = useState("");
+   240→  const [closingBusy, setClosingBusy] = useState(false);
+   241→
+   242→  useEffect(() => {
+   243→    if (closing) {
+   244→      setCloseFinalValue(String(closing.currentValue ?? ""));
+   245→      setCloseNotes("");
+   246→    }
+   247→  }, [closing]);
+   248→
+   249→  // ── Cancel dialog state ──────────────────────────────────────────────
+   250→  const [cancelNotes, setCancelNotes] = useState("");
+   251→  const [cancellingBusy, setCancellingBusy] = useState(false);
+   252→  useEffect(() => { if (cancelling) setCancelNotes(""); }, [cancelling]);
+   253→
+   254→  // ── Mutations ────────────────────────────────────────────────────────
+   255→  const invalidateAll = () => {
+   256→    qc.invalidateQueries({ queryKey: ["admin-investments"] });
+   257→    qc.invalidateQueries({ queryKey: ["admin-dashboard"] });
+   258→  };
+   259→
+   260→  const handleCreate = async () => {
+   261→    if (!createForm.userId) return toast.error("Select an investor");
+   262→    if (!createForm.fundId) return toast.error("Fund not loaded — please retry");
+   263→    if (!createForm.investmentName.trim()) return toast.error("Investment name is required");
+   264→    const invested = parseFloat(createForm.investedAmount);
+   265→    if (!invested || invested <= 0) return toast.error("Enter a valid invested amount");
+   266→    if (!createForm.startDate) return toast.error("Start date is required");
+   267→
+   268→    setCreating(true);
+   269→    try {
+   270→      const payload: Record<string, unknown> = {
+   271→        userId: createForm.userId,
+   272→        fundId: createForm.fundId,
+   273→        investmentName: createForm.investmentName.trim(),
+   274→        investedAmount: invested,
+   275→        currentValue: createForm.currentValue ? parseFloat(createForm.currentValue) : invested,
+   276→        startDate: createForm.startDate,
+   277→        notes: createForm.notes.trim() || undefined,
+   278→      };
+   279→      if (createForm.endDate) payload.endDate = createForm.endDate;
+   280→      if (createForm.durationDays) payload.durationDays = parseInt(createForm.durationDays) || undefined;
+   281→
+   282→      await api.post("/api/admin/investments", payload);
+   283→      toast.success("Investment created");
+   284→      setCreateOpen(false);
+   285→      setCreateForm(emptyForm(fund?.id ?? ""));
+   286→      invalidateAll();
+   287→    } catch (e) {
+   288→      toast.error(e instanceof Error ? e.message : "Failed to create investment");
+   289→    } finally {
+   290→      setCreating(false);
+   291→    }
+   292→  };
+   293→
+   294→  const handleEditSave = async () => {
+   295→    if (!editing) return;
+   296→    if (!editForm.investmentName.trim()) return toast.error("Investment name is required");
+   297→    const invested = parseFloat(editForm.investedAmount);
+   298→    if (!invested || invested <= 0) return toast.error("Enter a valid invested amount");
+   299→    const current = parseFloat(editForm.currentValue);
+   300→    if (isNaN(current)) return toast.error("Enter a valid current value");
+   301→    if (!editForm.startDate) return toast.error("Start date is required");
+   302→
+   303→    setSaving(true);
+   304→    try {
+   305→      const payload: Record<string, unknown> = {
+   306→        investmentName: editForm.investmentName.trim(),
+   307→        investedAmount: invested,
+   308→        currentValue: current,
+   309→        startDate: editForm.startDate,
+   310→        notes: editForm.notes.trim() || null,
+   311→      };
+   312→      if (editForm.endDate) payload.endDate = editForm.endDate;
+   313→      if (editForm.durationDays) payload.durationDays = parseInt(editForm.durationDays) || undefined;
+   314→
+   315→      await api.put(`/api/admin/investments/${editing.id}`, payload);
+   316→      toast.success("Investment updated");
+   317→      setEditing(null);
+   318→      invalidateAll();
+   319→    } catch (e) {
+   320→      toast.error(e instanceof Error ? e.message : "Failed to update investment");
+   321→    } finally {
+   322→      setSaving(false);
+   323→    }
+   324→  };
+   325→
+   326→  const handleClose = async () => {
+   327→    if (!closing) return;
+   328→    setClosingBusy(true);
+   329→    try {
+   330→      const payload: Record<string, unknown> = {};
+   331→      if (closeFinalValue) payload.finalValue = parseFloat(closeFinalValue);
+   332→      if (closeNotes.trim()) payload.notes = closeNotes.trim();
+   333→      await api.post(`/api/admin/investments/${closing.id}/close`, payload);
+   334→      toast.success("Investment closed");
+   335→      setClosing(null);
+   336→      invalidateAll();
+   337→    } catch (e) {
+   338→      toast.error(e instanceof Error ? e.message : "Failed to close investment");
+   339→    } finally {
+   340→      setClosingBusy(false);
+   341→    }
+   342→  };
+   343→
+   344→  const handleCancel = async () => {
+   345→    if (!cancelling) return;
+   346→    setCancellingBusy(true);
+   347→    try {
+   348→      const payload: Record<string, unknown> = {};
+   349→      if (cancelNotes.trim()) payload.notes = cancelNotes.trim();
+   350→      await api.post(`/api/admin/investments/${cancelling.id}/cancel`, payload);
+   351→      toast.success("Investment cancelled");
+   352→      setCancelling(null);
+   353→      invalidateAll();
+   354→    } catch (e) {
+   355→      toast.error(e instanceof Error ? e.message : "Failed to cancel investment");
+   356→    } finally {
+   357→      setCancellingBusy(false);
+   358→    }
+   359→  };
+   360→
+   361→  // ── Detail dialog: fetch full investment with history ────────────────
+   362→  const { data: detailData, isLoading: detailLoading } = useQuery<{ investment: Investment }>({
+   363→    queryKey: ["admin-investment-detail", viewing?.id],
+   364→    queryFn: () => api.get(`/api/admin/investments/${viewing!.id}`),
+   365→    enabled: !!viewing,
+   366→  });
+   367→  const detail: Investment | null = detailData?.investment ?? viewing;
+   368→
+   369→  // Build chart data from history + current value
+   370→  const chartData = useMemo(() => {
+   371→    if (!detail) return [];
+   372→    const pts = (detail.history ?? []).map((h) => ({ date: h.createdAt, value: h.newValue }));
+   373→    pts.push({ date: detail.updatedAt, value: detail.currentValue });
+   374→    return pts;
+   375→  }, [detail]);
+   376→
+   377→  // ─────────────────────────────────────────────────────────────────────
+   378→  // Render
+   379→  // ─────────────────────────────────────────────────────────────────────
+   380→  if (isLoading) {
+   381→    return (
+   382→      <div className="space-y-4 sm:space-y-6">
+   383→        <FadeIn>
+   384→          <div className="flex flex-wrap items-end justify-between gap-3 sm:gap-4">
+   385→            <div className="min-w-0">
+   386→              <span className="text-xs font-medium uppercase tracking-[0.18em] text-gold">Admin Console</span>
+   387→              <h1 className="h2-responsive mt-1 font-bold tracking-tight">Investment Management</h1>
+   388→              <p className="body-responsive text-muted-foreground">Create and manage investor positions</p>
+   389→            </div>
+   390→          </div>
+   391→        </FadeIn>
+   392→        <FadeIn delay={0.05}>
+   393→          <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+   394→            {[0, 1, 2, 3].map((i) => <SkeletonMetric key={i} className="h-28" />)}
+   395→          </div>
+   396→        </FadeIn>
+   397→        <FadeIn delay={0.1}>
+   398→          <GlassCard className="p-3 sm:p-4 lg:p-5">
+   399→            <SectionTitle title="Investments" subtitle="Loading…" />
+   400→            <div className="mt-4">
+   401→              <SkeletonTable rows={6} cols={8} />
+   402→            </div>
+   403→          </GlassCard>
+   404→        </FadeIn>
+   405→      </div>
+   406→    );
+   407→  }
+   408→
+   409→  return (
+   410→    <div className="space-y-4 sm:space-y-6">
+   411→      {/* Header */}
+   412→      <FadeIn>
+   413→        <div className="flex flex-wrap items-end justify-between gap-3 sm:gap-4">
+   414→          <div className="min-w-0">
+   415→            <span className="text-xs font-medium uppercase tracking-[0.18em] text-gold">Admin Console</span>
+   416→            <h1 className="h2-responsive mt-1 font-bold tracking-tight">Investment Management</h1>
+   417→            <p className="body-responsive text-muted-foreground">Create and manage investor positions</p>
+   418→          </div>
+   419→          <Button
+   420→            onClick={() => { setCreateForm(emptyForm(fund?.id ?? "")); setCreateOpen(true); }}
+   421→            className="bg-gold-gradient text-black hover:opacity-90 press-scale gap-1.5 tap-target-sm btn-full-mobile sm:btn-auto"
+   422→          >
+   423→            <Plus className="h-4 w-4" /> Create Investment
+   424→          </Button>
+   425→        </div>
+   426→      </FadeIn>
+   427→
+   428→      {/* Metric tiles */}
+   429→      <FadeIn delay={0.05}>
+   430→        <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+   431→          <GlassCard className="card-p sm:p-4 hover-lift gold-glow-hover">
+   432→            <div className="flex items-center gap-2 text-muted-foreground">
+   433→              <PiggyBank className="h-4 w-4" />
+   434→              <span className="text-[11px] uppercase tracking-wider">Total Investments</span>
+   435→            </div>
+   436→            <div className="mt-1 font-metric text-xl sm:text-2xl font-bold text-foreground">{investments.length}</div>
+   437→            <div className="text-[11px] text-muted-foreground">{active.length} active</div>
+   438→          </GlassCard>
+   439→
+   440→          <GlassCard className="card-p sm:p-4 hover-lift gold-glow-hover">
+   441→            <div className="flex items-center gap-2 text-muted-foreground">
+   442→              <Wallet className="h-4 w-4 text-gold" />
+   443→              <span className="text-[11px] uppercase tracking-wider">Capital Allocated</span>
+   444→            </div>
+   445→            <div className="mt-1 font-metric text-xl sm:text-2xl font-bold text-gold">{fmtUSD(totalCapital, { compact: true })}</div>
+   446→            <div className="text-[11px] text-muted-foreground">Across {active.length} position{active.length !== 1 ? "s" : ""}</div>
+   447→          </GlassCard>
+   448→
+   449→          <GlassCard className="card-p sm:p-4 hover-lift gold-glow-hover">
+   450→            <div className="flex items-center gap-2 text-muted-foreground">
+   451→              {totalPL >= 0 ? <TrendingUp className="h-4 w-4 text-profit" /> : <TrendingDown className="h-4 w-4 text-loss" />}
+   452→              <span className="text-[11px] uppercase tracking-wider">Active P&amp;L</span>
+   453→            </div>
+   454→            <div className={`mt-1 font-metric text-xl sm:text-2xl font-bold ${totalPL >= 0 ? "text-profit" : "text-loss"}`}>
+   455→              {fmtUSD(totalPL, { compact: true })}
+   456→            </div>
+   457→            <div className={`text-[11px] ${totalPL >= 0 ? "text-profit/70" : "text-loss/70"}`}>
+   458→              {fmtPct(active.length ? (totalPL / (totalCapital || 1)) * 100 : 0)} blended
+   459→            </div>
+   460→          </GlassCard>
+   461→
+   462→          <GlassCard className="card-p sm:p-4 hover-lift gold-glow-hover">
+   463→            <div className="flex items-center gap-2 text-muted-foreground">
+   464→              <Target className="h-4 w-4 text-gold" />
+   465→              <span className="text-[11px] uppercase tracking-wider">Avg ROI</span>
+   466→            </div>
+   467→            <div className={`mt-1 font-metric text-xl sm:text-2xl font-bold ${avgRoi >= 0 ? "text-profit" : "text-loss"}`}>
+   468→              {fmtPct(avgRoi)}
+   469→            </div>
+   470→            <div className="text-[11px] text-muted-foreground">Capital-weighted</div>
+   471→          </GlassCard>
+   472→        </div>
+   473→      </FadeIn>
+   474→
+   475→      {/* Search + filter bar */}
+   476→      <FadeIn delay={0.08}>
+   477→        <GlassCard className="p-3 sm:p-4">
+   478→          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+   479→            <div className="relative w-full sm:max-w-xs">
+   480→              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+   481→              <Input
+   482→                value={q}
+   483→                onChange={(e) => setQ(e.target.value)}
+   484→                placeholder="Search by name or email…"
+   485→                className="tap-target-sm border-border/60 bg-black/30 pl-9"
+   486→              />
+   487→            </div>
+   488→            <div className="scroll-row -mx-1 px-1 sm:mx-0 sm:px-0 sm:flex sm:flex-wrap sm:items-center sm:gap-1.5">
+   489→              {STATUS_TABS.map((s) => (
+   490→                <button
+   491→                  key={s}
+   492→                  onClick={() => setStatus(s)}
+   493→                  className={`rounded-full border px-3 py-1.5 text-[11px] font-medium uppercase tracking-wider transition-all press-scale tap-target-sm ${
+   494→                    status === s
+   495→                      ? "border-gold/50 bg-gold/10 text-gold shadow-[0_0_12px_rgba(212,175,55,0.15)]"
+   496→                      : "border-border/40 bg-black/20 text-muted-foreground hover:border-gold/30 hover:text-foreground"
+   497→                  }`}
+   498→                >
+   499→                  {s}
+   500→                </button>
+   501→              ))}
+   502→            </div>
+   503→          </div>
+   504→        </GlassCard>
+   505→      </FadeIn>
+   506→
+   507→      {/* Investments table */}
+   508→      <FadeIn delay={0.12}>
+   509→        <GlassCard className="p-3 sm:p-4 lg:p-5">
+   510→          <SectionTitle title="Investments" subtitle={`${investments.length} position${investments.length !== 1 ? "s" : ""}`} />
+   511→          {investments.length === 0 ? (
+   512→            <EmptyState
+   513→              icon={<PiggyBank className="h-7 w-7" />}
+   514→              title="No investments yet"
+   515→              description="Create your first investor position to start tracking performance and P&L."
+   516→              action={
+   517→                <Button
+   518→                  onClick={() => { setCreateForm(emptyForm(fund?.id ?? "")); setCreateOpen(true); }}
+   519→                  className="bg-gold-gradient text-black hover:opacity-90 gap-1.5 tap-target-sm"
+   520→                >
+   521→                  <Plus className="h-4 w-4" /> Create Investment
+   522→                </Button>
+   523→              }
+   524→            />
+   525→          ) : (
+   526→            <div className="mt-4 table-mobile-card overflow-x-auto scroll-x-allowed lg:overflow-visible">
+   527→              <table className="w-full text-sm">
+   528→                <thead>
+   529→                  <tr className="border-b border-border/60 text-left text-[11px] uppercase tracking-wider text-muted-foreground">
+   530→                    <th className="pb-2 pr-4 font-medium">Investment</th>
+   531→                    <th className="pb-2 pr-4 font-medium hide-mobile">User</th>
+   532→                    <th className="pb-2 pr-4 font-medium">Invested</th>
+   533→                    <th className="pb-2 pr-4 font-medium">Current</th>
+   534→                    <th className="pb-2 pr-4 font-medium">P&amp;L</th>
+   535→                    <th className="pb-2 pr-4 font-medium">Status</th>
+   536→                    <th className="pb-2 pr-4 font-medium hide-mobile">Start</th>
+   537→                    <th className="pb-2 font-medium text-right">Actions</th>
+   538→                  </tr>
+   539→                </thead>
+   540→                <tbody>
+   541→                  {investments.map((inv, idx) => {
+   542→                    const pl = inv.profitLoss;
+   543→                    const positive = pl >= 0;
+   544→                    const canClose = inv.status === "ACTIVE" || inv.status === "PENDING";
+   545→                    const canCancel = inv.status === "PENDING" || inv.status === "ACTIVE";
+   546→                    return (
+   547→                      <motion.tr
+   548→                        key={inv.id}
+   549→                        initial={{ opacity: 0, x: -6 }}
+   550→                        animate={{ opacity: 1, x: 0 }}
+   551→                        transition={{ duration: 0.35, delay: Math.min(idx * 0.04, 0.4), ease: [0.22, 1, 0.36, 1] }}
+   552→                        className="border-b border-border/40 last:border-0 hover:bg-gold/[0.04]"
+   553→                      >
+   554→                        <td data-label="Investment" className="py-3 pr-4">
+   555→                          <div className="font-medium text-foreground break-words-mobile">{inv.investmentName}</div>
+   556→                          <div className="text-[11px] text-muted-foreground break-words-mobile">{inv.user?.email ?? "—"}</div>
+   557→                          <div className="text-[11px] text-muted-foreground show-mobile">{inv.user?.name ?? "—"}</div>
+   558→                        </td>
+   559→                        <td data-label="User" className="py-3 pr-4 hide-mobile">
+   560→                          <div className="flex items-center gap-2">
+   561→                            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gold-gradient text-[10px] font-bold text-black">
+   562→                              {(inv.user?.name ?? "?").charAt(0).toUpperCase()}
+   563→                            </div>
+   564→                            <span className="text-foreground">{inv.user?.name ?? "—"}</span>
+   565→                          </div>
+   566→                        </td>
+   567→                        <td data-label="Invested" className="py-3 pr-4 font-metric text-muted-foreground">{fmtUSD(inv.investedAmount)}</td>
+   568→                        <td data-label="Current" className="py-3 pr-4 font-metric font-semibold text-foreground">{fmtUSD(inv.currentValue)}</td>
+   569→                        <td data-label="P&L" className="py-3 pr-4">
+   570→                          <div className={`font-metric font-semibold ${positive ? "text-profit" : "text-loss"}`}>
+   571→                            {positive ? "+" : ""}{fmtUSD(pl)}
+   572→                          </div>
+   573→                          <div className={`text-[11px] ${positive ? "text-profit/70" : "text-loss/70"}`}>
+   574→                            ({fmtPct(inv.roiPercent)})
+   575→                          </div>
+   576→                        </td>
+   577→                        <td data-label="Status" className="py-3 pr-4"><InvestmentStatusBadge status={inv.status} /></td>
+   578→                        <td data-label="Start" className="py-3 pr-4 text-muted-foreground hide-mobile">{fmtDate(inv.startDate)}</td>
+   579→                        <td data-label="Actions" className="cell-actions py-3">
+   580→                          <div className="flex items-center justify-end gap-1 flex-wrap">
+   581→                            <TooltipProvider delayDuration={200}>
+   582→                              <Tooltip>
+   583→                                <TooltipTrigger asChild>
+   584→                                  <Button size="sm" variant="ghost" onClick={() => setViewing(inv)} className="text-muted-foreground hover:text-gold hover:bg-gold/10 press-scale h-9 w-9 p-0 tap-target-sm">
+   585→                                    <Eye className="h-4 w-4" />
+   586→                                  </Button>
+   587→                                </TooltipTrigger>
+   588→                                <TooltipContent>View details</TooltipContent>
+   589→                              </Tooltip>
+   590→                            </TooltipProvider>
+   591→                            <TooltipProvider delayDuration={200}>
+   592→                              <Tooltip>
+   593→                                <TooltipTrigger asChild>
+   594→                                  <Button size="sm" variant="ghost" onClick={() => setEditing(inv)} className="text-muted-foreground hover:text-gold hover:bg-gold/10 press-scale h-9 w-9 p-0 tap-target-sm">
+   595→                                    <Pencil className="h-4 w-4" />
+   596→                                  </Button>
+   597→                                </TooltipTrigger>
+   598→                                <TooltipContent>Edit</TooltipContent>
+   599→                              </Tooltip>
+   600→                            </TooltipProvider>
+   601→                            {canClose && (
+   602→                              <TooltipProvider delayDuration={200}>
+   603→                                <Tooltip>
+   604→                                  <TooltipTrigger asChild>
+   605→                                    <Button size="sm" variant="ghost" onClick={() => setClosing(inv)} className="text-muted-foreground hover:text-info hover:bg-info/10 press-scale h-9 w-9 p-0 tap-target-sm">
+   606→                                      <Lock className="h-4 w-4" />
+   607→                                    </Button>
+   608→                                  </TooltipTrigger>
+   609→                                  <TooltipContent>Close position</TooltipContent>
+   610→                                </Tooltip>
+   611→                              </TooltipProvider>
+   612→                            )}
+   613→                            {canCancel && (
+   614→                              <TooltipProvider delayDuration={200}>
+   615→                                <Tooltip>
+   616→                                  <TooltipTrigger asChild>
+   617→                                    <Button size="sm" variant="ghost" onClick={() => setCancelling(inv)} className="text-muted-foreground hover:text-loss hover:bg-loss/10 press-scale h-9 w-9 p-0 tap-target-sm">
+   618→                                      <X className="h-4 w-4" />
+   619→                                    </Button>
+   620→                                  </TooltipTrigger>
+   621→                                  <TooltipContent>Cancel position</TooltipContent>
+   622→                                </Tooltip>
+   623→                              </TooltipProvider>
+   624→                            )}
+   625→                          </div>
+   626→                        </td>
+   627→                      </motion.tr>
+   628→                    );
+   629→                  })}
+   630→                </tbody>
+   631→              </table>
+   632→            </div>
+   633→          )}
+   634→        </GlassCard>
+   635→      </FadeIn>
+   636→
+   637→      {/* ─────────── Create Investment Dialog ─────────── */}
+   638→      <Dialog open={createOpen} onOpenChange={(o) => !o && setCreateOpen(false)}>
+   639→        <DialogContent className="border-gold/20 bg-card/95 backdrop-blur-xl max-w-[95vw] sm:max-w-lg max-h-[90vh] overflow-y-auto scroll-luxury">
+   640→          <DialogHeader>
+   641→            <DialogTitle className="flex items-center gap-2"><Plus className="h-5 w-5 text-gold" /> Create Investment</DialogTitle>
+   642→            <DialogDescription>Open a new investor position in the fund</DialogDescription>
+   643→          </DialogHeader>
+   644→          <div className="space-y-4 py-2">
+   645→            <div className="space-y-1.5">
+   646→              <Label className="text-xs uppercase tracking-wider text-muted-foreground">Investor</Label>
+   647→              <Select value={createForm.userId} onValueChange={(v) => setCreateForm({ ...createForm, userId: v })}>
+   648→                <SelectTrigger className="w-full border-border/60 bg-black/30">
+   649→                  <SelectValue placeholder="Select investor…" />
+   650→                </SelectTrigger>
+   651→                <SelectContent className="max-h-60">
+   652→                  {users.length === 0 ? (
+   653→                    <SelectItem value="__none" disabled>Loading investors…</SelectItem>
+   654→                  ) : (
+   655→                    users.map((u) => (
+   656→                      <SelectItem key={u.id} value={u.id}>
+   657→                        {u.name} <span className="text-muted-foreground">· {u.email}</span>
+   658→                      </SelectItem>
+   659→                    ))
+   660→                  )}
+   661→                </SelectContent>
+   662→              </Select>
+   663→            </div>
+   664→
+   665→            <div className="space-y-1.5">
+   666→              <Label className="text-xs uppercase tracking-wider text-muted-foreground">Fund</Label>
+   667→              <Input
+   668→                value={fund?.name ?? "Loading fund…"}
+   669→                readOnly
+   670→                disabled
+   671→                className="border-border/60 bg-black/40 text-muted-foreground"
+   672→              />
+   673→            </div>
+   674→
+   675→            <div className="space-y-1.5">
+   676→              <Label className="text-xs uppercase tracking-wider text-muted-foreground">Investment Name</Label>
+   677→              <Input
+   678→                value={createForm.investmentName}
+   679→                onChange={(e) => setCreateForm({ ...createForm, investmentName: e.target.value })}
+   680→                placeholder="Nightmare Alpha Position #001"
+   681→                className="border-border/60 bg-black/30"
+   682→              />
+   683→            </div>
+   684→
+   685→            <div className="grid gap-4 sm:grid-cols-2">
+   686→              <div className="space-y-1.5">
+   687→                <Label className="text-xs uppercase tracking-wider text-muted-foreground">Invested Amount (USD)</Label>
+   688→                <div className="relative">
+   689→                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">$</span>
+   690→                  <Input
+   691→                    type="number"
+   692→                    min={0}
+   693→                    value={createForm.investedAmount}
+   694→                    onChange={(e) => setCreateForm({ ...createForm, investedAmount: e.target.value })}
+   695→                    placeholder="100000"
+   696→                    className="border-border/60 bg-black/30 pl-7 font-metric"
+   697→                  />
+   698→                </div>
+   699→              </div>
+   700→              <div className="space-y-1.5">
+   701→                <Label className="text-xs uppercase tracking-wider text-muted-foreground">Initial Current Value</Label>
+   702→                <div className="relative">
+   703→                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">$</span>
+   704→                  <Input
+   705→                    type="number"
+   706→                    min={0}
+   707→                    value={createForm.currentValue}
+   708→                    onChange={(e) => setCreateForm({ ...createForm, currentValue: e.target.value })}
+   709→                    placeholder="Defaults to invested"
+   710→                    className="border-border/60 bg-black/30 pl-7 font-metric"
+   711→                  />
+   712→                </div>
+   713→              </div>
+   714→            </div>
+   715→
+   716→            <div className="grid gap-4 sm:grid-cols-2">
+   717→              <div className="space-y-1.5">
+   718→                <Label className="text-xs uppercase tracking-wider text-muted-foreground">Start Date</Label>
+   719→                <div className="relative">
+   720→                  <Calendar className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+   721→                  <Input
+   722→                    type="date"
+   723→                    value={createForm.startDate}
+   724→                    onChange={(e) => setCreateForm({ ...createForm, startDate: e.target.value })}
+   725→                    className="border-border/60 bg-black/30 pl-9"
+   726→                  />
+   727→                </div>
+   728→              </div>
+   729→              <div className="space-y-1.5">
+   730→                <Label className="text-xs uppercase tracking-wider text-muted-foreground">End Date (optional)</Label>
+   731→                <div className="relative">
+   732→                  <Calendar className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+   733→                  <Input
+   734→                    type="date"
+   735→                    value={createForm.endDate}
+   736→                    onChange={(e) => setCreateForm({ ...createForm, endDate: e.target.value })}
+   737→                    className="border-border/60 bg-black/30 pl-9"
+   738→                  />
+   739→                </div>
+   740→              </div>
+   741→            </div>
+   742→
+   743→            <div className="space-y-1.5">
+   744→              <Label className="text-xs uppercase tracking-wider text-muted-foreground">Duration Days (auto from dates)</Label>
+   745→              <Input
+   746→                type="number"
+   747→                min={0}
+   748→                value={createForm.durationDays}
+   749→                onChange={(e) => setCreateForm({ ...createForm, durationDays: e.target.value })}
+   750→                placeholder="365"
+   751→                className="border-border/60 bg-black/30 font-metric"
+   752→              />
+   753→            </div>
+   754→
+   755→            <div className="space-y-1.5">
+   756→              <Label className="text-xs uppercase tracking-wider text-muted-foreground">Notes (optional)</Label>
+   757→              <Textarea
+   758→                value={createForm.notes}
+   759→                onChange={(e) => setCreateForm({ ...createForm, notes: e.target.value })}
+   760→                placeholder="Strategy, mandate, or admin notes…"
+   761→                rows={2}
+   762→                className="border-border/60 bg-black/30 text-sm"
+   763→              />
+   764→            </div>
+   765→          </div>
+   766→          <DialogFooter className="gap-2 sm:gap-2 flex-col sm:flex-row">
+   767→            <Button variant="ghost" onClick={() => setCreateOpen(false)} className="btn-full-mobile tap-target-sm">Cancel</Button>
+   768→            <Button
+   769→              onClick={handleCreate}
+   770→              disabled={creating}
+   771→              className="bg-gold-gradient text-black hover:opacity-90 press-scale gap-1.5 btn-full-mobile tap-target-sm"
+   772→            >
+   773→              {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+   774→              {creating ? "Creating…" : "Create Investment"}
+   775→            </Button>
+   776→          </DialogFooter>
+   777→        </DialogContent>
+   778→      </Dialog>
+   779→
+   780→      {/* ─────────── Edit Investment Dialog ─────────── */}
+   781→      <Dialog open={editing !== null} onOpenChange={(o) => !o && setEditing(null)}>
+   782→        <DialogContent className="border-gold/20 bg-card/95 backdrop-blur-xl max-w-[95vw] sm:max-w-lg max-h-[90vh] overflow-y-auto scroll-luxury">
+   783→          <DialogHeader>
+   784→            <DialogTitle className="flex items-center gap-2"><Pencil className="h-5 w-5 text-gold" /> Edit Investment</DialogTitle>
+   785→            <DialogDescription>Update position details and current value</DialogDescription>
+   786→          </DialogHeader>
+   787→          {editing && (
+   788→            <div className="space-y-4 py-2">
+   789→              <div className="grid gap-4 sm:grid-cols-2">
+   790→                <div className="space-y-1.5">
+   791→                  <Label className="text-xs uppercase tracking-wider text-muted-foreground">Investor</Label>
+   792→                  <Input
+   793→                    value={editing.user?.name ?? "—"}
+   794→                    readOnly
+   795→                    disabled
+   796→                    className="border-border/60 bg-black/40 text-muted-foreground"
+   797→                  />
+   798→                </div>
+   799→                <div className="space-y-1.5">
+   800→                  <Label className="text-xs uppercase tracking-wider text-muted-foreground">Fund</Label>
+   801→                  <Input
+   802→                    value={editing.fund?.name ?? "—"}
+   803→                    readOnly
+   804→                    disabled
+   805→                    className="border-border/60 bg-black/40 text-muted-foreground"
+   806→                  />
+   807→                </div>
+   808→              </div>
+   809→
+   810→              <div className="space-y-1.5">
+   811→                <Label className="text-xs uppercase tracking-wider text-muted-foreground">Investment Name</Label>
+   812→                <Input
+   813→                  value={editForm.investmentName}
+   814→                  onChange={(e) => setEditForm({ ...editForm, investmentName: e.target.value })}
+   815→                  className="border-border/60 bg-black/30"
+   816→                />
+   817→              </div>
+   818→
+   819→              <div className="grid gap-4 sm:grid-cols-2">
+   820→                <div className="space-y-1.5">
+   821→                  <Label className="text-xs uppercase tracking-wider text-muted-foreground">Invested Amount</Label>
+   822→                  <div className="relative">
+   823→                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">$</span>
+   824→                    <Input
+   825→                      type="number"
+   826→                      min={0}
+   827→                      value={editForm.investedAmount}
+   828→                      onChange={(e) => setEditForm({ ...editForm, investedAmount: e.target.value })}
+   829→                      className="border-border/60 bg-black/30 pl-7 font-metric"
+   830→                    />
+   831→                  </div>
+   832→                </div>
+   833→                <div className="space-y-1.5">
+   834→                  <Label className="text-xs uppercase tracking-wider text-muted-foreground">Current Value</Label>
+   835→                  <div className="relative">
+   836→                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">$</span>
+   837→                    <Input
+   838→                      type="number"
+   839→                      min={0}
+   840→                      value={editForm.currentValue}
+   841→                      onChange={(e) => setEditForm({ ...editForm, currentValue: e.target.value })}
+   842→                      className="border-border/60 bg-black/30 pl-7 font-metric"
+   843→                    />
+   844→                  </div>
+   845→                </div>
+   846→              </div>
+   847→
+   848→              {/* Live P&L / ROI preview */}
+   849→              <div className="grid grid-cols-3 gap-2 rounded-lg border border-gold/15 bg-gold/[0.04] p-3">
+   850→                <div>
+   851→                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground">P&amp;L</div>
+   852→                  <div className={`font-metric text-sm font-semibold ${editPL >= 0 ? "text-profit" : "text-loss"}`}>
+   853→                    {editPL >= 0 ? "+" : ""}{fmtUSD(editPL)}
+   854→                  </div>
+   855→                </div>
+   856→                <div>
+   857→                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground">ROI</div>
+   858→                  <div className={`font-metric text-sm font-semibold ${editRoi >= 0 ? "text-profit" : "text-loss"}`}>
+   859→                    {fmtPct(editRoi)}
+   860→                  </div>
+   861→                </div>
+   862→                <div>
+   863→                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Change</div>
+   864→                  <div className={`font-metric text-sm font-semibold ${editCurrent - editInvested >= 0 ? "text-profit" : "text-loss"}`}>
+   865→                    {editInvested > 0 ? fmtPct(((editCurrent - editInvested) / editInvested) * 100) : "—"}
+   866→                  </div>
+   867→                </div>
+   868→              </div>
+   869→
+   870→              <div className="grid gap-4 sm:grid-cols-2">
+   871→                <div className="space-y-1.5">
+   872→                  <Label className="text-xs uppercase tracking-wider text-muted-foreground">Start Date</Label>
+   873→                  <div className="relative">
+   874→                    <Calendar className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+   875→                    <Input
+   876→                      type="date"
+   877→                      value={editForm.startDate}
+   878→                      onChange={(e) => setEditForm({ ...editForm, startDate: e.target.value })}
+   879→                      className="border-border/60 bg-black/30 pl-9"
+   880→                    />
+   881→                  </div>
+   882→                </div>
+   883→                <div className="space-y-1.5">
+   884→                  <Label className="text-xs uppercase tracking-wider text-muted-foreground">End Date</Label>
+   885→                  <div className="relative">
+   886→                    <Calendar className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+   887→                    <Input
+   888→                      type="date"
+   889→                      value={editForm.endDate}
+   890→                      onChange={(e) => setEditForm({ ...editForm, endDate: e.target.value })}
+   891→                      className="border-border/60 bg-black/30 pl-9"
+   892→                    />
+   893→                  </div>
+   894→                </div>
+   895→              </div>
+   896→
+   897→              <div className="space-y-1.5">
+   898→                <Label className="text-xs uppercase tracking-wider text-muted-foreground">Notes</Label>
+   899→                <Textarea
+   900→                  value={editForm.notes}
+   901→                  onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
+   902→                  rows={2}
+   903→                  className="border-border/60 bg-black/30 text-sm"
+   904→                />
+   905→              </div>
+   906→            </div>
+   907→          )}
+   908→          <DialogFooter className="gap-2 sm:gap-2 flex-col sm:flex-row">
+   909→            <Button variant="ghost" onClick={() => setEditing(null)} className="btn-full-mobile tap-target-sm">Cancel</Button>
+   910→            <Button
+   911→              onClick={handleEditSave}
+   912→              disabled={saving}
+   913→              className="bg-gold-gradient text-black hover:opacity-90 press-scale gap-1.5 btn-full-mobile tap-target-sm"
+   914→            >
+   915→              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Pencil className="h-4 w-4" />}
+   916→              {saving ? "Saving…" : "Save Changes"}
+   917→            </Button>
+   918→          </DialogFooter>
+   919→        </DialogContent>
+   920→      </Dialog>
+   921→
+   922→      {/* ─────────── Detail Dialog ─────────── */}
+   923→      <Dialog open={viewing !== null} onOpenChange={(o) => !o && setViewing(null)}>
+   924→        <DialogContent className="border-gold/20 bg-card/95 backdrop-blur-xl max-w-[95vw] sm:max-w-2xl max-h-[90vh] overflow-y-auto scroll-luxury">
+   925→          <DialogHeader>
+   926→            <DialogTitle className="flex items-center gap-2"><Eye className="h-5 w-5 text-gold" /> Investment Detail</DialogTitle>
+   927→            <DialogDescription>{detail?.investmentName ?? "Loading…"}</DialogDescription>
+   928→          </DialogHeader>
+   929→          {detail ? (
+   930→            <div className="space-y-5 py-2">
+   931→              {/* P&L summary card */}
+   932→              <div className="grid grid-cols-2 gap-3 rounded-xl border border-gold/20 bg-gold/[0.04] p-3 sm:p-4 sm:grid-cols-4">
+   933→                <div>
+   934→                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Invested</div>
+   935→                  <div className="mt-0.5 font-metric text-base font-bold text-foreground">{fmtUSD(detail.investedAmount)}</div>
+   936→                </div>
+   937→                <div>
+   938→                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Current</div>
+   939→                  <div className="mt-0.5 font-metric text-base font-bold text-gold">{fmtUSD(detail.currentValue)}</div>
+   940→                </div>
+   941→                <div>
+   942→                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground">P&amp;L</div>
+   943→                  <div className={`mt-0.5 font-metric text-base font-bold ${detail.profitLoss >= 0 ? "text-profit" : "text-loss"}`}>
+   944→                    {detail.profitLoss >= 0 ? "+" : ""}{fmtUSD(detail.profitLoss)}
+   945→                  </div>
+   946→                </div>
+   947→                <div>
+   948→                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground">ROI</div>
+   949→                  <div className={`mt-0.5 font-metric text-base font-bold ${detail.roiPercent >= 0 ? "text-profit" : "text-loss"}`}>
+   950→                    {fmtPct(detail.roiPercent)}
+   951→                  </div>
+   952→                </div>
+   953→              </div>
+   954→
+   955→              {/* Metadata grid */}
+   956→              <div className="grid grid-cols-2 gap-3 rounded-lg border border-border/60 bg-black/20 p-3 sm:p-4 sm:grid-cols-3">
+   957→                <Meta label="Investor" value={detail.user?.name ?? "—"} sub={detail.user?.email} />
+   958→                <Meta label="Fund" value={detail.fund?.name ?? "—"} />
+   959→                <Meta label="Status" value={<InvestmentStatusBadge status={detail.status} />} />
+   960→                <Meta label="Start Date" value={fmtDate(detail.startDate)} />
+   961→                <Meta label="End Date" value={detail.endDate ? fmtDate(detail.endDate) : "—"} />
+   962→                <Meta label="Duration" value={detail.durationDays ? `${detail.durationDays} days` : "—"} />
+   963→                <Meta label="Created" value={fmtDate(detail.createdAt, true)} />
+   964→                <Meta label="Last Update" value={fmtDate(detail.updatedAt, true)} />
+   965→                <Meta label="Created By" value={detail.createdBy ?? "—"} />
+   966→              </div>
+   967→
+   968→              {detail.notes && (
+   969→                <div className="rounded-lg border border-border/60 bg-black/20 p-3">
+   970→                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Notes</div>
+   971→                  <div className="mt-1 text-sm text-foreground whitespace-pre-wrap">{detail.notes}</div>
+   972→                </div>
+   973→              )}
+   974→
+   975→              {/* Performance chart */}
+   976→              <div>
+   977→                <div className="flex items-center gap-2 mb-2">
+   978→                  <BarChart3 className="h-4 w-4 text-gold" />
+   979→                  <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Value History</h4>
+   980→                </div>
+   981→                <div className="chart-mobile rounded-lg border border-border/40 bg-black/20 p-3">
+   982→                  {chartData.length >= 2 ? (
+   983→                    <ResponsiveContainer width="100%" height="100%">
+   984→                      <LineChart data={chartData} margin={{ top: 6, right: 8, left: 0, bottom: 0 }}>
+   985→                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+   986→                        <XAxis
+   987→                          dataKey="date"
+   988→                          tickFormatter={(d) => new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+   989→                          tick={{ fill: "#7A7A7A", fontSize: 10 }}
+   990→                          stroke="rgba(255,255,255,0.08)"
+   991→                          minTickGap={30}
+   992→                        />
+   993→                        <YAxis
+   994→                          tickFormatter={(v) => fmtUSD(Number(v), { compact: true })}
+   995→                          tick={{ fill: "#7A7A7A", fontSize: 10 }}
+   996→                          stroke="rgba(255,255,255,0.08)"
+   997→                          width={56}
+   998→                          domain={["auto", "auto"]}
+   999→                        />
+  1000→                        <RTooltip
+  1001→                          contentStyle={{ background: "rgba(20,20,22,0.95)", border: "1px solid rgba(212,175,55,0.25)", borderRadius: "10px" }}
+  1002→                          formatter={(v: number) => [fmtUSD(Number(v)), "Value"]}
+  1003→                          labelFormatter={(d) => new Date(d as string).toLocaleString()}
+  1004→                        />
+  1005→                        <Line type="monotone" dataKey="value" stroke="#D4AF37" strokeWidth={2} dot={{ r: 2, fill: "#D4AF37" }} />
+  1006→                      </LineChart>
+  1007→                    </ResponsiveContainer>
+  1008→                  ) : (
+  1009→                    <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
+  1010→                      No history yet — first valuation update will appear here.
+  1011→                    </div>
+  1012→                  )}
+  1013→                </div>
+  1014→              </div>
+  1015→
+  1016→              {/* History table */}
+  1017→              <div>
+  1018→                <div className="flex items-center gap-2 mb-2">
+  1019→                  <Target className="h-4 w-4 text-gold" />
+  1020→                  <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Valuation History</h4>
+  1021→                </div>
+  1022→                <div className="max-h-56 overflow-y-auto scroll-luxury rounded-lg border border-border/60">
+  1023→                  <div className="table-mobile-card overflow-x-auto scroll-x-allowed">
+  1024→                  <table className="w-full text-xs">
+  1025→                    <thead className="sticky top-0 bg-card/95 backdrop-blur">
+  1026→                      <tr className="border-b border-border/60 text-left uppercase tracking-wider text-muted-foreground">
+  1027→                        <th className="p-2 font-medium">Date</th>
+  1028→                        <th className="p-2 font-medium">Prev Value</th>
+  1029→                        <th className="p-2 font-medium">New Value</th>
+  1030→                        <th className="p-2 font-medium">Prev ROI</th>
+  1031→                        <th className="p-2 font-medium">New ROI</th>
+  1032→                        <th className="p-2 font-medium">By</th>
+  1033→                      </tr>
+  1034→                    </thead>
+  1035→                    <tbody>
+  1036→                      {(detail.history ?? []).length === 0 ? (
+  1037→                        <tr><td colSpan={6} className="p-4 text-center text-muted-foreground">No valuation updates recorded</td></tr>
+  1038→                      ) : (
+  1039→                        (detail.history ?? []).map((h) => (
+  1040→                          <tr key={h.id} className="border-b border-border/40 last:border-0 hover:bg-gold/[0.04]">
+  1041→                            <td data-label="Date" className="p-2 text-muted-foreground">{fmtDate(h.createdAt, true)}</td>
+  1042→                            <td data-label="Prev Value" className="p-2 font-metric text-muted-foreground">{fmtUSD(h.previousValue)}</td>
+  1043→                            <td data-label="New Value" className="p-2 font-metric font-semibold text-foreground">{fmtUSD(h.newValue)}</td>
+  1044→                            <td data-label="Prev ROI" className="p-2 font-metric text-muted-foreground">{fmtPct(h.previousRoi)}</td>
+  1045→                            <td data-label="New ROI" className={`p-2 font-metric font-semibold ${h.newRoi >= h.previousRoi ? "text-profit" : "text-loss"}`}>{fmtPct(h.newRoi)}</td>
+  1046→                            <td data-label="By" className="p-2 text-muted-foreground">{h.updatedBy ?? "system"}</td>
+  1047→                          </tr>
+  1048→                        ))
+  1049→                      )}
+  1050→                    </tbody>
+  1051→                  </table>
+  1052→                  </div>
+  1053→                </div>
+  1054→              </div>
+  1055→            </div>
+  1056→          ) : (
+  1057→            <div className="flex items-center justify-center py-10">
+  1058→              <Loader2 className="h-6 w-6 animate-spin text-gold" />
+  1059→            </div>
+  1060→          )}
+  1061→          <DialogFooter className="gap-2 sm:gap-2 flex-col sm:flex-row">
+  1062→            <Button variant="ghost" onClick={() => setViewing(null)} className="btn-full-mobile tap-target-sm">Close</Button>
+  1063→          </DialogFooter>
+  1064→        </DialogContent>
+  1065→      </Dialog>
+  1066→
+  1067→      {/* ─────────── Close Confirmation Dialog ─────────── */}
+  1068→      <Dialog open={closing !== null} onOpenChange={(o) => !o && !closingBusy && setClosing(null)}>
+  1069→        <DialogContent className="border-gold/20 bg-card/95 backdrop-blur-xl max-w-[95vw] sm:max-w-md max-h-[90vh] overflow-y-auto scroll-luxury">
+  1070→          <DialogHeader>
+  1071→            <DialogTitle className="flex items-center gap-2"><Lock className="h-5 w-5 text-info" /> Close Investment</DialogTitle>
+  1072→            <DialogDescription>
+  1073→              Close <strong className="text-foreground">{closing?.investmentName}</strong>? This will lock the position and record the final value.
+  1074→            </DialogDescription>
+  1075→          </DialogHeader>
+  1076→          {closing && (
+  1077→            <div className="space-y-4 py-2">
+  1078→              <div className="grid grid-cols-2 gap-3 rounded-lg border border-border/60 bg-black/20 p-3 text-xs">
+  1079→                <div>
+  1080→                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Invested</div>
+  1081→                  <div className="font-metric font-semibold text-foreground">{fmtUSD(closing.investedAmount)}</div>
+  1082→                </div>
+  1083→                <div>
+  1084→                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Current</div>
+  1085→                  <div className="font-metric font-semibold text-gold">{fmtUSD(closing.currentValue)}</div>
+  1086→                </div>
+  1087→              </div>
+  1088→              <div className="space-y-1.5">
+  1089→                <Label className="text-xs uppercase tracking-wider text-muted-foreground">Final Value (optional)</Label>
+  1090→                <div className="relative">
+  1091→                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">$</span>
+  1092→                  <Input
+  1093→                    type="number"
+  1094→                    min={0}
+  1095→                    value={closeFinalValue}
+  1096→                    onChange={(e) => setCloseFinalValue(e.target.value)}
+  1097→                    className="border-border/60 bg-black/30 pl-7 font-metric"
+  1098→                  />
+  1099→                </div>
+  1100→                <p className="text-[11px] text-muted-foreground">Defaults to current value if left unchanged.</p>
+  1101→              </div>
+  1102→              <div className="space-y-1.5">
+  1103→                <Label className="text-xs uppercase tracking-wider text-muted-foreground">Closing Notes (optional)</Label>
+  1104→                <Textarea
+  1105→                  value={closeNotes}
+  1106→                  onChange={(e) => setCloseNotes(e.target.value)}
+  1107→                  placeholder="Reason for closing, final settlement notes…"
+  1108→                  rows={2}
+  1109→                  className="border-border/60 bg-black/30 text-sm"
+  1110→                />
+  1111→              </div>
+  1112→            </div>
+  1113→          )}
+  1114→          <DialogFooter className="gap-2 sm:gap-2 flex-col sm:flex-row">
+  1115→            <Button variant="ghost" onClick={() => setClosing(null)} disabled={closingBusy} className="btn-full-mobile tap-target-sm">Cancel</Button>
+  1116→            <Button
+  1117→              onClick={handleClose}
+  1118→              disabled={closingBusy}
+  1119→              variant="outline"
+  1120→              className="border-info/40 text-info hover:bg-info/10 gap-1.5 press-scale btn-full-mobile tap-target-sm"
+  1121→            >
+  1122→              {closingBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Lock className="h-4 w-4" />}
+  1123→              {closingBusy ? "Closing…" : "Confirm Close"}
+  1124→            </Button>
+  1125→          </DialogFooter>
+  1126→        </DialogContent>
+  1127→      </Dialog>
+  1128→
+  1129→      {/* ─────────── Cancel Confirmation Dialog ─────────── */}
+  1130→      <Dialog open={cancelling !== null} onOpenChange={(o) => !o && !cancellingBusy && setCancelling(null)}>
+  1131→        <DialogContent className="border-gold/20 bg-card/95 backdrop-blur-xl max-w-[95vw] sm:max-w-md max-h-[90vh] overflow-y-auto scroll-luxury">
+  1132→          <DialogHeader>
+  1133→            <DialogTitle className="flex items-center gap-2"><X className="h-5 w-5 text-loss" /> Cancel Investment</DialogTitle>
+  1134→            <DialogDescription>
+  1135→              Cancel <strong className="text-foreground">{cancelling?.investmentName}</strong>? This action is irreversible.
+  1136→            </DialogDescription>
+  1137→          </DialogHeader>
+  1138→          {cancelling && (
+  1139→            <div className="space-y-4 py-2">
+  1140→              <div className="rounded-lg border border-loss/20 bg-loss/5 p-3 text-xs text-foreground/90">
+  1141→                <strong className="text-loss">Warning:</strong> Cancelling will mark this position as cancelled. The invested capital remains unaffected, but the position will stop accruing performance.
+  1142→              </div>
+  1143→              <div className="space-y-1.5">
+  1144→                <Label className="text-xs uppercase tracking-wider text-muted-foreground">Cancellation Notes (optional)</Label>
+  1145→                <Textarea
+  1146→                  value={cancelNotes}
+  1147→                  onChange={(e) => setCancelNotes(e.target.value)}
+  1148→                  placeholder="Reason for cancellation…"
+  1149→                  rows={2}
+  1150→                  className="border-border/60 bg-black/30 text-sm"
+  1151→                />
+  1152→              </div>
+  1153→            </div>
+  1154→          )}
+  1155→          <DialogFooter className="gap-2 sm:gap-2 flex-col sm:flex-row">
+  1156→            <Button variant="ghost" onClick={() => setCancelling(null)} disabled={cancellingBusy} className="btn-full-mobile tap-target-sm">Keep Position</Button>
+  1157→            <Button
+  1158→              onClick={handleCancel}
+  1159→              disabled={cancellingBusy}
+  1160→              variant="outline"
+  1161→              className="border-loss/40 text-loss hover:bg-loss/10 gap-1.5 press-scale btn-full-mobile tap-target-sm"
+  1162→            >
+  1163→              {cancellingBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
+  1164→              {cancellingBusy ? "Cancelling…" : "Confirm Cancel"}
+  1165→            </Button>
+  1166→          </DialogFooter>
+  1167→        </DialogContent>
+  1168→      </Dialog>
+  1169→    </div>
+  1170→  );
+  1171→}
+  1172→
+  1173→/* ──────────────────────────────────────────────────────────────────────────────
+  1174→   Sub-components
+  1175→   ────────────────────────────────────────────────────────────────────────────── */
+  1176→
+  1177→function Meta({ label, value, sub }: { label: string; value: React.ReactNode; sub?: string }) {
+  1178→  return (
+  1179→    <div>
+  1180→      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
+  1181→      <div className="mt-0.5 text-sm text-foreground">{value}</div>
+  1182→      {sub && <div className="text-[11px] text-muted-foreground">{sub}</div>}
+  1183→    </div>
+  1184→  );
+  1185→}
+  1186→

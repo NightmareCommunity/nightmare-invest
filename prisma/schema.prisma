@@ -139,6 +139,9 @@ model Transaction {
   method     String    @default("UPI") // UPI | BTC | LTC | USDT
   cryptoAmount Float?  // raw crypto amount (e.g. 0.0005 BTC); null for UPI
   usdValue   Float?    // USD equivalent at request time (for crypto methods)
+  // Proof of payment reference — UTR (UPI) or on-chain transaction hash (crypto).
+  // Required for deposits so admin can verify payment before approval.
+  proofRef   String?
 }
 
 // ------------------------- Investments ---------------------------

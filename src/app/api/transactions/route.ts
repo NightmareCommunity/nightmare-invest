@@ -52,13 +52,14 @@ interface CreateTxnBody {
   notes?: string;
   method?: string;
   cryptoAmount?: number;
+  proofRef?: string;
 }
 
 export const POST = safeHandler(async (req: NextRequest) => {
   const user = await getCurrentUser();
   if (!user) return error("Unauthorized", 401);
 
-  const { type, amount, fundId, notes, method: rawMethod, cryptoAmount } = await parseBody<CreateTxnBody>(req);
+  const { type, amount, fundId, notes, method: rawMethod, cryptoAmount, proofRef } = await parseBody<CreateTxnBody>(req);
 
   if (!["DEPOSIT", "WITHDRAWAL"].includes(type)) return error("Invalid type", 422);
   if (!amount || amount <= 0) return error("Amount must be positive", 422);
@@ -71,6 +72,18 @@ export const POST = safeHandler(async (req: NextRequest) => {
   const method: DepositMethod = VALID_METHODS.includes(rawMethod as DepositMethod)
     ? (rawMethod as DepositMethod)
     : "UPI";
+
+  // Normalise proof reference (UTR for UPI, on-chain tx hash for crypto)
+  const normalisedProof = typeof proofRef === "string" ? proofRef.trim() : "";
+  // Deposits require a proof reference (UTR / tx hash) so admin can verify payment.
+  if (type === "DEPOSIT" && normalisedProof.length < 6) {
+    return error(
+      method === "UPI"
+        ? "Enter the UPI Reference Number (UTR / 12-digit reference) from your payment app"
+        : `Enter the ${method} transaction hash as proof of payment`,
+      422
+    );
+  }
 
   let usdValue: number | null = null;
   let storedCryptoAmount: number | null = null;
@@ -144,6 +157,7 @@ export const POST = safeHandler(async (req: NextRequest) => {
       method,
       cryptoAmount: storedCryptoAmount,
       usdValue,
+      proofRef: normalisedProof || null,
     },
   });
 
@@ -152,7 +166,7 @@ export const POST = safeHandler(async (req: NextRequest) => {
     action: "TRANSACTION_REQUESTED",
     resourceType: "Transaction",
     resourceId: txn.id,
-    metadata: { type, amount, fundId, method, cryptoAmount: storedCryptoAmount, usdValue },
+    metadata: { type, amount, fundId, method, cryptoAmount: storedCryptoAmount, usdValue, proofRef: normalisedProof || null },
   });
 
   return json({ transaction: txn });

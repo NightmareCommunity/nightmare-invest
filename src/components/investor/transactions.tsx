@@ -1,5 +1,5 @@
 "use client";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api-client";
 import { GlassCard, SectionTitle, StatusPill, TypePill, FadeIn, SkeletonTable, SkeletonMetric, EmptyState } from "@/components/brand/primitives";
@@ -14,9 +14,174 @@ import { motion } from "framer-motion";
 import {
   ArrowDownToLine, ArrowUpFromLine, Plus, Info, Search, Filter,
   Download, CheckCircle2, XCircle, Clock, FileDown, ShieldCheck,
-  AlertTriangle, Bitcoin, Coins, Banknote,
+  AlertTriangle, Bitcoin, Coins, Banknote, Copy, Hash, QrCode as QrIcon,
+  ExternalLink,
 } from "lucide-react";
 import { toast } from "sonner";
+
+/* ------------------------------------------------------------------ */
+/*  Deposit Destination Constants                                     */
+/* ------------------------------------------------------------------ */
+// Centralised deposit destinations. These are the production wallet
+// addresses / UPI VPA for the NIGHTMARE INVEST custom deposit gateway.
+// NO third-party payment processors — direct UPI + on-chain crypto only.
+const DEPOSIT_DESTINATIONS = {
+  UPI: {
+    label: "UPI ID",
+    payeeName: "Arpit Rao",
+    address: "arpitrao2529-1@okhdfcbank",
+    network: "UPI · any bank / app",
+    qrPayload: "upi://pay?pa=arpitrao2529-1@okhdfcbank&pn=Arpit%20Rao&cu=INR",
+    explorerUrl: null as string | null,
+  },
+  BTC: {
+    label: "Bitcoin Address",
+    payeeName: "Nightmare Invest · BTC Vault",
+    address: "bc1q2rrt4hsglrndmaap54jcxncpuftdlag0x5t47x",
+    network: "Bitcoin Mainnet · SegWit",
+    qrPayload: "bitcoin:bc1q2rrt4hsglrndmaap54jcxncpuftdlag0x5t47x",
+    explorerUrl: "https://blockstream.info/tx/",
+  },
+  LTC: {
+    label: "Litecoin Address",
+    payeeName: "Nightmare Invest · LTC Vault",
+    address: "ltc1qzqgrehrp5xhd32qk6lxsg0ttqna2a2u3elws80",
+    network: "Litecoin Mainnet · SegWit",
+    qrPayload: "litecoin:ltc1qzqgrehrp5xhd32qk6lxsg0ttqna2a2u3elws80",
+    explorerUrl: "https://blockchair.com/litecoin/transaction/",
+  },
+  USDT: {
+    label: "USDT Wallet Address",
+    payeeName: "Nightmare Invest · USDT Vault",
+    address: "TL85YcyCBUEHDFinvWUKmLDtPUyA8EXG52",
+    network: "TRON (TRC20) · USDT",
+    qrPayload: "tron:TL85YcyCBUEHDFinvWUKmLDtPUyA8EXG52",
+    explorerUrl: "https://tronscan.org/#/transaction/",
+  },
+} as const;
+
+/* ------------------------------------------------------------------ */
+/*  QR Code Component (client-side via qrcode lib)                    */
+/* ------------------------------------------------------------------ */
+function QrCode({ value, size = 160 }: { value: string; size?: number }) {
+  const [src, setSrc] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    import("qrcode")
+      .then((mod) => {
+        const QRCode = (mod as any).default ?? mod;
+        return QRCode.toDataURL(value, {
+          width: size,
+          margin: 1,
+          errorCorrectionLevel: "M",
+          color: { dark: "#000000", light: "#FFFFFF" },
+        });
+      })
+      .then((url: string) => {
+        if (!cancelled) setSrc(url);
+      })
+      .catch(() => {
+        /* silent — fallback placeholder shown */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [value, size]);
+
+  if (!src) {
+    return (
+      <div
+        className="flex items-center justify-center rounded-md border border-border/60 bg-white/5"
+        style={{ width: size, height: size }}
+      >
+        <QrIcon className="h-6 w-6 animate-pulse text-muted-foreground/40" />
+      </div>
+    );
+  }
+  return (
+    <img
+      src={src}
+      width={size}
+      height={size}
+      alt="Payment QR code"
+      className="rounded-md border border-white/40 bg-white"
+      style={{ width: size, height: size }}
+    />
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Destination Card — shows UPI ID / wallet address + QR + copy      */
+/* ------------------------------------------------------------------ */
+function DestinationCard({ method }: { method: DepositMethod }) {
+  const meta = DEPOSIT_DESTINATIONS[method];
+  const [copied, setCopied] = useState(false);
+  const copy = () => {
+    navigator.clipboard?.writeText(meta.address).then(() => {
+      setCopied(true);
+      toast.success(`${method === "UPI" ? "UPI ID" : `${method} address`} copied`);
+      setTimeout(() => setCopied(false), 1800);
+    });
+  };
+  return (
+    <div className="rounded-lg border border-gold/30 bg-gold/[0.06] p-3 sm:p-4">
+      <div className="flex items-center gap-2">
+        <Banknote className="h-3.5 w-3.5 shrink-0 text-gold" />
+        <div className="text-[11px] font-semibold uppercase tracking-wider text-gold">
+          Send Payment To
+        </div>
+      </div>
+      <div className="mt-3 flex flex-col gap-4 sm:flex-row sm:items-start">
+        {/* QR */}
+        <div className="flex flex-col items-center gap-2 sm:shrink-0">
+          <QrCode value={meta.qrPayload} size={140} />
+          <div className="text-[10px] text-muted-foreground text-center max-w-[160px] break-words-mobile">
+            Scan to pay
+          </div>
+        </div>
+        {/* Details */}
+        <div className="min-w-0 flex-1 space-y-2.5">
+          <div>
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+              {method === "UPI" ? "Payee Name" : "Vault"}
+            </div>
+            <div className="text-sm font-semibold text-foreground break-words-mobile">{meta.payeeName}</div>
+          </div>
+          <div>
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{meta.label}</div>
+            <div className="mt-1 flex items-center gap-2">
+              <code className="flex-1 min-w-0 overflow-x-auto scroll-row rounded-md border border-border/60 bg-black/40 px-2.5 py-1.5 font-mono text-[11px] text-foreground break-all">
+                {meta.address}
+              </code>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={copy}
+                className="shrink-0 border-gold/30 hover:bg-gold/10 tap-target-sm btn-full-mobile"
+              >
+                {copied ? <CheckCircle2 className="mr-1 h-3.5 w-3.5 text-profit" /> : <Copy className="mr-1 h-3.5 w-3.5" />}
+                {copied ? "Copied" : "Copy"}
+              </Button>
+            </div>
+          </div>
+          <div>
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Network</div>
+            <div className="text-[11px] text-foreground/80 break-words-mobile">{meta.network}</div>
+          </div>
+          {method !== "UPI" && (
+            <div className="flex items-start gap-1.5 rounded-md border border-warning/20 bg-warning/[0.06] px-2 py-1.5 text-[10.5px] text-warning/90">
+              <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
+              <span className="break-words-mobile">
+                Send only <strong>{method}</strong> on the <strong>{meta.network}</strong>. Wrong-network transfers will be lost.
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 /* ------------------------------------------------------------------ */
 /*  Animated Status Badge                                              */
@@ -112,6 +277,8 @@ export function TransactionsPage() {
   const [filterType, setFilterType] = useState<"ALL" | "DEPOSIT" | "WITHDRAWAL">("ALL");
   const [filterStatus, setFilterStatus] = useState<"ALL" | "PENDING" | "APPROVED" | "REJECTED">("ALL");
   const [method, setMethod] = useState<DepositMethod>("UPI");
+  // Proof of payment reference — UTR (UPI) or on-chain tx hash (crypto)
+  const [proofRef, setProofRef] = useState("");
 
   // 2FA verification state
   const [show2FA, setShow2FA] = useState(false);
@@ -139,6 +306,14 @@ export function TransactionsPage() {
     const isCryptoDeposit = open === "DEPOSIT" && method !== "UPI";
     const cryptoPrice = isCryptoDeposit ? (priceMap[method] ?? 0) : 1;
     const usdEquivalent = isCryptoDeposit ? amt * cryptoPrice : amt;
+    // Deposits must include a proof reference (UTR for UPI, tx hash for crypto)
+    if (open === "DEPOSIT" && proofRef.trim().length < 6) {
+      return toast.error(
+        method === "UPI"
+          ? "Enter the UPI Reference Number (UTR) from your payment app"
+          : `Enter the ${method} transaction hash as proof of payment`
+      );
+    }
     setSubmitting(true);
     try {
       await api.post("/api/transactions", {
@@ -147,6 +322,7 @@ export function TransactionsPage() {
         fundId: portfolio.fund.id,
         method: open === "DEPOSIT" ? method : "UPI",
         cryptoAmount: isCryptoDeposit ? amt : undefined,
+        proofRef: open === "DEPOSIT" ? proofRef.trim() : undefined,
         notes: notes || undefined,
       });
       toast.success(`${open === "DEPOSIT" ? "Deposit" : "Withdrawal"} request submitted for review`);
@@ -154,6 +330,7 @@ export function TransactionsPage() {
       setAmount("");
       setNotes("");
       setMethod("UPI");
+      setProofRef("");
       qc.invalidateQueries({ queryKey: ["my-transactions"] });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed");
@@ -167,6 +344,7 @@ export function TransactionsPage() {
     setMethod("UPI");
     setAmount("");
     setNotes("");
+    setProofRef("");
     setOpen(type);
   };
 
@@ -409,6 +587,7 @@ export function TransactionsPage() {
                   <th className="pb-2 pr-4 font-medium">Status</th>
                   <th className="pb-2 pr-4 font-medium">Date</th>
                   <th className="pb-2 pr-4 font-medium">Processed By</th>
+                  <th className="pb-2 pr-4 font-medium">Proof Ref</th>
                   <th className="pb-2 font-medium">Notes</th>
                 </tr>
               </thead>
@@ -435,11 +614,21 @@ export function TransactionsPage() {
                     <td data-label="Status" className="py-3 pr-4"><AnimatedStatusBadge status={t.status} /></td>
                     <td data-label="Date" className="py-3 pr-4 text-muted-foreground">{fmtDate(t.createdAt, true)}</td>
                     <td data-label="Processed By" className="py-3 pr-4 text-muted-foreground">{t.processor?.name ?? "—"}</td>
+                    <td data-label="Proof Ref" className="py-3 max-w-[160px] truncate text-muted-foreground break-words-mobile" title={t.proofRef ?? ""}>
+                      {t.proofRef ? (
+                        <span className="inline-flex items-center gap-1 font-mono text-[11px] text-gold/80">
+                          <Hash className="h-2.5 w-2.5 shrink-0" />
+                          <span className="truncate">{t.proofRef}</span>
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground/40">—</span>
+                      )}
+                    </td>
                     <td data-label="Notes" className="py-3 max-w-xs truncate text-muted-foreground break-words-mobile" title={t.notes ?? ""}>{t.notes ?? "—"}</td>
                   </motion.tr>
                 ))}
                 {txns.length === 0 && allTxns.length > 0 && (
-                  <tr><td colSpan={7}>
+                  <tr><td colSpan={8}>
                     <div className="flex flex-col items-center gap-2 py-8 text-center">
                       <Search className="h-6 w-6 text-muted-foreground/40" />
                       <p className="text-sm text-muted-foreground">No transactions match your filters</p>
@@ -450,7 +639,7 @@ export function TransactionsPage() {
                   </td></tr>
                 )}
                 {allTxns.length === 0 && (
-                  <tr><td colSpan={7}>
+                  <tr><td colSpan={8}>
                     <EmptyState
                       icon={<ArrowDownToLine className="h-7 w-7" />}
                       title="Begin Your Investment Journey"
@@ -471,7 +660,7 @@ export function TransactionsPage() {
 
       {/* Request modal */}
       <Dialog open={open !== null} onOpenChange={(o) => !o && setOpen(null)}>
-        <DialogContent className="max-w-[95vw] border-gold/20 bg-card/95 backdrop-blur-xl sm:max-w-md">
+        <DialogContent className="max-w-[95vw] border-gold/20 bg-card/95 backdrop-blur-xl sm:max-w-lg max-h-[92vh] overflow-y-auto scroll-luxury">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               {open === "DEPOSIT" ? <ArrowDownToLine className="h-5 w-5 text-profit" /> : <ArrowUpFromLine className="h-5 w-5 text-info" />}
@@ -479,7 +668,7 @@ export function TransactionsPage() {
             </DialogTitle>
             <DialogDescription className="break-words-mobile">
               {open === "DEPOSIT"
-                ? `Minimum commitment ${portfolio ? fmtUSD(portfolio.fund.minInvest) : "$50,000"}. Your request will be reviewed by the fund administrator.`
+                ? "Send payment to the destination below, then submit the proof reference (UTR / tx hash) for admin verification."
                 : `Available balance: ${portfolio ? fmtUSD(portfolio.summary.currentValue) : "—"}. Withdrawals processed during scheduled liquidity windows.`}
             </DialogDescription>
           </DialogHeader>
@@ -524,6 +713,13 @@ export function TransactionsPage() {
                   ))}
                 </div>
               </div>
+            )}
+
+            {/* Destination details — DEPOSITS only.
+                Shows UPI ID / wallet address + QR code + copy button so the
+                user can complete payment before submitting proof. */}
+            {open === "DEPOSIT" && (
+              <DestinationCard method={method} />
             )}
 
             {/* Amount input — method-aware */}
@@ -608,6 +804,43 @@ export function TransactionsPage() {
               )}
             </div>
 
+            {/* Proof of payment reference — DEPOSITS only.
+                UTR (12-digit UPI reference) for UPI; on-chain tx hash for crypto.
+                Required by the backend so admin can verify payment before approval. */}
+            {open === "DEPOSIT" && (
+              <div className="space-y-1.5">
+                <Label htmlFor="proof" className="flex items-center gap-1.5 text-xs uppercase tracking-wider text-muted-foreground">
+                  <Hash className="h-3.5 w-3.5 text-gold" />
+                  {method === "UPI" ? "UPI Reference Number (UTR)" : `${method} Transaction Hash`}
+                  <span className="ml-0.5 normal-case text-loss">*</span>
+                </Label>
+                <Input
+                  id="proof"
+                  type="text"
+                  value={proofRef}
+                  onChange={(e) => setProofRef(e.target.value)}
+                  placeholder={
+                    method === "UPI"
+                      ? "e.g. 452103689012"
+                      : method === "USDT"
+                        ? "e.g. 9f3c...b21e (TRON tx hash)"
+                        : `e.g. ${method.toLowerCase()} tx hash`
+                  }
+                  className="tap-target border-border/60 bg-black/30 font-mono text-sm"
+                  autoComplete="off"
+                  spellCheck={false}
+                />
+                <div className="flex items-start gap-1.5 text-[10.5px] text-muted-foreground break-words-mobile">
+                  <Info className="mt-0.5 h-3 w-3 shrink-0" />
+                  <span>
+                    {method === "UPI"
+                      ? "Find the 12-digit UPI Reference Number (UTR) in your payment app's transaction details after sending."
+                      : "Paste the on-chain transaction hash from your wallet's send history."}
+                  </span>
+                </div>
+              </div>
+            )}
+
             {/* 2FA Required Notice for high-value operations */}
             {isHighValue && (
               <div className="flex items-start gap-2 rounded-lg border border-gold/20 bg-gold/5 px-3 py-2.5 text-xs">
@@ -636,7 +869,7 @@ export function TransactionsPage() {
             <Button variant="ghost" onClick={() => setOpen(null)} className="tap-target w-full sm:w-auto">Cancel</Button>
             <Button
               onClick={handleSubmitWith2FA}
-              disabled={submitting || (open === "DEPOSIT" && !meetsMinimum)}
+              disabled={submitting || (open === "DEPOSIT" && (!meetsMinimum || proofRef.trim().length < 6))}
               className="tap-target w-full sm:w-auto bg-gold-gradient text-black hover:opacity-90 press-scale"
             >
               {submitting ? "Submitting…" : isHighValue ? "Submit with 2FA" : "Submit Request"}

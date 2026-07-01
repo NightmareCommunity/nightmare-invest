@@ -164,7 +164,7 @@ export function AuthScreen({ mode }: { mode: Mode }) {
                   required
                   value={form.email}
                   onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  placeholder={mode === "login" ? "ojas1234 or you@family-office.com" : "you@family-office.com"}
+                  placeholder={mode === "login" ? "you@family-office.com" : "you@family-office.com"}
                   className="border-border/60 bg-black/30 pl-9 h-12"
                   autoComplete={mode === "login" ? "username" : "email"}
                 />
@@ -250,17 +250,6 @@ export function AuthScreen({ mode }: { mode: Mode }) {
           <Shield className="h-3.5 w-3.5 shrink-0 text-gold/60" />
           <span>Protected by 256-bit encryption · Session secured with JWT</span>
         </div>
-
-        {mode === "login" && (
-          <div className="mt-4 space-y-2">
-            <div className="rounded-lg border border-gold/20 bg-gold/5 p-3 text-center text-[11px] text-muted-foreground break-words-mobile">
-              <span className="text-gold">Admin:</span> ojas1234 · user1122
-            </div>
-            <div className="rounded-lg border border-border/40 bg-black/20 p-3 text-center text-[11px] text-muted-foreground break-words-mobile">
-              <span className="text-foreground/70">Demo investor:</span> investor@nightmare.invest · investor123
-            </div>
-          </div>
-        )}
       </motion.div>
     </div>
   );

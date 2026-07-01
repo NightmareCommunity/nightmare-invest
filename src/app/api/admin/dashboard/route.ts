@@ -7,7 +7,17 @@ export const GET = safeHandler(async () => {
   await requireAdmin();
   const fund = await db.fund.findFirst({ include: { allocations: true } });
 
-  const [investors, pendingDeposits, pendingWithdrawals, approvedTxns, totalUsers, pendingKyc, kycStats] = await Promise.all([
+  const [
+    investors,
+    pendingDeposits,
+    pendingWithdrawals,
+    approvedTxns,
+    totalUsers,
+    pendingKyc, // retained for backward compatibility (KYC module disabled, always 0)
+    kycStats, // retained for backward compatibility
+    activeInvestments,
+    investmentsBreakdown,
+  ] = await Promise.all([
     db.user.count({ where: { role: "USER", isActive: true } }),
     db.transaction.count({ where: { type: "DEPOSIT", status: "PENDING" } }),
     db.transaction.count({ where: { type: "WITHDRAWAL", status: "PENDING" } }),
@@ -19,11 +29,21 @@ export const GET = safeHandler(async () => {
       where: { role: "USER" },
       _count: { _all: true },
     }),
+    // Active investments = positions currently ACTIVE (open and tracking P&L)
+    db.investment.count({ where: { status: "ACTIVE" } }),
+    // Investment status breakdown for the pie chart
+    db.investment.groupBy({
+      by: ["status"],
+      _count: { _all: true },
+    }),
   ]);
 
-  const totalAum = fund
-    ? (await db.nAVPoint.findFirst({ where: { fundId: fund.id }, orderBy: { date: "desc" } }))?.aum ?? 0
-    : 0;
+  const latestNavPoint = fund
+    ? await db.nAVPoint.findFirst({ where: { fundId: fund.id }, orderBy: { date: "desc" } })
+    : null;
+  const currentNav = latestNavPoint?.nav ?? fund?.inceptionNav ?? 100;
+
+  const totalAum = latestNavPoint?.aum ?? 0;
 
   const metrics = fund ? await getFundMetrics(fund.id) : null;
 
@@ -46,16 +66,24 @@ export const GET = safeHandler(async () => {
     return acc;
   }, {});
 
+  const investmentsByStatus = investmentsBreakdown.reduce<Record<string, number>>((acc, s) => {
+    acc[s.status] = s._count._all;
+    return acc;
+  }, {});
+
   return json({
     fund,
     metrics,
     totalAum,
+    currentNav,
     totalUsers,
     activeInvestors: investors,
     pendingDeposits,
     pendingWithdrawals,
     pendingKyc,
     kycBreakdown,
+    activeInvestments,
+    investmentsByStatus,
     depositVolume,
     withdrawalVolume,
     navTrend,

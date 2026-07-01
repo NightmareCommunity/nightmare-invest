@@ -1,0 +1,665 @@
+     1→"use client";
+     2→import { useState, useMemo } from "react";
+     3→import { useQuery, useQueryClient } from "@tanstack/react-query";
+     4→import { api } from "@/lib/api-client";
+     5→import { GlassCard, SectionTitle, StatusPill, TypePill, FadeIn, SkeletonTable, SkeletonMetric, EmptyState } from "@/components/brand/primitives";
+     6→import { TwoFactorModal } from "@/components/brand/two-factor-modal";
+     7→import { Button } from "@/components/ui/button";
+     8→import { Input } from "@/components/ui/input";
+     9→import { Label } from "@/components/ui/label";
+    10→import { Textarea } from "@/components/ui/textarea";
+    11→import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+    12→import { fmtUSD, fmtDate } from "@/lib/format";
+    13→import { motion } from "framer-motion";
+    14→import {
+    15→  ArrowDownToLine, ArrowUpFromLine, Plus, Info, Search, Filter,
+    16→  Download, CheckCircle2, XCircle, Clock, FileDown, ShieldCheck,
+    17→  AlertTriangle, Bitcoin, Coins, Banknote,
+    18→} from "lucide-react";
+    19→import { toast } from "sonner";
+    20→
+    21→/* ------------------------------------------------------------------ */
+    22→/*  Animated Status Badge                                              */
+    23→/* ------------------------------------------------------------------ */
+    24→
+    25→function AnimatedStatusBadge({ status }: { status: string }) {
+    26→  if (status === "PENDING") {
+    27→    return (
+    28→      <span className="inline-flex items-center gap-1.5 rounded-full border border-warning/30 bg-warning/10 px-2.5 py-0.5 text-[11px] font-semibold text-warning status-badge-animated">
+    29→        <Clock className="h-3 w-3" />
+    30→        Pending
+    31→      </span>
+    32→    );
+    33→  }
+    34→  if (status === "APPROVED") {
+    35→    return (
+    36→      <span className="inline-flex items-center gap-1.5 rounded-full border border-profit/30 bg-profit/10 px-2.5 py-0.5 text-[11px] font-semibold text-profit">
+    37→        <CheckCircle2 className="h-3 w-3" />
+    38→        Approved
+    39→      </span>
+    40→    );
+    41→  }
+    42→  if (status === "REJECTED") {
+    43→    return (
+    44→      <span className="inline-flex items-center gap-1.5 rounded-full border border-loss/30 bg-loss/10 px-2.5 py-0.5 text-[11px] font-semibold text-loss">
+    45→        <XCircle className="h-3 w-3" />
+    46→        Rejected
+    47→      </span>
+    48→    );
+    49→  }
+    50→  return <StatusPill status={status} />;
+    51→}
+    52→
+    53→/* ------------------------------------------------------------------ */
+    54→/*  Deposit Method Configuration                                       */
+    55→/* ------------------------------------------------------------------ */
+    56→type DepositMethod = "UPI" | "BTC" | "LTC" | "USDT";
+    57→
+    58→interface MethodMeta {
+    59→  label: string;
+    60→  prefix: string;
+    61→  placeholder: string;
+    62→  quickAmounts: number[];
+    63→  minInr?: number;
+    64→  minUsd?: number;
+    65→}
+    66→
+    67→const METHOD_META: Record<DepositMethod, MethodMeta> = {
+    68→  UPI: { label: "Amount (INR ₹)", prefix: "₹", placeholder: "1000", quickAmounts: [1000, 5000, 10000, 50000], minInr: 1000 },
+    69→  BTC: { label: "Amount (BTC)", prefix: "₿", placeholder: "0.00015", quickAmounts: [0.0001, 0.0005, 0.001, 0.005], minUsd: 10 },
+    70→  LTC: { label: "Amount (LTC)", prefix: "Ł", placeholder: "0.12", quickAmounts: [0.01, 0.05, 0.1, 0.5], minUsd: 10 },
+    71→  USDT: { label: "Amount (USDT)", prefix: "₮", placeholder: "10", quickAmounts: [10, 50, 100, 500], minUsd: 10 },
+    72→};
+    73→
+    74→function MethodPill({ method }: { method?: string | null }) {
+    75→  if (!method || method === "UPI") {
+    76→    return (
+    77→      <span className="inline-flex items-center gap-1 rounded-md border border-info/30 bg-info/10 px-2 py-0.5 text-[11px] font-medium text-info">
+    78→        <Banknote className="h-3 w-3" /> UPI
+    79→      </span>
+    80→    );
+    81→  }
+    82→  const cls: Record<string, string> = {
+    83→    BTC: "border-amber-500/30 bg-amber-500/10 text-amber-400",
+    84→    LTC: "border-slate-400/30 bg-slate-400/10 text-slate-300",
+    85→    USDT: "border-emerald-500/30 bg-emerald-500/10 text-emerald-400",
+    86→  };
+    87→  const sym: Record<string, string> = { BTC: "₿", LTC: "Ł", USDT: "₮" };
+    88→  return (
+    89→    <span className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-medium ${cls[method] ?? "border-border/60 bg-muted/10 text-muted-foreground"}`}>
+    90→      {method === "BTC" ? <Bitcoin className="h-3 w-3" /> : method === "LTC" ? <Coins className="h-3 w-3" /> : <span className="text-[11px] leading-none">{sym[method] ?? ""}</span>}
+    91→      {method}
+    92→    </span>
+    93→  );
+    94→}
+    95→
+    96→/* ------------------------------------------------------------------ */
+    97→/*  High-Value Threshold for 2FA                                       */
+    98→/* ------------------------------------------------------------------ */
+    99→const HIGH_VALUE_THRESHOLD = 50000;
+   100→
+   101→/* ------------------------------------------------------------------ */
+   102→/*  Main Transactions Page                                             */
+   103→/* ------------------------------------------------------------------ */
+   104→
+   105→export function TransactionsPage() {
+   106→  const qc = useQueryClient();
+   107→  const [open, setOpen] = useState<null | "DEPOSIT" | "WITHDRAWAL">(null);
+   108→  const [amount, setAmount] = useState("");
+   109→  const [notes, setNotes] = useState("");
+   110→  const [submitting, setSubmitting] = useState(false);
+   111→  const [searchQuery, setSearchQuery] = useState("");
+   112→  const [filterType, setFilterType] = useState<"ALL" | "DEPOSIT" | "WITHDRAWAL">("ALL");
+   113→  const [filterStatus, setFilterStatus] = useState<"ALL" | "PENDING" | "APPROVED" | "REJECTED">("ALL");
+   114→  const [method, setMethod] = useState<DepositMethod>("UPI");
+   115→
+   116→  // 2FA verification state
+   117→  const [show2FA, setShow2FA] = useState(false);
+   118→  const [pending2FAAction, setPending2FAAction] = useState<null | "DEPOSIT" | "WITHDRAWAL">(null);
+   119→
+   120→  const { data: portfolio } = useQuery<any>({ queryKey: ["portfolio"], queryFn: () => api.get("/api/portfolio") });
+   121→  const { data: userData } = useQuery<any>({ queryKey: ["auth-me"], queryFn: () => api.get("/api/auth/me") });
+   122→  const { data, isLoading } = useQuery<any>({ queryKey: ["my-transactions"], queryFn: () => api.get("/api/transactions") });
+   123→  const { data: market } = useQuery<{ prices: { symbol: string; priceUsd: number }[] }>({
+   124→    queryKey: ["market-prices"],
+   125→    queryFn: () => api.get("/api/market/prices"),
+   126→  });
+   127→  const priceMap = useMemo(() => {
+   128→    const map: Record<string, number> = { USDT: 1 };
+   129→    for (const p of market?.prices ?? []) map[p.symbol] = p.priceUsd;
+   130→    return map;
+   131→  }, [market]);
+   132→
+   133→  const userHas2FA = userData?.user?.totpEnabled ?? false;
+   134→
+   135→  const submit = async () => {
+   136→    if (!open) return;
+   137→    const amt = parseFloat(amount);
+   138→    if (!amt || amt <= 0) return toast.error("Enter a valid amount");
+   139→    const isCryptoDeposit = open === "DEPOSIT" && method !== "UPI";
+   140→    const cryptoPrice = isCryptoDeposit ? (priceMap[method] ?? 0) : 1;
+   141→    const usdEquivalent = isCryptoDeposit ? amt * cryptoPrice : amt;
+   142→    setSubmitting(true);
+   143→    try {
+   144→      await api.post("/api/transactions", {
+   145→        type: open,
+   146→        amount: isCryptoDeposit ? usdEquivalent : amt,
+   147→        fundId: portfolio.fund.id,
+   148→        method: open === "DEPOSIT" ? method : "UPI",
+   149→        cryptoAmount: isCryptoDeposit ? amt : undefined,
+   150→        notes: notes || undefined,
+   151→      });
+   152→      toast.success(`${open === "DEPOSIT" ? "Deposit" : "Withdrawal"} request submitted for review`);
+   153→      setOpen(null);
+   154→      setAmount("");
+   155→      setNotes("");
+   156→      setMethod("UPI");
+   157→      qc.invalidateQueries({ queryKey: ["my-transactions"] });
+   158→    } catch (e) {
+   159→      toast.error(e instanceof Error ? e.message : "Failed");
+   160→    } finally {
+   161→      setSubmitting(false);
+   162→    }
+   163→  };
+   164→
+   165→  // Handle open dialog — reset method state, 2FA check happens on submit
+   166→  const handleOpenDialog = (type: "DEPOSIT" | "WITHDRAWAL") => {
+   167→    setMethod("UPI");
+   168→    setAmount("");
+   169→    setNotes("");
+   170→    setOpen(type);
+   171→  };
+   172→
+   173→  // Enhanced submit with 2FA check — for crypto deposits, threshold uses USD equivalent
+   174→  const handleSubmitWith2FA = () => {
+   175→    if (!open) return;
+   176→    const amt = parseFloat(amount);
+   177→    if (!amt || amt <= 0) return toast.error("Enter a valid amount");
+   178→
+   179→    const isCryptoDeposit = open === "DEPOSIT" && method !== "UPI";
+   180→    const cryptoPrice = isCryptoDeposit ? (priceMap[method] ?? 0) : 1;
+   181→    const usdEquivalent = isCryptoDeposit ? amt * cryptoPrice : amt;
+   182→
+   183→    // Check if 2FA is required for high-value operations
+   184→    if (usdEquivalent >= HIGH_VALUE_THRESHOLD) {
+   185→      // Need 2FA verification
+   186→      setPending2FAAction(open);
+   187→      setShow2FA(true);
+   188→      return;
+   189→    }
+   190→
+   191→    // No 2FA needed, proceed directly
+   192→    submit();
+   193→  };
+   194→
+   195→  // After 2FA is verified, proceed with the transaction
+   196→  const handle2FAVerified = () => {
+   197→    setShow2FA(false);
+   198→    setPending2FAAction(null);
+   199→    // Proceed with the actual submission
+   200→    submit();
+   201→  };
+   202→
+   203→  const allTxns = data?.transactions ?? [];
+   204→  const pending = allTxns.filter((t: any) => t.status === "PENDING");
+   205→  const approved = allTxns.filter((t: any) => t.status === "APPROVED");
+   206→  const totalDeposited = approved.filter((t: any) => t.type === "DEPOSIT").reduce((a: number, b: any) => a + b.amount, 0);
+   207→  const totalWithdrawn = approved.filter((t: any) => t.type === "WITHDRAWAL").reduce((a: number, b: any) => a + b.amount, 0);
+   208→
+   209→  // Filtered transactions
+   210→  const txns = useMemo(() => {
+   211→    let filtered = allTxns;
+   212→    if (filterType !== "ALL") filtered = filtered.filter((t: any) => t.type === filterType);
+   213→    if (filterStatus !== "ALL") filtered = filtered.filter((t: any) => t.status === filterStatus);
+   214→    if (searchQuery.trim()) {
+   215→      const q = searchQuery.toLowerCase();
+   216→      filtered = filtered.filter((t: any) =>
+   217→        t.type.toLowerCase().includes(q) ||
+   218→        t.status.toLowerCase().includes(q) ||
+   219→        String(t.amount).includes(q) ||
+   220→        (t.notes && t.notes.toLowerCase().includes(q))
+   221→      );
+   222→    }
+   223→    return filtered;
+   224→  }, [allTxns, filterType, filterStatus, searchQuery]);
+   225→
+   226→  // Export CSV handler
+   227→  const exportCSV = () => {
+   228→    const headers = ["Type", "Amount", "Method", "Crypto Amount", "Status", "Date", "Processed By", "Notes"];
+   229→    const rows = txns.map((t: any) => [
+   230→      t.type,
+   231→      t.amount,
+   232→      t.method ?? "UPI",
+   233→      t.cryptoAmount ?? "",
+   234→      t.status,
+   235→      fmtDate(t.createdAt, true),
+   236→      t.processor?.name ?? "—",
+   237→      t.notes ?? "—",
+   238→    ]);
+   239→    const csv = [headers, ...rows].map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
+   240→    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+   241→    const url = URL.createObjectURL(blob);
+   242→    const a = document.createElement("a");
+   243→    a.href = url;
+   244→    a.download = `transactions-${new Date().toISOString().slice(0, 10)}.csv`;
+   245→    a.click();
+   246→    URL.revokeObjectURL(url);
+   247→    toast.success("CSV exported successfully");
+   248→  };
+   249→
+   250→  const currentAmount = parseFloat(amount) || 0;
+   251→  const isCryptoDeposit = open === "DEPOSIT" && method !== "UPI";
+   252→  const cryptoPrice = isCryptoDeposit ? (priceMap[method] ?? 0) : 1;
+   253→  const usdEquivalent = isCryptoDeposit ? currentAmount * cryptoPrice : currentAmount;
+   254→  const isHighValue = usdEquivalent >= HIGH_VALUE_THRESHOLD;
+   255→  const methodMeta = METHOD_META[method];
+   256→  const minInrMet = method === "UPI" ? currentAmount >= (methodMeta.minInr ?? 1000) : true;
+   257→  const minUsdMet = method !== "UPI" ? usdEquivalent >= (methodMeta.minUsd ?? 10) : true;
+   258→  const meetsMinimum = open === "DEPOSIT" ? (minInrMet && minUsdMet && currentAmount > 0) : currentAmount > 0;
+   259→
+   260→  if (isLoading) {
+   261→    return (
+   262→      <div className="space-y-4 sm:space-y-5 lg:space-y-6">
+   263→        <FadeIn>
+   264→          <div className="flex flex-wrap items-end justify-between gap-4">
+   265→            <div>
+   266→              <span className="text-xs font-medium uppercase tracking-[0.18em] text-gold">Investor Portal</span>
+   267→              <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">Transactions</h1>
+   268→              <p className="text-sm text-muted-foreground">Submit and track capital movements</p>
+   269→            </div>
+   270→          </div>
+   271→        </FadeIn>
+   272→        <FadeIn delay={0.05}>
+   273→          <div className="grid gap-3 sm:gap-4 sm:grid-cols-3">
+   274→            {[0, 1, 2].map((i) => <SkeletonMetric key={i} className="h-24" />)}
+   275→          </div>
+   276→        </FadeIn>
+   277→        <FadeIn delay={0.1}>
+   278→          <GlassCard className="p-4 sm:p-5">
+   279→            <SectionTitle title="Request History" subtitle="All deposit and withdrawal requests" />
+   280→            <div className="mt-4">
+   281→              <SkeletonTable rows={5} cols={6} />
+   282→            </div>
+   283→          </GlassCard>
+   284→        </FadeIn>
+   285→      </div>
+   286→    );
+   287→  }
+   288→
+   289→  return (
+   290→    <div className="space-y-4 sm:space-y-5 lg:space-y-6">
+   291→      <FadeIn>
+   292→        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
+   293→          <div className="min-w-0">
+   294→            <span className="text-xs font-medium uppercase tracking-[0.18em] text-gold">Investor Portal</span>
+   295→            <h1 className="h2-responsive mt-1 font-bold tracking-tight">Transactions</h1>
+   296→            <p className="text-sm text-muted-foreground">Submit and track capital movements</p>
+   297→          </div>
+   298→          <div className="flex flex-col gap-1.5 sm:items-end">
+   299→            <div className="flex flex-wrap gap-2">
+   300→              <Button onClick={() => handleOpenDialog("DEPOSIT")} className="tap-target bg-gold-gradient text-black hover:opacity-90 press-scale">
+   301→                <ArrowDownToLine className="mr-1.5 h-4 w-4" /> Deposit
+   302→              </Button>
+   303→              <Button onClick={() => handleOpenDialog("WITHDRAWAL")} variant="outline" className="tap-target border-gold/30 hover:bg-gold/10 press-scale">
+   304→                <ArrowUpFromLine className="mr-1.5 h-4 w-4" /> Withdraw
+   305→              </Button>
+   306→            </div>
+   307→            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+   308→              <Info className="h-3 w-3 shrink-0" />
+   309→              <span>Deposits reviewed within 24h.</span>
+   310→            </div>
+   311→          </div>
+   312→        </div>
+   313→      </FadeIn>
+   314→
+   315→      <FadeIn delay={0.05}>
+   316→        <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-3">
+   317→          <GlassCard className="border-gold/30 p-4 hover-lift gold-glow-hover">
+   318→            <div className="flex items-center gap-2">
+   319→              <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Pending Requests</div>
+   320→              {pending.length > 0 && (
+   321→                <span className="relative flex h-2 w-2">
+   322→                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-gold opacity-75" />
+   323→                  <span className="relative inline-flex h-2 w-2 rounded-full bg-gold" />
+   324→                </span>
+   325→              )}
+   326→            </div>
+   327→            <div className="mt-1 font-metric text-2xl font-bold text-warning">{pending.length}</div>
+   328→            <div className="mt-0.5 text-[11px] text-muted-foreground">Awaiting admin review</div>
+   329→          </GlassCard>
+   330→          <GlassCard className="p-4 hover-lift gold-glow-hover">
+   331→            <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Total Deposited</div>
+   332→            <div className="mt-1 font-metric text-2xl font-bold text-profit">{fmtUSD(totalDeposited)}</div>
+   333→          </GlassCard>
+   334→          <GlassCard className="p-4 hover-lift gold-glow-hover">
+   335→            <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Total Withdrawn</div>
+   336→            <div className="mt-1 font-metric text-2xl font-bold text-info">{fmtUSD(totalWithdrawn)}</div>
+   337→          </GlassCard>
+   338→        </div>
+   339→      </FadeIn>
+   340→
+   341→      <FadeIn delay={0.1}>
+   342→        <GlassCard className="p-3 sm:p-4 lg:p-5">
+   343→          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+   344→            <SectionTitle title="Request History" subtitle="All deposit and withdrawal requests" className="mb-0" />
+   345→            <div className="flex items-center gap-2 shrink-0">
+   346→              {/* Export CSV Button */}
+   347→              {txns.length > 0 && (
+   348→                <Button
+   349→                  variant="outline"
+   350→                  size="sm"
+   351→                  onClick={exportCSV}
+   352→                  className="tap-target-sm border-gold/30 bg-gold-gradient text-black hover:opacity-90 press-scale gap-1.5 font-semibold shadow-[0_0_12px_rgba(212,175,55,0.15)]"
+   353→                >
+   354→                  <FileDown className="h-3.5 w-3.5" /> Export CSV
+   355→                </Button>
+   356→              )}
+   357→            </div>
+   358→          </div>
+   359→
+   360→          {/* Search and Filter Bar */}
+   361→          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+   362→            <div className="relative flex-1 min-w-0">
+   363→              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+   364→              <Input
+   365→                placeholder="Search transactions..."
+   366→                value={searchQuery}
+   367→                onChange={(e) => setSearchQuery(e.target.value)}
+   368→                className="border-border/60 bg-black/30 pl-9 text-sm"
+   369→              />
+   370→            </div>
+   371→            <div className="flex items-center gap-2 overflow-x-auto scroll-row sm:overflow-visible">
+   372→              <Filter className="h-4 w-4 text-muted-foreground shrink-0" />
+   373→              <div className="flex rounded-lg border border-border/60 bg-black/30 p-0.5">
+   374→                {(["ALL", "DEPOSIT", "WITHDRAWAL"] as const).map((t) => (
+   375→                  <button
+   376→                    key={t}
+   377→                    onClick={() => setFilterType(t)}
+   378→                    className={`tap-target-sm rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors ${
+   379→                      filterType === t ? "bg-gold-gradient text-black" : "text-muted-foreground hover:text-foreground"
+   380→                    }`}
+   381→                  >
+   382→                    {t === "ALL" ? "All Types" : t.charAt(0) + t.slice(1).toLowerCase()}
+   383→                  </button>
+   384→                ))}
+   385→              </div>
+   386→              <div className="flex rounded-lg border border-border/60 bg-black/30 p-0.5">
+   387→                {(["ALL", "PENDING", "APPROVED", "REJECTED"] as const).map((s) => (
+   388→                  <button
+   389→                    key={s}
+   390→                    onClick={() => setFilterStatus(s)}
+   391→                    className={`tap-target-sm rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors ${
+   392→                      filterStatus === s ? "bg-gold-gradient text-black" : "text-muted-foreground hover:text-foreground"
+   393→                    }`}
+   394→                  >
+   395→                    {s === "ALL" ? "All" : s.charAt(0) + s.slice(1).toLowerCase()}
+   396→                  </button>
+   397→                ))}
+   398→              </div>
+   399→            </div>
+   400→          </div>
+   401→
+   402→          <div className="table-mobile-card mt-4 overflow-x-auto scroll-luxury">
+   403→            <table className="w-full text-sm">
+   404→              <thead>
+   405→                <tr className="border-b border-border/60 text-left text-[11px] uppercase tracking-wider text-muted-foreground">
+   406→                  <th className="pb-2 pr-4 font-medium">Type</th>
+   407→                  <th className="pb-2 pr-4 font-medium">Amount</th>
+   408→                  <th className="pb-2 pr-4 font-medium">Method</th>
+   409→                  <th className="pb-2 pr-4 font-medium">Status</th>
+   410→                  <th className="pb-2 pr-4 font-medium">Date</th>
+   411→                  <th className="pb-2 pr-4 font-medium">Processed By</th>
+   412→                  <th className="pb-2 font-medium">Notes</th>
+   413→                </tr>
+   414→              </thead>
+   415→              <tbody>
+   416→                {txns.map((t: any, idx: number) => (
+   417→                  <motion.tr
+   418→                    key={t.id}
+   419→                    initial={{ opacity: 0, x: -6 }}
+   420→                    animate={{ opacity: 1, x: 0 }}
+   421→                    transition={{ delay: idx * 0.03, duration: 0.25 }}
+   422→                    className={`investor-row-hover border-b border-border/40 last:border-0 ${idx % 2 === 0 ? "bg-white/[0.01]" : ""}`}
+   423→                  >
+   424→                    <td data-label="Type" className="py-3 pr-4"><TypePill type={t.type} /></td>
+   425→                    <td data-label="Amount" className="py-3 pr-4 font-metric font-semibold">
+   426→                      <div>{fmtUSD(t.amount)}</div>
+   427→                      {t.cryptoAmount ? (
+   428→                        <div className="text-[10.5px] font-normal text-muted-foreground">
+   429→                          {t.method === "BTC" ? "₿" : t.method === "LTC" ? "Ł" : t.method === "USDT" ? "₮" : ""}
+   430→                          {t.cryptoAmount} {t.method}
+   431→                        </div>
+   432→                      ) : null}
+   433→                    </td>
+   434→                    <td data-label="Method" className="py-3 pr-4"><MethodPill method={t.method} /></td>
+   435→                    <td data-label="Status" className="py-3 pr-4"><AnimatedStatusBadge status={t.status} /></td>
+   436→                    <td data-label="Date" className="py-3 pr-4 text-muted-foreground">{fmtDate(t.createdAt, true)}</td>
+   437→                    <td data-label="Processed By" className="py-3 pr-4 text-muted-foreground">{t.processor?.name ?? "—"}</td>
+   438→                    <td data-label="Notes" className="py-3 max-w-xs truncate text-muted-foreground break-words-mobile" title={t.notes ?? ""}>{t.notes ?? "—"}</td>
+   439→                  </motion.tr>
+   440→                ))}
+   441→                {txns.length === 0 && allTxns.length > 0 && (
+   442→                  <tr><td colSpan={7}>
+   443→                    <div className="flex flex-col items-center gap-2 py-8 text-center">
+   444→                      <Search className="h-6 w-6 text-muted-foreground/40" />
+   445→                      <p className="text-sm text-muted-foreground">No transactions match your filters</p>
+   446→                      <Button variant="ghost" size="sm" onClick={() => { setSearchQuery(""); setFilterType("ALL"); setFilterStatus("ALL"); }} className="tap-target text-gold">
+   447→                        Clear filters
+   448→                      </Button>
+   449→                    </div>
+   450→                  </td></tr>
+   451→                )}
+   452→                {allTxns.length === 0 && (
+   453→                  <tr><td colSpan={7}>
+   454→                    <EmptyState
+   455→                      icon={<ArrowDownToLine className="h-7 w-7" />}
+   456→                      title="Begin Your Investment Journey"
+   457→                      description="Submit your first deposit request to allocate capital into the Nightmare Alpha Crypto Fund."
+   458→                      action={
+   459→                        <Button onClick={() => handleOpenDialog("DEPOSIT")} className="tap-target bg-gold-gradient text-black hover:opacity-90 press-scale">
+   460→                          <Plus className="mr-1.5 h-4 w-4" /> New Deposit
+   461→                        </Button>
+   462→                      }
+   463→                    />
+   464→                  </td></tr>
+   465→                )}
+   466→              </tbody>
+   467→            </table>
+   468→          </div>
+   469→        </GlassCard>
+   470→      </FadeIn>
+   471→
+   472→      {/* Request modal */}
+   473→      <Dialog open={open !== null} onOpenChange={(o) => !o && setOpen(null)}>
+   474→        <DialogContent className="max-w-[95vw] border-gold/20 bg-card/95 backdrop-blur-xl sm:max-w-md">
+   475→          <DialogHeader>
+   476→            <DialogTitle className="flex items-center gap-2">
+   477→              {open === "DEPOSIT" ? <ArrowDownToLine className="h-5 w-5 text-profit" /> : <ArrowUpFromLine className="h-5 w-5 text-info" />}
+   478→              {open === "DEPOSIT" ? "Request Deposit" : "Request Withdrawal"}
+   479→            </DialogTitle>
+   480→            <DialogDescription className="break-words-mobile">
+   481→              {open === "DEPOSIT"
+   482→                ? `Minimum commitment ${portfolio ? fmtUSD(portfolio.fund.minInvest) : "$50,000"}. Your request will be reviewed by the fund administrator.`
+   483→                : `Available balance: ${portfolio ? fmtUSD(portfolio.summary.currentValue) : "—"}. Withdrawals processed during scheduled liquidity windows.`}
+   484→            </DialogDescription>
+   485→          </DialogHeader>
+   486→          <div className="space-y-4 py-2">
+   487→            {/* Minimum deposit warning card — DEPOSITS only */}
+   488→            {open === "DEPOSIT" && (
+   489→              <div className="rounded-lg border border-gold/30 bg-gold/5 p-3">
+   490→                <div className="flex items-start gap-2.5">
+   491→                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-gold" />
+   492→                  <div className="flex-1 min-w-0">
+   493→                    <div className="text-xs font-semibold uppercase tracking-wider text-gold">Minimum Deposits</div>
+   494→                    <ul className="mt-1 space-y-0.5 text-[11px] text-foreground/80 break-words-mobile">
+   495→                      <li>• INR (UPI): <span className="font-metric font-semibold text-gold">₹1000</span></li>
+   496→                      <li>• Crypto: <span className="font-metric font-semibold text-gold">$10 equivalent</span> <span className="text-muted-foreground">(BTC · LTC · USDT TRC20)</span></li>
+   497→                    </ul>
+   498→                  </div>
+   499→                </div>
+   500→              </div>
+   501→            )}
+   502→
+   503→            {/* Method selector — DEPOSITS only (withdrawals stay UPI) */}
+   504→            {open === "DEPOSIT" && (
+   505→              <div className="space-y-1.5">
+   506→                <Label className="text-xs uppercase tracking-wider text-muted-foreground">Deposit Method</Label>
+   507→                <div className="scroll-row flex-wrap sm:flex-wrap">
+   508→                  {(Object.keys(METHOD_META) as DepositMethod[]).map((m) => (
+   509→                    <button
+   510→                      key={m}
+   511→                      onClick={() => { setMethod(m); setAmount(""); }}
+   512→                      className={`tap-target inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium transition-all press-scale ${
+   513→                        method === m
+   514→                          ? "border-gold/40 bg-gold/15 text-gold shadow-[0_0_12px_rgba(212,175,55,0.15)]"
+   515→                          : "border-border/60 bg-black/20 text-muted-foreground hover:border-gold/30 hover:text-foreground"
+   516→                      }`}
+   517→                    >
+   518→                      {m === "UPI" && <Banknote className="h-3.5 w-3.5" />}
+   519→                      {m === "BTC" && <Bitcoin className="h-3.5 w-3.5" />}
+   520→                      {m === "LTC" && <Coins className="h-3.5 w-3.5" />}
+   521→                      {m === "USDT" && <span className="text-[11px] leading-none">₮</span>}
+   522→                      {m}
+   523→                    </button>
+   524→                  ))}
+   525→                </div>
+   526→              </div>
+   527→            )}
+   528→
+   529→            {/* Amount input — method-aware */}
+   530→            <div className="space-y-1.5">
+   531→              <Label htmlFor="amt" className="text-xs uppercase tracking-wider text-muted-foreground">
+   532→                {open === "DEPOSIT" ? methodMeta.label : "Amount (USD)"}
+   533→              </Label>
+   534→              <div className="relative">
+   535→                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 font-metric text-base sm:text-lg font-semibold text-gold/80">
+   536→                  {open === "DEPOSIT" ? methodMeta.prefix : "$"}
+   537→                </span>
+   538→                <Input
+   539→                  id="amt"
+   540→                  type="number"
+   541→                  value={amount}
+   542→                  onChange={(e) => setAmount(e.target.value)}
+   543→                  placeholder={open === "DEPOSIT" ? methodMeta.placeholder : "50000"}
+   544→                  className="tap-target border-border/60 bg-black/30 pl-8 font-metric text-base sm:text-lg"
+   545→                />
+   546→              </div>
+   547→
+   548→              {/* Live USD equivalent for crypto deposits */}
+   549→              {isCryptoDeposit && currentAmount > 0 && (
+   550→                <div className="text-[11px] text-muted-foreground break-words-mobile">
+   551→                  ≈ <span className="font-metric font-semibold text-gold">{fmtUSD(usdEquivalent, { decimals: 2 })}</span> USD
+   552→                  {method !== "USDT" && (
+   553→                    <span className="ml-1.5 text-muted-foreground/70">
+   554→                      (@ {fmtUSD(cryptoPrice, { decimals: cryptoPrice >= 100 ? 0 : 2 })} / {method})
+   555→                    </span>
+   556→                  )}
+   557→                </div>
+   558→              )}
+   559→
+   560→              {/* Method-aware quick amounts */}
+   561→              {open === "DEPOSIT" && portfolio && (
+   562→                <div className="flex flex-wrap gap-1.5 pt-1">
+   563→                  {methodMeta.quickAmounts.map((v) => (
+   564→                    <button
+   565→                      key={v}
+   566→                      onClick={() => setAmount(String(v))}
+   567→                      className="tap-target-sm rounded-md border border-border/60 px-2 py-1 text-xs text-muted-foreground hover:border-gold/40 hover:text-gold press-scale"
+   568→                    >
+   569→                      {method === "UPI" ? `₹${v.toLocaleString()}` : method === "USDT" ? `₮${v}` : `${methodMeta.prefix}${v}`}
+   570→                    </button>
+   571→                  ))}
+   572→                </div>
+   573→              )}
+   574→              {open === "WITHDRAWAL" && portfolio && (
+   575→                <div className="flex flex-wrap gap-1.5 pt-1">
+   576→                  {[50000, 100000, 250000, 500000].map((v) => (
+   577→                    <button
+   578→                      key={v}
+   579→                      onClick={() => setAmount(String(v))}
+   580→                      className="tap-target-sm rounded-md border border-border/60 px-2 py-1 text-xs text-muted-foreground hover:border-gold/40 hover:text-gold press-scale"
+   581→                    >
+   582→                      {fmtUSD(v, { compact: true })}
+   583→                    </button>
+   584→                  ))}
+   585→                </div>
+   586→              )}
+   587→
+   588→              {/* Live minimum validation feedback — DEPOSITS only */}
+   589→              {open === "DEPOSIT" && currentAmount > 0 && (
+   590→                <div className="flex items-center gap-1.5 pt-0.5 text-[11px]">
+   591→                  {meetsMinimum ? (
+   592→                    <>
+   593→                      <CheckCircle2 className="h-3 w-3 text-profit" />
+   594→                      <span className="text-profit">Meets minimum requirement</span>
+   595→                    </>
+   596→                  ) : method === "UPI" ? (
+   597→                    <>
+   598→                      <AlertTriangle className="h-3 w-3 text-loss" />
+   599→                      <span className="text-loss">Minimum INR deposit is ₹1000</span>
+   600→                    </>
+   601→                  ) : (
+   602→                    <>
+   603→                      <AlertTriangle className="h-3 w-3 text-loss" />
+   604→                      <span className="text-loss">Minimum crypto deposit is $10</span>
+   605→                    </>
+   606→                  )}
+   607→                </div>
+   608→              )}
+   609→            </div>
+   610→
+   611→            {/* 2FA Required Notice for high-value operations */}
+   612→            {isHighValue && (
+   613→              <div className="flex items-start gap-2 rounded-lg border border-gold/20 bg-gold/5 px-3 py-2.5 text-xs">
+   614→                <ShieldCheck className="h-4 w-4 shrink-0 text-gold mt-0.5" />
+   615→                <span className="text-foreground/90 break-words-mobile">
+   616→                  {userHas2FA
+   617→                    ? "2FA verification will be required for this high-value transaction."
+   618→                    : "2FA must be enabled to submit transactions over $50,000. Enable it in your account settings."}
+   619→                </span>
+   620→              </div>
+   621→            )}
+   622→
+   623→            <div className="space-y-1.5">
+   624→              <Label htmlFor="notes" className="text-xs uppercase tracking-wider text-muted-foreground">Notes (optional)</Label>
+   625→              <Textarea
+   626→                id="notes"
+   627→                value={notes}
+   628→                onChange={(e) => setNotes(e.target.value)}
+   629→                placeholder="e.g. Q4 capital allocation"
+   630→                className="border-border/60 bg-black/30 text-sm"
+   631→                rows={2}
+   632→              />
+   633→            </div>
+   634→          </div>
+   635→          <DialogFooter className="sticky-mobile-cta flex-col gap-2 sm:flex-row sm:gap-2 safe-area-bottom">
+   636→            <Button variant="ghost" onClick={() => setOpen(null)} className="tap-target w-full sm:w-auto">Cancel</Button>
+   637→            <Button
+   638→              onClick={handleSubmitWith2FA}
+   639→              disabled={submitting || (open === "DEPOSIT" && !meetsMinimum)}
+   640→              className="tap-target w-full sm:w-auto bg-gold-gradient text-black hover:opacity-90 press-scale"
+   641→            >
+   642→              {submitting ? "Submitting…" : isHighValue ? "Submit with 2FA" : "Submit Request"}
+   643→            </Button>
+   644→          </DialogFooter>
+   645→        </DialogContent>
+   646→      </Dialog>
+   647→
+   648→      {/* 2FA Verification Modal */}
+   649→      <TwoFactorModal
+   650→        open={show2FA}
+   651→        onClose={() => { setShow2FA(false); setPending2FAAction(null); }}
+   652→        onVerified={handle2FAVerified}
+   653→        userHas2FA={userHas2FA}
+   654→        purpose={`Verify to proceed with ${pending2FAAction?.toLowerCase() ?? "transaction"} of ${
+   655→          isCryptoDeposit
+   656→            ? fmtUSD(usdEquivalent, { decimals: 2 })
+   657→            : open === "DEPOSIT" && method === "UPI"
+   658→              ? `₹${currentAmount.toLocaleString()}`
+   659→              : fmtUSD(currentAmount)
+   660→        }`}
+   661→      />
+   662→    </div>
+   663→  );
+   664→}
+   665→
