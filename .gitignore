@@ -52,3 +52,19 @@ prompt
 server.log
 # Skills directory
 /skills/
+
+# Database (contains user data + admin password hashes — never commit)
+db/*.db
+db/*.db-journal
+db/*.sqlite
+db/*.sqlite3
+
+# Dev artifacts / agent context (internal handover notes)
+/agent-ctx/
+/qa/
+/download/
+/worklog.md
+
+# Build outputs
+mini-services/**/node_modules
+mini-services/**/dist
