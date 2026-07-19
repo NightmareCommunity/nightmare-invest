@@ -1,17 +1,32 @@
 // NIGHTMARE INVEST — Institutional Crypto Hedge Fund Client Portal
-// Prisma schema (SQLite)
+// Prisma schema
+//
+// PORTABILITY: This schema is intentionally written using only portable
+// primitives (String / Int / Float / Boolean / DateTime / cuid() ids, no
+// native enums, no Bytes, no SQLite-only types). To run on PostgreSQL in
+// production, switch the datasource provider below to "postgresql" and set
+// DATABASE_URL to a postgres connection string — no other changes required.
+//
+//   provider = "postgresql"
+//   url      = env("DATABASE_URL")  // e.g. postgresql://user:pass@host:5432/nightmare
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
+  // Switch to "postgresql" for production deployment. SQLite is used in dev
+  // because the sandbox cannot install a postgres server binary. All
+  // persistence semantics (users, sessions, transactions, investments,
+  // ledger) are identical across both providers — Prisma abstracts them.
   provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
 // ----------------------------- Enums -----------------------------
-// SQLite has no native enum, so we use String with app-level validation.
+// Both SQLite and PostgreSQL: we use String + app-level validation rather
+// than native enums to keep the schema portable and to allow additive
+// status values without migrations.
 
 // ----------------------------- User ------------------------------
 model User {
@@ -55,6 +70,12 @@ model User {
   statementRequests          StatementRequest[] @relation("StatementRequestRequester")
   processedStatementRequests StatementRequest[] @relation("StatementRequestProcessor")
   investments      Investment[]
+
+  // Persistent auth — refresh tokens, sessions, 2FA challenges, notification reads
+  refreshTokens    RefreshToken[]
+  sessions         Session[]
+  authChallenges   AuthChallenge[]
+  notificationReads NotificationRead[]
 }
 
 // ----------------------------- Fund ------------------------------
@@ -378,4 +399,102 @@ model SystemSetting {
   category  String   @default("general") // general | security | fees | notifications | features
   updatedAt DateTime @updatedAt
   updatedBy String?
+}
+
+// =================================================================
+// PERSISTENT AUTHENTICATION MODELS
+// =================================================================
+// All auth state is stored in the database so sessions survive server
+// restarts, can be revoked from any device, and can be audited. No
+// in-memory token stores — every refresh token, 2FA challenge, session,
+// and notification read-receipt is durably persisted.
+// =================================================================
+
+// ------------------------ Refresh Tokens -------------------------
+// Persisted, revocable, rotating refresh tokens for the JWT auth flow.
+// Each login issues one refresh token; each refresh rotates it (old token
+// is revoked, new one is issued). Allows server-side session revocation
+// and "log out everywhere" functionality.
+model RefreshToken {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // SHA-256 hash of the raw JWT — we never store the raw token in the DB,
+  // so a DB dump cannot be used to forge sessions.
+  tokenHash   String    @unique
+  // JTI (JWT ID) claim, mirrored here for fast lookup by claim
+  jti         String    @unique
+  // SHA-256 of the user-agent for device fingerprinting
+  userAgent   String?
+  // Truncated IP for audit (last octet zeroed for privacy)
+  ip          String?
+  expiresAt   DateTime
+  revokedAt   DateTime? // null = active; set on logout/rotation/revoke
+  replacedBy  String?   // id of the RefreshToken that replaced this one (rotation chain)
+  createdAt   DateTime  @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@index([revokedAt])
+}
+
+// --------------------------- Sessions ----------------------------
+// High-level device sessions — one per login. Lets users see "logged in
+// on Chrome / Windows" and revoke individual sessions from settings.
+// Backed by RefreshToken for actual JWT validation.
+model Session {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Human-readable device label, e.g. "Chrome 130 on macOS"
+  deviceLabel String
+  // Truncated IP for audit
+  ip          String?
+  userAgent   String?
+  // SHA-256 hash of the underlying refresh token's jti
+  refreshJti  String    @unique
+  lastSeenAt  DateTime  @default(now())
+  expiresAt   DateTime
+  revokedAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([userId])
+  @@index([revokedAt])
+}
+
+// ----------------------- Auth Challenges -------------------------
+// Short-lived 2FA (TOTP) challenge tickets persisted in DB so they
+// survive server restarts and work across multi-instance deployments.
+// Status: PENDING -> COMPLETED | EXPIRED | CONSUMED
+model AuthChallenge {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Opaque ticket the client must echo back: 32-byte base64url random
+  ticket    String    @unique
+  status    String    @default("PENDING") // PENDING | COMPLETED | EXPIRED
+  expiresAt DateTime
+  consumedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@index([status])
+}
+
+// -------------------- Notification Reads -------------------------
+// Persistent per-user read receipts for notifications, replacing the
+// prior in-memory Map<userId, Set<notificationId>> which was lost on
+// every server restart.
+model NotificationRead {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Stable notification id derived from the underlying event
+  // (e.g. "txn:cmr0phydl0000rfedfcd32xsh:APPROVED")
+  notificationId  String
+  readAt          DateTime @default(now())
+
+  @@unique([userId, notificationId])
+  @@index([userId])
 }

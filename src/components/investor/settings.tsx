@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { TwoFactorSection } from "./two-factor-section";
+import { ActiveSessionsSection } from "./active-sessions";
 // NOTE: KYC module temporarily disabled. The KycSection component and
 // related UI have been removed from the active investor flow. The
 // underlying schema (KycDocument model, User.kyc* fields) is retained
@@ -219,12 +220,21 @@ export function SettingsPage() {
 
   const reset = async () => {
     if (!user) return;
-    if (newPass.length < 8) return toast.error("Password must be at least 8 characters");
+    if (!currentPass) return toast.error("Enter your current password");
+    if (newPass.length < 8) return toast.error("New password must be at least 8 characters");
     if (newPass !== confirmPass) return toast.error("Passwords do not match");
+    if (newPass === currentPass) return toast.error("New password must be different");
     setSubmitting(true);
     try {
-      await api.post("/api/auth/password-reset", { email: user.email, newPassword: newPass });
-      toast.success("Password updated");
+      const res = await api.post<{ otherSessionsRevoked?: number }>(
+        "/api/auth/change-password",
+        { currentPassword: currentPass, newPassword: newPass }
+      );
+      toast.success(
+        res.otherSessionsRevoked
+          ? `Password updated — ${res.otherSessionsRevoked} other session${res.otherSessionsRevoked === 1 ? "" : "s"} revoked`
+          : "Password updated"
+      );
       setNewPass("");
       setCurrentPass("");
       setConfirmPass("");
@@ -534,6 +544,9 @@ export function SettingsPage() {
           </GlassCard>
 
           <TwoFactorSection enabled={totpEnabled} onChanged={refresh} />
+
+          {/* ---- Active Sessions (persistent refresh tokens, revocable) ---- */}
+          <ActiveSessionsSection />
 
           {/* ---- Password Section ---- */}
           <GlassCard className="glass-card-hover p-4 sm:p-6 border-gold/10">
